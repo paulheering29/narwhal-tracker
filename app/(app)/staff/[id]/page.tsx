@@ -1,0 +1,708 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { getCompanyId } from '@/lib/get-company-id'
+import { getDisplayName, getLegalName, hasPreferredName } from '@/lib/display-name'
+import { getCycleStatus, isActiveCycle, cycleStatusStyles } from '@/lib/cycle-status'
+import {
+  ArrowLeft,
+  Pencil,
+  Plus,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  AlertTriangle,
+  RefreshCw,
+} from 'lucide-react'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type StaffMember = {
+  id: string
+  first_name: string
+  last_name: string
+  display_first_name: string | null
+  display_last_name: string | null
+  email: string | null
+  role: string | null
+  ehr_id: string | null
+  active: boolean
+}
+
+type Cycle = {
+  id: string
+  certification_type: string
+  certification_number: string
+  start_date: string
+  end_date: string
+  notes: string | null
+}
+
+type TrainingRecord = {
+  id: string
+  completed_date: string
+  expiry_date: string | null
+  notes: string | null
+  courses: { name: string } | null
+}
+
+type OverlapWarning = {
+  conflictingCycle: Cycle
+  suggestedEndDate: string
+}
+
+const emptyCycleForm = {
+  certification_number: '',
+  start_date: '',
+  end_date: '',
+  notes: '',
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(d: string) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  })
+}
+
+function dayBefore(dateStr: string) {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().split('T')[0]
+}
+
+function detectOverlap(cycles: Cycle[], startDate: string, endDate: string, excludeId?: string): OverlapWarning | null {
+  for (const cycle of cycles) {
+    if (cycle.id === excludeId) continue
+    // Overlap: new range intersects existing range
+    if (startDate <= cycle.end_date && endDate >= cycle.start_date) {
+      return {
+        conflictingCycle: cycle,
+        suggestedEndDate: dayBefore(startDate),
+      }
+    }
+  }
+  return null
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function StaffDetailPage() {
+  const params = useParams()
+  const staffId = params.id as string
+  const router = useRouter()
+  const supabase = createClient()
+
+  // Data
+  const [staff, setStaff] = useState<StaffMember | null>(null)
+  const [cycles, setCycles] = useState<Cycle[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Training records per cycle (loaded on expand)
+  const [expandedCycleId, setExpandedCycleId] = useState<string | null>(null)
+  const [cycleRecords, setCycleRecords] = useState<Record<string, TrainingRecord[]>>({})
+  const [loadingRecords, setLoadingRecords] = useState(false)
+
+  // Edit staff dialog
+  const [editStaffOpen, setEditStaffOpen] = useState(false)
+  const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', display_first_name: '', display_last_name: '', email: '', role: '', ehr_id: '' })
+  const [savingStaff, setSavingStaff] = useState(false)
+  const [staffError, setStaffError] = useState<string | null>(null)
+
+  // Cycle dialog
+  const [cycleDialogOpen, setCycleDialogOpen] = useState(false)
+  const [editingCycle, setEditingCycle] = useState<Cycle | null>(null)
+  const [cycleForm, setCycleForm] = useState(emptyCycleForm)
+  const [savingCycle, setSavingCycle] = useState(false)
+  const [cycleError, setCycleError] = useState<string | null>(null)
+  const [overlapWarning, setOverlapWarning] = useState<OverlapWarning | null>(null)
+
+  // ─── Data loading ───────────────────────────────────────────────────────────
+
+  const loadStaff = useCallback(async () => {
+    const { data } = await supabase.from('staff').select('*').eq('id', staffId).single()
+    if (data) setStaff(data)
+  }, [staffId])
+
+  const loadCycles = useCallback(async () => {
+    const { data } = await supabase
+      .from('certification_cycles')
+      .select('*')
+      .eq('staff_id', staffId)
+      .order('start_date', { ascending: false })
+    setCycles(data ?? [])
+  }, [staffId])
+
+  useEffect(() => {
+    async function init() {
+      setLoading(true)
+      await Promise.all([loadStaff(), loadCycles()])
+      setLoading(false)
+    }
+    init()
+  }, [loadStaff, loadCycles])
+
+  async function loadCycleRecords(cycle: Cycle) {
+    if (cycleRecords[cycle.id]) return // already loaded
+    setLoadingRecords(true)
+    const { data } = await supabase
+      .from('training_records')
+      .select('id, completed_date, expiry_date, notes, courses(name)')
+      .eq('staff_id', staffId)
+      .gte('completed_date', cycle.start_date)
+      .lte('completed_date', cycle.end_date)
+      .order('completed_date', { ascending: false })
+    setCycleRecords(prev => ({ ...prev, [cycle.id]: (data ?? []) as unknown as TrainingRecord[] }))
+    setLoadingRecords(false)
+  }
+
+  function toggleCycle(cycle: Cycle) {
+    if (expandedCycleId === cycle.id) {
+      setExpandedCycleId(null)
+    } else {
+      setExpandedCycleId(cycle.id)
+      loadCycleRecords(cycle)
+    }
+  }
+
+  // ─── Staff editing ──────────────────────────────────────────────────────────
+
+  function openEditStaff() {
+    if (!staff) return
+    setStaffForm({
+      first_name: staff.first_name,
+      last_name: staff.last_name,
+      display_first_name: staff.display_first_name ?? '',
+      display_last_name: staff.display_last_name ?? '',
+      email: staff.email ?? '',
+      role: staff.role ?? '',
+      ehr_id: staff.ehr_id ?? '',
+    })
+    setStaffError(null)
+    setEditStaffOpen(true)
+  }
+
+  async function handleSaveStaff() {
+    if (!staffForm.first_name.trim() || !staffForm.last_name.trim()) {
+      setStaffError('First name and last name are required.')
+      return
+    }
+    setSavingStaff(true)
+    const { error } = await supabase.from('staff').update({
+      first_name: staffForm.first_name,
+      last_name: staffForm.last_name,
+      display_first_name: staffForm.display_first_name.trim() || null,
+      display_last_name: staffForm.display_last_name.trim() || null,
+      email: staffForm.email || null,
+      role: staffForm.role || null,
+      ehr_id: staffForm.ehr_id || null,
+    }).eq('id', staffId)
+    if (error) { setStaffError(error.message); setSavingStaff(false); return }
+    setSavingStaff(false)
+    setEditStaffOpen(false)
+    loadStaff()
+  }
+
+  // ─── Cycle management ───────────────────────────────────────────────────────
+
+  function openAddCycle() {
+    setEditingCycle(null)
+    setCycleError(null)
+    setOverlapWarning(null)
+
+    // Pre-fill cert number from most recent cycle
+    const lastCycle = cycles[0]
+    setCycleForm(lastCycle ? {
+      certification_number: lastCycle.certification_number,
+      start_date: '',
+      end_date: '',
+      notes: '',
+    } : emptyCycleForm)
+
+    setCycleDialogOpen(true)
+  }
+
+  function openEditCycle(cycle: Cycle) {
+    setEditingCycle(cycle)
+    setCycleForm({
+      certification_number: cycle.certification_number,
+      start_date: cycle.start_date,
+      end_date: cycle.end_date,
+      notes: cycle.notes ?? '',
+    })
+    setCycleError(null)
+    setOverlapWarning(null)
+    setCycleDialogOpen(true)
+  }
+
+  async function handleSaveCycle(autoFixOverlap = false) {
+    if (!cycleForm.certification_number.trim() || !cycleForm.start_date || !cycleForm.end_date) {
+      setCycleError('Certification number, start date, and end date are required.')
+      return
+    }
+    if (cycleForm.start_date >= cycleForm.end_date) {
+      setCycleError('End date must be after start date.')
+      return
+    }
+
+    // Check for overlaps
+    const overlap = detectOverlap(cycles, cycleForm.start_date, cycleForm.end_date, editingCycle?.id)
+    if (overlap && !autoFixOverlap) {
+      setOverlapWarning(overlap)
+      return
+    }
+
+    setSavingCycle(true)
+    setCycleError(null)
+
+    try {
+      // If auto-fixing, update the conflicting cycle's end date first
+      if (autoFixOverlap && overlapWarning) {
+        const { error: fixError } = await supabase
+          .from('certification_cycles')
+          .update({ end_date: overlapWarning.suggestedEndDate })
+          .eq('id', overlapWarning.conflictingCycle.id)
+        if (fixError) throw fixError
+        // Invalidate cached records for that cycle since date range changed
+        setCycleRecords(prev => {
+          const next = { ...prev }
+          delete next[overlapWarning.conflictingCycle.id]
+          return next
+        })
+      }
+
+      if (editingCycle) {
+        const { error } = await supabase.from('certification_cycles').update({
+          certification_type: 'RBT',
+          certification_number: cycleForm.certification_number,
+          start_date: cycleForm.start_date,
+          end_date: cycleForm.end_date,
+          notes: cycleForm.notes || null,
+        }).eq('id', editingCycle.id)
+        if (error) throw error
+        // Invalidate cached records — date range may have changed
+        setCycleRecords(prev => {
+          const next = { ...prev }
+          delete next[editingCycle.id]
+          return next
+        })
+      } else {
+        const companyId = await getCompanyId()
+        if (!companyId) throw new Error('Could not determine your company. Please sign out and sign back in.')
+        const { error } = await supabase.from('certification_cycles').insert({
+          company_id: companyId,
+          staff_id: staffId,
+          certification_type: 'RBT',
+          certification_number: cycleForm.certification_number,
+          start_date: cycleForm.start_date,
+          end_date: cycleForm.end_date,
+          notes: cycleForm.notes || null,
+        })
+        if (error) throw error
+      }
+
+      setOverlapWarning(null)
+      setCycleDialogOpen(false)
+      loadCycles()
+    } catch (err: unknown) {
+      setCycleError(err instanceof Error ? err.message : 'An error occurred.')
+    } finally {
+      setSavingCycle(false)
+    }
+  }
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (!staff) {
+    return (
+      <div className="p-8">
+        <p className="text-gray-500">Staff member not found.</p>
+        <Button variant="link" onClick={() => router.push('/staff')}>← Back to Staff</Button>
+      </div>
+    )
+  }
+
+  const activeCycle = cycles.find(c => isActiveCycle(c.start_date, c.end_date))
+
+  return (
+    <div className="p-8 max-w-4xl">
+
+      {/* Header */}
+      <div className="mb-6">
+        <button onClick={() => router.push('/staff')}
+          className="mb-4 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+          <ArrowLeft className="h-4 w-4" /> Back to Staff
+        </button>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {getDisplayName(staff)}
+            </h1>
+            {hasPreferredName(staff) && (
+              <p className="text-sm text-gray-400">Legal name: {getLegalName(staff)}</p>
+            )}
+            <div className="mt-1 flex items-center gap-2">
+              <Badge variant={staff.active ? 'default' : 'secondary'}>
+                {staff.active ? 'Active' : 'Inactive'}
+              </Badge>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={openEditStaff}>
+            <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Info
+          </Button>
+        </div>
+      </div>
+
+      {/* Staff Info Card */}
+      <Card className="mb-6 shadow-sm">
+        <CardContent className="pt-6">
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4">
+            {/* Legal name — always shown to admins */}
+            <div>
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal First Name</dt>
+              <dd className="mt-1 text-sm text-gray-900">{staff.first_name}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal Last Name</dt>
+              <dd className="mt-1 text-sm text-gray-900">{staff.last_name}</dd>
+            </div>
+            {/* Preferred/goes-by names */}
+            <div>
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Preferred First Name</dt>
+              <dd className="mt-1 text-sm text-gray-900">{staff.display_first_name ?? <span className="text-gray-400 italic">same as legal</span>}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Preferred Last Name</dt>
+              <dd className="mt-1 text-sm text-gray-900">{staff.display_last_name ?? <span className="text-gray-400 italic">same as legal</span>}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</dt>
+              <dd className="mt-1 text-sm text-gray-900">{staff.email ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Role</dt>
+              <dd className="mt-1 text-sm text-gray-900">{staff.role ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">EHR ID</dt>
+              <dd className="mt-1 text-sm font-mono text-gray-900">{staff.ehr_id ?? '—'}</dd>
+            </div>
+            {activeCycle && (
+              <div>
+                <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cert Number</dt>
+                <dd className="mt-1 text-sm font-mono text-gray-900">{activeCycle.certification_number}</dd>
+              </div>
+            )}
+          </dl>
+        </CardContent>
+      </Card>
+
+      {/* Certification Cycles */}
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Certification Cycles</h2>
+          <p className="text-sm text-gray-500">{cycles.length} cycle{cycles.length !== 1 ? 's' : ''} on record</p>
+        </div>
+        <Button onClick={openAddCycle} size="sm" className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+          <Plus className="mr-2 h-4 w-4" /> Add Cycle
+        </Button>
+      </div>
+
+      {cycles.length === 0 ? (
+        <div className="rounded-lg border border-dashed bg-white p-10 text-center text-sm text-gray-400 shadow-sm">
+          No certification cycles yet. Add this person's first cycle.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {cycles.map(cycle => {
+            const isExpanded = expandedCycleId === cycle.id
+            const records = cycleRecords[cycle.id]
+
+            return (
+              <div key={cycle.id} className="rounded-lg border bg-white shadow-sm overflow-hidden">
+                {/* Cycle header row */}
+                <div
+                  className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => toggleCycle(cycle)}
+                >
+                  <button className="text-gray-400 shrink-0">
+                    {isExpanded
+                      ? <ChevronDown className="h-4 w-4" />
+                      : <ChevronRight className="h-4 w-4" />}
+                  </button>
+
+                  <span className="font-mono text-sm text-gray-700 shrink-0">{cycle.certification_number}</span>
+
+                  <span className="text-sm text-gray-600">
+                    {formatDate(cycle.start_date)} — {formatDate(cycle.end_date)}
+                  </span>
+
+                  {(() => {
+                    const status = getCycleStatus(cycle.start_date, cycle.end_date)
+                    return (
+                      <span className={`ml-auto shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${cycleStatusStyles[status]}`}>
+                        {status}
+                      </span>
+                    )
+                  })()}
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0"
+                    onClick={e => { e.stopPropagation(); openEditCycle(cycle) }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+
+                {/* Expanded: training records */}
+                {isExpanded && (
+                  <div className="border-t bg-gray-50 px-4 py-3">
+                    {cycle.notes && (
+                      <p className="mb-3 text-sm text-gray-500 italic">{cycle.notes}</p>
+                    )}
+
+                    {loadingRecords && !records ? (
+                      <div className="flex items-center gap-2 py-4 text-sm text-gray-400">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading training records…
+                      </div>
+                    ) : !records || records.length === 0 ? (
+                      <p className="py-4 text-sm text-gray-400 text-center">
+                        No training records fall within this cycle's dates.
+                      </p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">Training</TableHead>
+                            <TableHead className="text-xs">Completed</TableHead>
+                            <TableHead className="text-xs">Expiry</TableHead>
+                            <TableHead className="text-xs">Notes</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {records.map(r => (
+                            <TableRow key={r.id}>
+                              <TableCell className="text-sm font-medium">{r.courses?.name}</TableCell>
+                              <TableCell className="text-sm text-gray-600">{formatDate(r.completed_date)}</TableCell>
+                              <TableCell className="text-sm text-gray-600">
+                                {r.expiry_date ? formatDate(r.expiry_date) : '—'}
+                              </TableCell>
+                              <TableCell className="text-sm text-gray-500">{r.notes ?? '—'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs text-gray-500"
+                        onClick={e => {
+                          e.stopPropagation()
+                          setCycleRecords(prev => { const n = { ...prev }; delete n[cycle.id]; return n })
+                          loadCycleRecords(cycle)
+                        }}
+                      >
+                        <RefreshCw className="mr-1 h-3 w-3" /> Refresh
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Edit Staff Dialog ─────────────────────────────────────────────── */}
+      <Dialog open={editStaffOpen} onOpenChange={setEditStaffOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Staff Info</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Legal Name</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>First Name *</Label>
+                  <Input value={staffForm.first_name} onChange={e => setStaffForm(f => ({ ...f, first_name: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name *</Label>
+                  <Input value={staffForm.last_name} onChange={e => setStaffForm(f => ({ ...f, last_name: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Preferred / Goes-by Name</p>
+              <p className="text-xs text-gray-400 mb-3">Leave blank to use legal name. Used everywhere except printed certifications.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Preferred First Name</Label>
+                  <Input placeholder={staffForm.first_name || 'e.g. Maddie'} value={staffForm.display_first_name} onChange={e => setStaffForm(f => ({ ...f, display_first_name: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Preferred Last Name</Label>
+                  <Input placeholder={staffForm.last_name || 'e.g. Wils'} value={staffForm.display_last_name} onChange={e => setStaffForm(f => ({ ...f, display_last_name: e.target.value }))} />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input type="email" value={staffForm.email} onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select value={staffForm.role} onValueChange={v => setStaffForm(f => ({ ...f, role: v ?? '' }))}>
+                  <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="RBT">RBT</SelectItem>
+                    <SelectItem value="Trainer">Trainer</SelectItem>
+                    <SelectItem value="Admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>EHR ID</Label>
+                <Input value={staffForm.ehr_id} onChange={e => setStaffForm(f => ({ ...f, ehr_id: e.target.value }))} />
+              </div>
+            </div>
+            {staffError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{staffError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditStaffOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveStaff} disabled={savingStaff} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+              {savingStaff ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Cycle Dialog ──────────────────────────────────────────────────── */}
+      <Dialog open={cycleDialogOpen} onOpenChange={open => {
+        setCycleDialogOpen(open)
+        if (!open) setOverlapWarning(null)
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingCycle ? 'Edit Cycle' : 'Add Certification Cycle'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>RBT Certification Number *</Label>
+              <Input
+                placeholder="e.g. RBT-12345"
+                value={cycleForm.certification_number}
+                onChange={e => setCycleForm(f => ({ ...f, certification_number: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date *</Label>
+                <Input
+                  type="date"
+                  value={cycleForm.start_date}
+                  onChange={e => { setCycleForm(f => ({ ...f, start_date: e.target.value })); setOverlapWarning(null) }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date *</Label>
+                <Input
+                  type="date"
+                  value={cycleForm.end_date}
+                  onChange={e => { setCycleForm(f => ({ ...f, end_date: e.target.value })); setOverlapWarning(null) }}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea
+                rows={2}
+                placeholder="Optional notes…"
+                value={cycleForm.notes}
+                onChange={e => setCycleForm(f => ({ ...f, notes: e.target.value }))}
+              />
+            </div>
+
+            {/* Overlap warning */}
+            {overlapWarning && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-amber-800">
+                    This person has a cycle ending <strong>{formatDate(overlapWarning.conflictingCycle.end_date)}</strong> that
+                    overlaps with these dates. Would you like to update its end date
+                    to <strong>{formatDate(overlapWarning.suggestedEndDate)}</strong>?
+                  </p>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button size="sm" variant="outline" onClick={() => setOverlapWarning(null)}>
+                    No, I'll fix it
+                  </Button>
+                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white"
+                    onClick={() => handleSaveCycle(true)} disabled={savingCycle}>
+                    {savingCycle ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Yes, update end date'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {cycleError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{cycleError}</p>}
+          </div>
+
+          {!overlapWarning && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCycleDialogOpen(false)}>Cancel</Button>
+              <Button onClick={() => handleSaveCycle(false)} disabled={savingCycle} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                {savingCycle ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Cycle'}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

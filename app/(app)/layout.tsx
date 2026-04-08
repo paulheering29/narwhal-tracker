@@ -1,0 +1,29 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { TopNav } from '@/components/topnav'
+
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) redirect('/login')
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('tier, roles, first_name, last_name')
+    .eq('id', user.id)
+    .single()
+
+  const userTier  = (profile?.tier  ?? 'rbt')    as 'rbt' | 'staff'
+  const userRoles = (profile?.roles ?? [])        as string[]
+  const userEmail = user.email ?? ''
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50">
+      <TopNav userTier={userTier} userRoles={userRoles} userEmail={userEmail} />
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
+    </div>
+  )
+}

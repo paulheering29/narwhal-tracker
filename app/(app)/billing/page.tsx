@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getCompanyBilling, getAllPlans, getRBTCount, formatPrice } from '@/lib/plans'
+import { getCompanyBilling, getAllPlans, getRBTCount } from '@/lib/plans'
 import { BillingClient } from './client'
 
 export default async function BillingPage() {
@@ -28,7 +28,6 @@ export default async function BillingPage() {
       billing={billing}
       allPlans={allPlans}
       rbtCount={rbtCount}
-      formatPrice={formatPrice}
     />
   )
 }

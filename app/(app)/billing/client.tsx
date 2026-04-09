@@ -10,7 +10,11 @@ type Props = {
   billing: CompanyBilling | null
   allPlans: Plan[]
   rbtCount: number
-  formatPrice: (cents: number) => string
+}
+
+function formatPrice(cents: number): string {
+  if (cents === 0) return 'Free'
+  return `$${(cents / 100).toFixed(0)}/mo`
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -19,7 +23,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
   pro:     ['Up to 100 RBTs', 'Everything in Starter', 'More file storage (20 GB)', 'Priority support'],
 }
 
-export function BillingClient({ billing, allPlans, rbtCount, formatPrice }: Props) {
+export function BillingClient({ billing, allPlans, rbtCount }: Props) {
   const searchParams = useSearchParams()
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [loadingPortal, setLoadingPortal] = useState(false)

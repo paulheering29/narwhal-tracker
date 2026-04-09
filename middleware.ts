@@ -29,11 +29,12 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isAuthPage   = pathname === '/login'
-  const isHomePage   = pathname === '/'
+  const isAuthPage    = pathname === '/login'
+  const isHomePage    = pathname === '/'
+  const isStripeHook  = pathname === '/api/stripe/webhook'
 
-  // Always allow the public landing page through
-  if (isHomePage) return supabaseResponse
+  // Always allow the public landing page and Stripe webhook through
+  if (isHomePage || isStripeHook) return supabaseResponse
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone()

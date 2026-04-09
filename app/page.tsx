@@ -4,178 +4,138 @@ import Image from 'next/image'
 const features = [
   {
     emoji: '📋',
-    title: 'Every PDU, Accounted For',
-    body: 'Log training hours the moment they happen. No more scrambling at renewal time wondering what counts and what doesn\'t.',
-    color: 'bg-sky-50 border-sky-200',
-    pill: 'bg-sky-100 text-sky-700',
+    title: 'Every PDU, accounted for',
+    body: 'Log training hours the moment they happen. No more scrambling at renewal time.',
   },
   {
     emoji: '⏱️',
-    title: 'Pacing That Keeps You Ahead',
-    body: 'See exactly where each RBT should be in their certification cycle vs. where they actually are — in real time.',
-    color: 'bg-teal-50 border-teal-200',
-    pill: 'bg-teal-100 text-teal-700',
+    title: 'Pacing in real time',
+    body: 'See exactly where each RBT should be in their cycle — versus where they actually are.',
   },
   {
     emoji: '📅',
-    title: 'Never Miss a Renewal',
-    body: 'Expiring certifications surface automatically. Thirty days out, you know. No surprises, no last-minute panic.',
-    color: 'bg-amber-50 border-amber-200',
-    pill: 'bg-amber-100 text-amber-700',
+    title: 'Never miss a renewal',
+    body: 'Expiring certifications surface automatically. Thirty days out, you know.',
   },
   {
     emoji: '🎯',
-    title: 'Training That Hits the Mark',
-    body: 'Tag trainings by topic. See at a glance which skills your team has covered and where the gaps are.',
-    color: 'bg-violet-50 border-violet-200',
-    pill: 'bg-violet-100 text-violet-700',
+    title: 'Topic-level visibility',
+    body: 'Tag trainings by topic. See which skills your team has covered and where the gaps are.',
   },
   {
     emoji: '✍️',
-    title: 'Certificates, Auto-Signed',
-    body: 'Trainer signatures embedded directly into certificates. Professional, consistent, and zero extra steps.',
-    color: 'bg-rose-50 border-rose-200',
-    pill: 'bg-rose-100 text-rose-700',
+    title: 'Certificates, auto-signed',
+    body: 'Trainer signatures embedded directly into certificates. Professional, zero extra steps.',
   },
   {
     emoji: '🔒',
-    title: 'Your Data, Only Yours',
-    body: 'Each organisation is completely siloed. Row-level security means no one else ever sees your records.',
-    color: 'bg-emerald-50 border-emerald-200',
-    pill: 'bg-emerald-100 text-emerald-700',
+    title: 'Your data, only yours',
+    body: 'Each organisation is fully siloed. Nobody else ever sees your records.',
   },
 ]
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white text-gray-900">
 
-      {/* ── Nav ─────────────────────────────────────────────────────────────── */}
-      <header style={{ backgroundColor: '#457595' }} className="sticky top-0 z-50 shadow-md">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 h-14">
-          <div className="flex items-center gap-2.5">
+      {/* ── Nav ───────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
+        <div className="max-w-5xl mx-auto flex items-center justify-between px-8 h-16">
+          <div className="flex items-center gap-3">
             <Image
               src="/narwhal-tracker.jpg"
               alt="Narwhal Tracker"
-              width={120}
-              height={36}
-              className="h-9 w-auto rounded"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-lg"
               priority
             />
-            <span className="text-white font-semibold text-lg leading-none tracking-tight">
+            <span className="font-semibold text-gray-900 tracking-tight">
               Narwhal Tracker
             </span>
           </div>
           <Link
             href="/login"
-            className="rounded-lg bg-white px-4 py-1.5 text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ color: '#457595' }}
+            className="text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            style={{ backgroundColor: '#457595', color: '#fff' }}
           >
-            Sign In
+            Sign in
           </Link>
         </div>
       </header>
 
-      {/* ── Hero ────────────────────────────────────────────────────────────── */}
-      <section
-        className="relative overflow-hidden py-24 px-6 text-center"
-        style={{
-          background: 'linear-gradient(160deg, #457595 0%, #2d5a73 50%, #1a3d52 100%)',
-        }}
-      >
-        {/* Decorative blobs */}
-        <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full opacity-20 blur-3xl"
-          style={{ backgroundColor: '#6db3d4' }} />
-        <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full opacity-20 blur-3xl"
-          style={{ backgroundColor: '#a8d8ea' }} />
-
-        <div className="relative mx-auto max-w-3xl">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm text-white/80">
-            🦄 Built for ABA organisations
-          </div>
-          <h1 className="mb-6 text-5xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl">
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <section className="pt-32 pb-28 px-8 text-center">
+        <div className="mx-auto max-w-2xl">
+          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-[1.1] text-gray-900 mb-6">
             RBT training records,<br />
-            <span style={{ color: '#a8d8ea' }}>finally under control.</span>
+            <span style={{ color: '#457595' }}>finally under control.</span>
           </h1>
-          <p className="mx-auto mb-10 max-w-xl text-lg text-white/75 leading-relaxed">
-            Narwhal Tracker keeps your whole team&apos;s PDU hours, certification cycles,
-            and upcoming trainings in one tidy place — so nothing slips through the cracks.
+          <p className="text-xl text-gray-400 leading-relaxed mb-12 max-w-lg mx-auto">
+            One place for PDU hours, certification cycles, and upcoming trainings —
+            so nothing slips through the cracks.
           </p>
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-base font-bold shadow-lg transition-transform hover:scale-105 active:scale-95"
-            style={{ backgroundColor: '#a8d8ea', color: '#1a3d52' }}
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#457595', color: '#fff' }}
           >
             Get started →
           </Link>
         </div>
       </section>
 
-      {/* ── Stats bar ───────────────────────────────────────────────────────── */}
-      <section style={{ backgroundColor: '#f0f7fa' }} className="border-y border-sky-100 py-8">
-        <div className="mx-auto max-w-4xl grid grid-cols-3 divide-x divide-sky-200 text-center">
-          {[
-            { value: '12', label: 'PDUs per cycle' },
-            { value: '2-yr', label: 'Certification cycles' },
-            { value: '0', label: 'Surprises at renewal' },
-          ].map(({ value, label }) => (
-            <div key={label} className="px-6 py-2">
-              <p className="text-4xl font-extrabold" style={{ color: '#457595' }}>{value}</p>
-              <p className="mt-1 text-sm text-gray-500">{label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ── Divider ───────────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-8">
+        <hr className="border-gray-100" />
+      </div>
 
-      {/* ── Features ────────────────────────────────────────────────────────── */}
-      <section className="py-20 px-6">
+      {/* ── Features ──────────────────────────────────────────────────────── */}
+      <section className="py-28 px-8">
         <div className="mx-auto max-w-5xl">
-          <h2 className="mb-3 text-center text-3xl font-extrabold text-gray-900">
-            Everything you need. Nothing you don&apos;t.
+          <h2 className="text-3xl font-bold tracking-tight text-center mb-4">
+            Everything you need.
           </h2>
-          <p className="mb-14 text-center text-gray-500">
-            Purpose-built for ABA training coordinators who have enough on their plate.
+          <p className="text-gray-400 text-center mb-20">
+            Purpose-built for ABA training coordinators.
           </p>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map(({ emoji, title, body, color }) => (
-              <div
-                key={title}
-                className={`rounded-2xl border p-6 transition-shadow hover:shadow-md ${color}`}
-              >
-                <div className="mb-3 text-3xl">{emoji}</div>
-                <h3 className="mb-2 text-base font-bold text-gray-900">{title}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{body}</p>
+          <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map(({ emoji, title, body }) => (
+              <div key={title}>
+                <div className="text-2xl mb-4">{emoji}</div>
+                <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA ─────────────────────────────────────────────────────────────── */}
-      <section
-        className="py-20 px-6 text-center"
-        style={{
-          background: 'linear-gradient(135deg, #457595 0%, #2d5a73 100%)',
-        }}
-      >
-        <h2 className="mb-4 text-3xl font-extrabold text-white">
-          Your team&apos;s certifications won&apos;t track themselves. 🦭
-        </h2>
-        <p className="mb-8 text-white/70">
-          But Narwhal Tracker will.
-        </p>
-        <Link
-          href="/login"
-          className="inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-base font-bold shadow-lg transition-transform hover:scale-105 active:scale-95"
-          style={{ backgroundColor: '#a8d8ea', color: '#1a3d52' }}
-        >
-          Sign in to your account →
-        </Link>
+      {/* ── Divider ───────────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-8">
+        <hr className="border-gray-100" />
+      </div>
+
+      {/* ── CTA ───────────────────────────────────────────────────────────── */}
+      <section className="py-32 px-8 text-center">
+        <div className="mx-auto max-w-xl">
+          <h2 className="text-3xl font-bold tracking-tight mb-4">
+            Your team&apos;s certifications<br />won&apos;t track themselves.
+          </h2>
+          <p className="text-gray-400 mb-10">But Narwhal Tracker will.</p>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#457595', color: '#fff' }}
+          >
+            Sign in to your account →
+          </Link>
+        </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-gray-100 bg-white py-8 px-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} Narwhal Tracker · Built for the humans keeping ABA teams certified 🐋
+      {/* ── Footer ────────────────────────────────────────────────────────── */}
+      <footer className="border-t border-gray-100 py-10 px-8 text-center text-xs text-gray-300">
+        © {new Date().getFullYear()} Narwhal Tracker
       </footer>
 
     </div>

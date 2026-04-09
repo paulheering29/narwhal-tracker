@@ -12,10 +12,16 @@ export default async function OwnerPage() {
       .order('created_at', { ascending: false }),
   ])
 
+  // Supabase returns joined relations as arrays — unwrap plan to a single object
+  const companies = (companiesRes.data ?? []).map(c => ({
+    ...c,
+    plan: Array.isArray(c.plan) ? (c.plan[0] ?? null) : c.plan,
+  }))
+
   return (
     <OwnerClient
       initialPlans={plansRes.data ?? []}
-      initialCompanies={companiesRes.data ?? []}
+      initialCompanies={companies}
     />
   )
 }

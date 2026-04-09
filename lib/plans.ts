@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,9 +38,11 @@ export async function getAllPlans(): Promise<Plan[]> {
 
 /** The plan for a specific company */
 export async function getCompanyBilling(companyId: string): Promise<CompanyBilling | null> {
-  const supabase = await createClient()
+  // Use service client — companies table RLS doesn't expose billing columns
+  // to the anon client; companyId is always pre-validated by the caller.
+  const service = createServiceClient()
 
-  const { data: company } = await supabase
+  const { data: company } = await service
     .from('companies')
     .select('plan_id, stripe_customer_id, stripe_subscription_id, subscription_status')
     .eq('id', companyId)
@@ -48,7 +51,7 @@ export async function getCompanyBilling(companyId: string): Promise<CompanyBilli
 
   let plan: Plan | null = null
   if (company.plan_id) {
-    const { data: planData } = await supabase
+    const { data: planData } = await service
       .from('plans')
       .select('*')
       .eq('id', company.plan_id)

@@ -57,12 +57,13 @@ type StaffMember = {
   role: string | null
   ehr_id: string | null
   active: boolean
+  certification_number: string | null
+  original_certification_date: string | null
 }
 
 type Cycle = {
   id: string
   certification_type: string
-  certification_number: string
   start_date: string
   end_date: string
   notes: string | null
@@ -82,7 +83,6 @@ type OverlapWarning = {
 }
 
 const emptyCycleForm = {
-  certification_number: '',
   start_date: '',
   end_date: '',
   notes: '',
@@ -136,7 +136,7 @@ export default function StaffDetailPage() {
 
   // Edit staff dialog
   const [editStaffOpen, setEditStaffOpen] = useState(false)
-  const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', display_first_name: '', display_last_name: '', email: '', role: '', ehr_id: '' })
+  const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', display_first_name: '', display_last_name: '', email: '', role: '', ehr_id: '', certification_number: '', original_certification_date: '' })
   const [savingStaff, setSavingStaff] = useState(false)
   const [staffError, setStaffError] = useState<string | null>(null)
 
@@ -208,6 +208,8 @@ export default function StaffDetailPage() {
       email: staff.email ?? '',
       role: staff.role ?? '',
       ehr_id: staff.ehr_id ?? '',
+      certification_number: staff.certification_number ?? '',
+      original_certification_date: staff.original_certification_date ?? '',
     })
     setStaffError(null)
     setEditStaffOpen(true)
@@ -227,6 +229,8 @@ export default function StaffDetailPage() {
       email: staffForm.email || null,
       role: staffForm.role || null,
       ehr_id: staffForm.ehr_id || null,
+      certification_number: staffForm.certification_number.trim() || null,
+      original_certification_date: staffForm.original_certification_date || null,
     }).eq('id', staffId)
     if (error) { setStaffError(error.message); setSavingStaff(false); return }
     setSavingStaff(false)
@@ -241,14 +245,7 @@ export default function StaffDetailPage() {
     setCycleError(null)
     setOverlapWarning(null)
 
-    // Pre-fill cert number from most recent cycle
-    const lastCycle = cycles[0]
-    setCycleForm(lastCycle ? {
-      certification_number: lastCycle.certification_number,
-      start_date: '',
-      end_date: '',
-      notes: '',
-    } : emptyCycleForm)
+    setCycleForm(emptyCycleForm)
 
     setCycleDialogOpen(true)
   }
@@ -256,7 +253,6 @@ export default function StaffDetailPage() {
   function openEditCycle(cycle: Cycle) {
     setEditingCycle(cycle)
     setCycleForm({
-      certification_number: cycle.certification_number,
       start_date: cycle.start_date,
       end_date: cycle.end_date,
       notes: cycle.notes ?? '',
@@ -267,8 +263,8 @@ export default function StaffDetailPage() {
   }
 
   async function handleSaveCycle(autoFixOverlap = false) {
-    if (!cycleForm.certification_number.trim() || !cycleForm.start_date || !cycleForm.end_date) {
-      setCycleError('Certification number, start date, and end date are required.')
+    if (!cycleForm.start_date || !cycleForm.end_date) {
+      setCycleError('Start date and end date are required.')
       return
     }
     if (cycleForm.start_date >= cycleForm.end_date) {
@@ -305,7 +301,6 @@ export default function StaffDetailPage() {
       if (editingCycle) {
         const { error } = await supabase.from('certification_cycles').update({
           certification_type: 'RBT',
-          certification_number: cycleForm.certification_number,
           start_date: cycleForm.start_date,
           end_date: cycleForm.end_date,
           notes: cycleForm.notes || null,
@@ -324,7 +319,6 @@ export default function StaffDetailPage() {
           company_id: companyId,
           staff_id: staffId,
           certification_type: 'RBT',
-          certification_number: cycleForm.certification_number,
           start_date: cycleForm.start_date,
           end_date: cycleForm.end_date,
           notes: cycleForm.notes || null,
@@ -426,12 +420,18 @@ export default function StaffDetailPage() {
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">EHR ID</dt>
               <dd className="mt-1 text-sm font-mono text-gray-900">{staff.ehr_id ?? '—'}</dd>
             </div>
-            {activeCycle && (
-              <div>
-                <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cert Number</dt>
-                <dd className="mt-1 text-sm font-mono text-gray-900">{activeCycle.certification_number}</dd>
-              </div>
-            )}
+            <div>
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">BACB Cert #</dt>
+              <dd className="mt-1 text-sm font-mono text-gray-900">{staff.certification_number ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Original Cert Date</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                {staff.original_certification_date
+                  ? formatDate(staff.original_certification_date)
+                  : '—'}
+              </dd>
+            </div>
           </dl>
         </CardContent>
       </Card>
@@ -610,6 +610,16 @@ export default function StaffDetailPage() {
                 <Input value={staffForm.ehr_id} onChange={e => setStaffForm(f => ({ ...f, ehr_id: e.target.value }))} />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>BACB Cert #</Label>
+                <Input placeholder="e.g. 1-23-456789" value={staffForm.certification_number} onChange={e => setStaffForm(f => ({ ...f, certification_number: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Original Cert Date</Label>
+                <Input type="date" value={staffForm.original_certification_date} onChange={e => setStaffForm(f => ({ ...f, original_certification_date: e.target.value }))} />
+              </div>
+            </div>
             {staffError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{staffError}</p>}
           </div>
           <DialogFooter>
@@ -631,14 +641,6 @@ export default function StaffDetailPage() {
             <DialogTitle>{editingCycle ? 'Edit Cycle' : 'Add Certification Cycle'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>RBT Certification Number *</Label>
-              <Input
-                placeholder="e.g. RBT-12345"
-                value={cycleForm.certification_number}
-                onChange={e => setCycleForm(f => ({ ...f, certification_number: e.target.value }))}
-              />
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date *</Label>

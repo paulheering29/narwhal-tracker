@@ -45,13 +45,15 @@ export async function GET(request: NextRequest) {
       id, confirmed,
       company:company_id ( name ),
       staff:staff_id (
-        id, first_name, last_name, display_first_name, display_last_name
+        id, first_name, last_name, display_first_name, display_last_name,
+        certification_number
       ),
       courses:course_id (
         id, name, date, modality, units, validity_months,
         trainer_staff_id, trainer_name, trainer_cert_number,
         trainer_staff:trainer_staff_id (
-          id, first_name, last_name, display_first_name, display_last_name
+          id, first_name, last_name, display_first_name, display_last_name,
+          certification_number
         )
       )
     `)
@@ -73,52 +75,37 @@ export async function GET(request: NextRequest) {
   const staff = record.staff as unknown as {
     id: string; first_name: string; last_name: string
     display_first_name: string | null; display_last_name: string | null
+    certification_number: string | null
   }
   const course = record.courses as unknown as {
     id: string; name: string; date: string | null; modality: string | null; units: number | null
     trainer_staff_id: string | null; trainer_name: string | null; trainer_cert_number: string | null
-    trainer_staff: { first_name: string; last_name: string; display_first_name: string | null; display_last_name: string | null } | null
+    trainer_staff: {
+      first_name: string; last_name: string
+      display_first_name: string | null; display_last_name: string | null
+      certification_number: string | null
+    } | null
   }
 
-  const today = new Date().toISOString().split('T')[0]
-  const { data: cycle } = await supabase
-    .from('certification_cycles')
-    .select('certification_number, certification_type')
-    .eq('staff_id', staff.id)
-    .lte('start_date', today)
-    .gte('end_date', today)
-    .eq('certification_type', 'RBT')
-    .maybeSingle()
-
-  // ── Fetch trainer cert number + signature if trainer is a staff member ──────
-  let trainerCertNumber  = course.trainer_cert_number ?? ''
-  let trainerName        = course.trainer_name ?? ''
+  // ── Fetch trainer signature if trainer is a staff member ────────────────────
+  let trainerCertNumber   = course.trainer_cert_number ?? ''
+  let trainerName         = course.trainer_name ?? ''
   let trainerSignatureUrl: string | null = null
 
   if (course.trainer_staff_id && course.trainer_staff) {
     const ts = course.trainer_staff
     const first = ts.display_first_name?.trim() || ts.first_name
     const last  = ts.display_last_name?.trim()  || ts.last_name
-    trainerName = `${first} ${last}`
+    trainerName       = `${first} ${last}`
+    trainerCertNumber = ts.certification_number ?? ''
 
-    // Look up trainer's active cert and signature in parallel
-    const [trainerCycleRes, trainerProfileRes] = await Promise.all([
-      supabase
-        .from('certification_cycles')
-        .select('certification_number')
-        .eq('staff_id', course.trainer_staff_id)
-        .lte('start_date', today)
-        .gte('end_date', today)
-        .maybeSingle(),
-      supabase
-        .from('profiles')
-        .select('signature_url')
-        .eq('staff_id', course.trainer_staff_id)
-        .maybeSingle(),
-    ])
-
-    trainerCertNumber  = trainerCycleRes.data?.certification_number ?? ''
-    trainerSignatureUrl = trainerProfileRes.data?.signature_url ?? null
+    // Fetch trainer signature
+    const { data: trainerProfile } = await supabase
+      .from('profiles')
+      .select('signature_url')
+      .eq('staff_id', course.trainer_staff_id)
+      .maybeSingle()
+    trainerSignatureUrl = trainerProfile?.signature_url ?? null
   }
 
   // ── Build display names ─────────────────────────────────────────────────────
@@ -139,7 +126,7 @@ export async function GET(request: NextRequest) {
   const form  = pdfDoc.getForm()
 
   form.getTextField('RBT Name').setText(staffName)
-  form.getTextField('RBT BACB Certification Number').setText(cycle?.certification_number ?? '')
+  form.getTextField('RBT BACB Certification Number').setText(staff.certification_number ?? '')
   form.getTextField('Event Name').setText(course.name ?? '')
   form.getTextField('Event Date').setText(eventDate)
   form.getTextField('Total Number of PDUs').setText(

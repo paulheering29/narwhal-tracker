@@ -355,7 +355,8 @@ export default function StaffDetailPage() {
     )
   }
 
-  const activeCycle = cycles.find(c => isActiveCycle(c.start_date, c.end_date))
+  // activeCycle retained for future use (e.g. status badge)
+  void cycles.find(c => isActiveCycle(c.start_date, c.end_date))
 
   return (
     <div className="p-8 max-w-4xl">

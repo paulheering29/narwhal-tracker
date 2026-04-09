@@ -6,7 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const cookieStore = await cookies()
   const supabase = createServerClient(

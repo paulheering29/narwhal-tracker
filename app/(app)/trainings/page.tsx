@@ -466,7 +466,7 @@ export default function TrainingsPage() {
                 <Label>Topic</Label>
                 <Select
                   value={form.topic_id}
-                  onValueChange={v => setForm(f => ({ ...f, topic_id: v === '__none__' ? '' : v }))}
+                  onValueChange={v => setForm(f => ({ ...f, topic_id: (!v || v === '__none__') ? '' : v }))}
                 >
                   <SelectTrigger><SelectValue placeholder="Select a topic (optional)" /></SelectTrigger>
                   <SelectContent>

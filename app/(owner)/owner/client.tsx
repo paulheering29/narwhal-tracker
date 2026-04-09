@@ -82,16 +82,26 @@ export function OwnerClient({ initialPlans, initialCompanies }: Props) {
     if (!editPlan) return
     setSavingPlan(true)
     setPlanError(null)
-    const { error } = await supabase.from('plans').update({
-      display_name:    planForm.display_name,
-      max_rbts:        Number(planForm.max_rbts),
-      allows_email:    planForm.allows_email,
-      storage_gb:      Number(planForm.storage_gb),
-      price_monthly:   Number(planForm.price_monthly),
-      stripe_price_id: planForm.stripe_price_id || null,
-    }).eq('id', editPlan.id)
-    if (error) { setPlanError(error.message); setSavingPlan(false); return }
-    // Refresh plans
+
+    const res = await fetch('/api/owner/update-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        planId: editPlan.id,
+        updates: {
+          display_name:    planForm.display_name,
+          max_rbts:        Number(planForm.max_rbts),
+          allows_email:    planForm.allows_email,
+          storage_gb:      Number(planForm.storage_gb),
+          price_monthly:   Number(planForm.price_monthly),
+          stripe_price_id: planForm.stripe_price_id || null,
+        },
+      }),
+    })
+    const json = await res.json()
+    if (json.error) { setPlanError(json.error); setSavingPlan(false); return }
+
+    // Refresh plans from DB
     const { data } = await supabase.from('plans').select('*').order('sort_order')
     setPlans(data ?? [])
     setSavingPlan(false)
@@ -110,13 +120,20 @@ export function OwnerClient({ initialPlans, initialCompanies }: Props) {
     if (!editCompany) return
     setSavingOverride(true)
     setOverrideError(null)
-    const { error } = await supabase.from('companies').update({
-      plan_id: overridePlanId || null,
-    }).eq('id', editCompany.id)
-    if (error) { setOverrideError(error.message); setSavingOverride(false); return }
+
+    const res = await fetch('/api/owner/update-company', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        companyId: editCompany.id,
+        updates: { plan_id: overridePlanId || null },
+      }),
+    })
+    const json = await res.json()
+    if (json.error) { setOverrideError(json.error); setSavingOverride(false); return }
+
     setSavingOverride(false)
     setEditCompany(null)
-    // Reload page to reflect change
     window.location.reload()
   }
 

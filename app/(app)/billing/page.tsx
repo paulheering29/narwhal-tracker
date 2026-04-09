@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCompanyBilling, getAllPlans, getRBTCount, formatPrice } from '@/lib/plans'
-import { getCompanyId } from '@/lib/get-company-id'
 import { BillingClient } from './client'
 
 export default async function BillingPage() {
@@ -9,7 +8,13 @@ export default async function BillingPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const companyId = await getCompanyId()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
+
+  const companyId = profile?.company_id
   if (!companyId) redirect('/login')
 
   const [billing, allPlans, rbtCount] = await Promise.all([

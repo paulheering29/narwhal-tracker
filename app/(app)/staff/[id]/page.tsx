@@ -389,8 +389,8 @@ export default function StaffDetailPage() {
       {/* Staff Info Card */}
       <Card className="mb-6 shadow-sm">
         <CardContent className="pt-6">
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-4">
-            {/* Legal name — always shown to admins */}
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4">
+            {/* Row 1: Names */}
             <div>
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal First Name</dt>
               <dd className="mt-1 text-sm text-gray-900">{staff.first_name}</dd>
@@ -399,7 +399,6 @@ export default function StaffDetailPage() {
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal Last Name</dt>
               <dd className="mt-1 text-sm text-gray-900">{staff.last_name}</dd>
             </div>
-            {/* Preferred/goes-by names */}
             <div>
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Preferred First Name</dt>
               <dd className="mt-1 text-sm text-gray-900">{staff.display_first_name ?? <span className="text-gray-400 italic">same as legal</span>}</dd>
@@ -408,9 +407,10 @@ export default function StaffDetailPage() {
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Preferred Last Name</dt>
               <dd className="mt-1 text-sm text-gray-900">{staff.display_last_name ?? <span className="text-gray-400 italic">same as legal</span>}</dd>
             </div>
-            <div>
+            {/* Row 2: Email (wide), Role, EHR ID */}
+            <div className="col-span-2">
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</dt>
-              <dd className="mt-1 text-sm text-gray-900">{staff.email ?? '—'}</dd>
+              <dd className="mt-1 text-sm text-gray-900 break-all">{staff.email ?? '—'}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Role</dt>
@@ -420,11 +420,12 @@ export default function StaffDetailPage() {
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">EHR ID</dt>
               <dd className="mt-1 text-sm font-mono text-gray-900">{staff.ehr_id ?? '—'}</dd>
             </div>
-            <div>
+            {/* Row 3: Cert fields */}
+            <div className="col-span-2">
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">BACB Cert #</dt>
               <dd className="mt-1 text-sm font-mono text-gray-900">{staff.certification_number ?? '—'}</dd>
             </div>
-            <div>
+            <div className="col-span-2">
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Original Cert Date</dt>
               <dd className="mt-1 text-sm text-gray-900">
                 {staff.original_certification_date
@@ -469,8 +470,6 @@ export default function StaffDetailPage() {
                       ? <ChevronDown className="h-4 w-4" />
                       : <ChevronRight className="h-4 w-4" />}
                   </button>
-
-                  <span className="font-mono text-sm text-gray-700 shrink-0">{cycle.certification_number}</span>
 
                   <span className="text-sm text-gray-600">
                     {formatDate(cycle.start_date)} — {formatDate(cycle.end_date)}

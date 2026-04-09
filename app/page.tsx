@@ -39,7 +39,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-white text-gray-900">
 
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
+      <header className="sticky top-0 z-50 shadow-sm" style={{ backgroundColor: '#457595' }}>
         <div className="max-w-5xl mx-auto flex items-center justify-between px-8 h-16">
           <div className="flex items-center gap-3">
             <Image
@@ -50,14 +50,14 @@ export default function HomePage() {
               className="h-8 w-8 rounded-lg"
               priority
             />
-            <span className="font-semibold text-gray-900 tracking-tight">
+            <span className="font-semibold text-white tracking-tight">
               Narwhal Tracker
             </span>
           </div>
           <Link
             href="/login"
-            className="text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            style={{ backgroundColor: '#457595', color: '#fff' }}
+            className="text-sm font-semibold px-4 py-2 rounded-lg bg-white transition-opacity hover:opacity-90"
+            style={{ color: '#457595' }}
           >
             Sign in
           </Link>
@@ -99,9 +99,9 @@ export default function HomePage() {
           <p className="text-gray-400 text-center mb-20">
             Purpose-built for ABA training coordinators.
           </p>
-          <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {features.map(({ emoji, title, body }) => (
-              <div key={title}>
+              <div key={title} className="rounded-2xl border border-gray-200 p-7">
                 <div className="text-2xl mb-4">{emoji}</div>
                 <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
                 <p className="text-sm text-gray-400 leading-relaxed">{body}</p>

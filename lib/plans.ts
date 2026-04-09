@@ -38,18 +38,30 @@ export async function getAllPlans(): Promise<Plan[]> {
 /** The plan for a specific company */
 export async function getCompanyBilling(companyId: string): Promise<CompanyBilling | null> {
   const supabase = await createClient()
-  const { data } = await supabase
+
+  const { data: company } = await supabase
     .from('companies')
-    .select('plan_id, stripe_customer_id, stripe_subscription_id, subscription_status, plan:plan_id(*)')
+    .select('plan_id, stripe_customer_id, stripe_subscription_id, subscription_status')
     .eq('id', companyId)
     .single()
-  if (!data) return null
+  if (!company) return null
+
+  let plan: Plan | null = null
+  if (company.plan_id) {
+    const { data: planData } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', company.plan_id)
+      .single()
+    plan = (planData as Plan) ?? null
+  }
+
   return {
-    plan_id: data.plan_id,
-    stripe_customer_id: data.stripe_customer_id,
-    stripe_subscription_id: data.stripe_subscription_id,
-    subscription_status: data.subscription_status,
-    plan: (Array.isArray(data.plan) ? (data.plan[0] ?? null) : data.plan) as Plan | null,
+    plan_id:                company.plan_id,
+    stripe_customer_id:     company.stripe_customer_id,
+    stripe_subscription_id: company.stripe_subscription_id,
+    subscription_status:    company.subscription_status,
+    plan,
   }
 }
 

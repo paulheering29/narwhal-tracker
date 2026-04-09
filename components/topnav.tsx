@@ -16,6 +16,7 @@ import {
   BarChart2,
   ChevronDown,
   Tag,
+  CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { showAdminNav, rolesDisplay } from '@/lib/permissions'
@@ -146,18 +147,32 @@ export function TopNav({ userTier, userRoles, userEmail }: TopNavProps) {
           )}
 
           {showAdminNav(userRoles) && (
-            <Link
-              href="/admin/users"
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                isActive('/admin')
-                  ? 'bg-white/20 text-white'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
-              )}
-            >
-              <ShieldCheck className="h-4 w-4 shrink-0" />
-              Admin
-            </Link>
+            <>
+              <Link
+                href="/admin/users"
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  isActive('/admin')
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                )}
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                Admin
+              </Link>
+              <Link
+                href="/billing"
+                className={cn(
+                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  isActive('/billing')
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                )}
+              >
+                <CreditCard className="h-4 w-4 shrink-0" />
+                Billing
+              </Link>
+            </>
           )}
         </nav>
 

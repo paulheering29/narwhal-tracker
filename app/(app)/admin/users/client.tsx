@@ -23,6 +23,7 @@ import {
   Tag, Trash2, Plus,
 } from 'lucide-react'
 import { ALL_ROLES } from '@/lib/permissions'
+import { UpgradeDialog } from '@/components/upgrade-dialog'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -120,11 +121,13 @@ export function AdminUsersClient({
   initialUsers,
   initialStaff,
   initialTopics,
+  planLimits,
 }: {
   currentUserId: string
   initialUsers: Profile[]
   initialStaff: StaffMember[]
   initialTopics: Topic[]
+  planLimits: { maxRbts: number; currentRbts: number; planName: string }
 }) {
   const supabase = createClient()
   const router   = useRouter()
@@ -147,6 +150,8 @@ export function AdminUsersClient({
   const [staffForm, setStaffForm] = useState(emptyStaffForm)
   const [staffSaving, setStaffSaving] = useState(false)
   const [staffError, setStaffError]   = useState<string | null>(null)
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [localRbtCount, setLocalRbtCount] = useState(planLimits.currentRbts)
 
   const [importOpen, setImportOpen]     = useState(false)
   const [csvRows, setCsvRows]           = useState<CsvRow[]>([])
@@ -178,9 +183,23 @@ export function AdminUsersClient({
     setStaff(data ?? [])
   }
 
+  function openAddStaff() {
+    // Check RBT limit if adding an RBT
+    // (We check before opening; also checked on save for the role=RBT case)
+    setStaffForm(emptyStaffForm)
+    setStaffError(null)
+    setAddOpen(true)
+  }
+
   async function handleAddStaff() {
     if (!staffForm.first_name.trim() || !staffForm.last_name.trim()) {
       setStaffError('First name and last name are required.')
+      return
+    }
+    // Gate: if adding an RBT and already at limit, show upgrade dialog
+    if (staffForm.role === 'RBT' && localRbtCount >= planLimits.maxRbts) {
+      setAddOpen(false)
+      setUpgradeOpen(true)
       return
     }
     setStaffSaving(true); setStaffError(null)
@@ -194,6 +213,7 @@ export function AdminUsersClient({
       ehr_id: staffForm.ehr_id || null,
     }).select('id').single()
     if (insertErr) { setStaffError(insertErr.message); setStaffSaving(false); return }
+    if (staffForm.role === 'RBT') setLocalRbtCount(c => c + 1)
     setStaffSaving(false); setAddOpen(false); setStaffForm(emptyStaffForm)
     router.push(`/staff/${newStaff.id}`)
   }
@@ -387,7 +407,7 @@ export function AdminUsersClient({
                 <Upload className="mr-2 h-4 w-4" /> Import CSV
               </Button>
               <Button
-                onClick={() => { setStaffForm(emptyStaffForm); setStaffError(null); setAddOpen(true) }}
+                onClick={openAddStaff}
                 className="bg-[#0A253D] hover:bg-[#0d2f4f]"
               >
                 <UserPlus className="mr-2 h-4 w-4" /> Add RBT
@@ -827,6 +847,15 @@ export function AdminUsersClient({
           )}
         </div>
       )}
+
+      {/* Upgrade dialog — shown when RBT limit is hit */}
+      <UpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        currentPlan={planLimits.planName}
+        currentRbts={localRbtCount}
+        maxRbts={planLimits.maxRbts}
+      />
     </div>
   )
 }

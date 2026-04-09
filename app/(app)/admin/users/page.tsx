@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AdminUsersClient } from './client'
 import { canManageUsers } from '@/lib/permissions'
+import { getCompanyBilling, getRBTCount } from '@/lib/plans'
 
 export default async function AdminUsersPage() {
   const supabase = await createClient()
@@ -16,7 +17,7 @@ export default async function AdminUsersPage() {
 
   if (!profile || !canManageUsers(profile.roles ?? [])) redirect('/dashboard')
 
-  const [{ data: users }, { data: staff }, { data: topics }] = await Promise.all([
+  const [{ data: users }, { data: staff }, { data: topics }, billing, rbtCount] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, tier, roles, first_name, last_name')
@@ -31,7 +32,15 @@ export default async function AdminUsersPage() {
       .from('topics')
       .select('id, name, created_at')
       .order('name'),
+    getCompanyBilling(profile.company_id),
+    getRBTCount(profile.company_id),
   ])
+
+  const planLimits = {
+    maxRbts:     billing?.plan?.max_rbts     ?? 5,
+    currentRbts: rbtCount,
+    planName:    billing?.plan?.display_name ?? 'Free',
+  }
 
   return (
     <AdminUsersClient
@@ -39,6 +48,7 @@ export default async function AdminUsersPage() {
       initialUsers={users ?? []}
       initialStaff={staff ?? []}
       initialTopics={topics ?? []}
+      planLimits={planLimits}
     />
   )
 }

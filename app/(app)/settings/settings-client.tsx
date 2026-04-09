@@ -128,7 +128,7 @@ export function SettingsClient({
           </p>
           <div className="flex gap-3 items-end">
             <div className="flex-1">
-              <Select value={staffId} onValueChange={setStaffId}>
+              <Select value={staffId} onValueChange={(v) => setStaffId(v ?? '')}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select your name…" />
                 </SelectTrigger>

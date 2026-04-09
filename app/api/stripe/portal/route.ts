@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
@@ -6,7 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
-export async function POST(_request: NextRequest) {
+export async function POST() {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const cookieStore = await cookies()
   const supabase = createServerClient(

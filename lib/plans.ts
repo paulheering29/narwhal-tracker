@@ -49,7 +49,7 @@ export async function getCompanyBilling(companyId: string): Promise<CompanyBilli
     stripe_customer_id: data.stripe_customer_id,
     stripe_subscription_id: data.stripe_subscription_id,
     subscription_status: data.subscription_status,
-    plan: (data.plan as unknown as Plan) ?? null,
+    plan: (Array.isArray(data.plan) ? (data.plan[0] ?? null) : data.plan) as Plan | null,
   }
 }
 

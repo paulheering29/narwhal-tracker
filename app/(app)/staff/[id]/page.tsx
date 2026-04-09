@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -449,7 +449,7 @@ export default function StaffDetailPage() {
 
       {cycles.length === 0 ? (
         <div className="rounded-lg border border-dashed bg-white p-10 text-center text-sm text-gray-400 shadow-sm">
-          No certification cycles yet. Add this person's first cycle.
+          No certification cycles yet. Add this person&apos;s first cycle.
         </div>
       ) : (
         <div className="space-y-3">
@@ -508,7 +508,7 @@ export default function StaffDetailPage() {
                       </div>
                     ) : !records || records.length === 0 ? (
                       <p className="py-4 text-sm text-gray-400 text-center">
-                        No training records fall within this cycle's dates.
+                        No training records fall within this cycle&apos;s dates.
                       </p>
                     ) : (
                       <Table>
@@ -680,7 +680,7 @@ export default function StaffDetailPage() {
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button size="sm" variant="outline" onClick={() => setOverlapWarning(null)}>
-                    No, I'll fix it
+                    No, I&apos;ll fix it
                   </Button>
                   <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white"
                     onClick={() => handleSaveCycle(true)} disabled={savingCycle}>

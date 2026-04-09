@@ -19,7 +19,6 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
 
   // ── Active staff ──────────────────────────────────────────────────────────
   const staffList = staffRes.data ?? []
-  const activeStaffCount = staffList.length  // note: this may be capped at 25; fetch exact count separately
 
   // ── Expiring cycles ───────────────────────────────────────────────────────
   const allCycles = cyclesRes.data ?? []

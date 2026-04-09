@@ -22,7 +22,7 @@ import {
   Upload, Download, CheckCircle2, XCircle, UserX, UserCheck, ChevronRight, Search,
   Tag, Trash2, Plus,
 } from 'lucide-react'
-import { ALL_ROLES, rolesDisplay, type UserRole } from '@/lib/permissions'
+import { ALL_ROLES } from '@/lib/permissions'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -566,7 +566,7 @@ export function AdminUsersClient({
                     <Input id="sf_ehr" value={staffForm.ehr_id} onChange={e => setStaffForm(f => ({ ...f, ehr_id: e.target.value }))} />
                   </div>
                 </div>
-                <p className="text-xs text-gray-400">Preferred/goes-by names can be set on the staff member's profile page.</p>
+                <p className="text-xs text-gray-400">Preferred/goes-by names can be set on the staff member&apos;s profile page.</p>
                 {staffError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{staffError}</p>}
               </div>
               <DialogFooter>
@@ -765,7 +765,7 @@ export function AdminUsersClient({
       {tab === 'topics' && (
         <div className="max-w-lg space-y-6">
           <p className="text-sm text-gray-500">
-            Topics are used to categorise trainings. Add your organisation's topics here,
+            Topics are used to categorise trainings. Add your organisation&apos;s topics here,
             then select one when creating or editing a training.
           </p>
 

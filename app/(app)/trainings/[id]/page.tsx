@@ -272,7 +272,7 @@ export default function TrainingDetailPage() {
   function toggleStaffSelection(staffId: string) {
     setSelectedStaffIds(prev => {
       const next = new Set(prev)
-      next.has(staffId) ? next.delete(staffId) : next.add(staffId)
+      if (next.has(staffId)) { next.delete(staffId) } else { next.add(staffId) }
       return next
     })
   }

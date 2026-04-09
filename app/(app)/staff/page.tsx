@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getDisplayName } from '@/lib/display-name'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Loader2, Search, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 

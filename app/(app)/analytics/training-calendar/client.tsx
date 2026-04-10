@@ -49,11 +49,15 @@ const MONTH_NAMES = [
 
 const DOW = ['S','M','T','W','T','F','S']
 
-const MODALITY_DOT: Record<string, string> = {
-  'in-person':           'bg-emerald-500',
-  'online-synchronous':  'bg-blue-500',
-  'online-asynchronous': 'bg-violet-500',
+// Full cell background when a training falls on that day
+const MODALITY_CELL: Record<string, string> = {
+  'in-person':           'bg-emerald-100 hover:bg-emerald-200 text-emerald-900',
+  'online-synchronous':  'bg-blue-100 hover:bg-blue-200 text-blue-900',
+  'online-asynchronous': 'bg-violet-100 hover:bg-violet-200 text-violet-900',
 }
+// Mixed modalities on same day
+const CELL_MULTI = 'bg-amber-100 hover:bg-amber-200 text-amber-900'
+const CELL_OTHER = 'bg-gray-200 hover:bg-gray-300 text-gray-800'
 
 const MODALITY_LABEL: Record<string, string> = {
   'in-person':           'In-person',
@@ -180,44 +184,33 @@ function MonthGrid({
               const isToday      = key === today
               const isFuture     = key > today
 
+              // Pick cell background colour
+              const modalities = Array.from(new Set(dayTrainings.map(c => c.modality ?? '')))
+              const cellBg = !hasTraining
+                ? ''
+                : modalities.length > 1
+                  ? CELL_MULTI
+                  : (MODALITY_CELL[modalities[0]] ?? CELL_OTHER)
+
               return (
                 <button
                   key={di}
                   onClick={() => hasTraining && onDayClick(key)}
                   className={`
-                    relative flex flex-col items-center rounded-lg py-1 px-0.5 text-[11px] font-medium transition-colors
-                    ${hasTraining ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'}
-                    ${isToday ? 'font-bold' : ''}
+                    relative flex items-center justify-center rounded-lg text-[11px] font-medium transition-colors
+                    aspect-square w-full
+                    ${hasTraining ? `cursor-pointer ${cellBg}` : 'cursor-default'}
+                    ${!hasTraining && isFuture ? 'text-gray-400' : ''}
+                    ${!hasTraining && !isFuture ? 'text-gray-700' : ''}
+                    ${isToday ? 'ring-2 ring-inset ring-[#457595] font-bold' : ''}
                   `}
                 >
-                  {/* Day number */}
-                  <span className={`
-                    flex items-center justify-center h-5 w-5 rounded-full text-[11px]
-                    ${isToday
-                      ? 'bg-[#457595] text-white font-bold'
-                      : isFuture
-                        ? 'text-gray-400'
-                        : 'text-gray-700'
-                    }
-                  `}>
-                    {day}
-                  </span>
-
-                  {/* Training dots */}
-                  {hasTraining && (
-                    <div className="flex items-center gap-0.5 mt-0.5 flex-wrap justify-center">
-                      {dayTrainings.slice(0, 3).map(c => (
-                        <span
-                          key={c.id}
-                          className={`h-1.5 w-1.5 rounded-full ${MODALITY_DOT[c.modality ?? ''] ?? 'bg-gray-400'}`}
-                        />
-                      ))}
-                      {dayTrainings.length > 3 && (
-                        <span className="text-[8px] text-gray-400 font-bold leading-none">
-                          +{dayTrainings.length - 3}
-                        </span>
-                      )}
-                    </div>
+                  {day}
+                  {/* Count badge for multiple trainings */}
+                  {dayTrainings.length > 1 && (
+                    <span className="absolute bottom-0.5 right-0.5 text-[8px] font-bold opacity-60 leading-none">
+                      {dayTrainings.length}
+                    </span>
                   )}
                 </button>
               )
@@ -290,13 +283,13 @@ export function TrainingCalendarClient({ rawCourses, year }: Props) {
       <div className="flex items-center gap-5 mb-6 flex-wrap">
         {Object.entries(MODALITY_LABEL).map(([key, label]) => (
           <div key={key} className="flex items-center gap-1.5">
-            <span className={`h-2.5 w-2.5 rounded-full ${MODALITY_DOT[key]}`} />
+            <span className={`h-4 w-4 rounded ${MODALITY_CELL[key]?.split(' ')[0] ?? 'bg-gray-200'}`} />
             <span className="text-xs text-gray-500">{label}</span>
           </div>
         ))}
         <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-gray-400" />
-          <span className="text-xs text-gray-500">Other</span>
+          <span className="h-4 w-4 rounded bg-amber-100" />
+          <span className="text-xs text-gray-500">Multiple trainings</span>
         </div>
       </div>
 

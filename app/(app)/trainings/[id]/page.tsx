@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   ArrowLeft, Pencil, Loader2, Upload, FileText, Download,
-  Link2, Link2Off, Clock, Calendar, CheckCircle2, Circle, Search, Award,
+  Link2, Link2Off, Clock, Calendar, CheckCircle2, Circle, Search, Award, Mail,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -135,6 +135,31 @@ export default function TrainingDetailPage() {
   const [topicList, setTopicList]     = useState<TopicOption[]>([])
   const [saving, setSaving]           = useState(false)
   const [editError, setEditError]     = useState<string | null>(null)
+
+  // ── Email cert ───────────────────────────────────────────────────────────────
+  const [emailingIds, setEmailingIds] = useState<Set<string>>(new Set())
+  const [emailedIds, setEmailedIds]   = useState<Set<string>>(new Set())
+  const [emailErrors, setEmailErrors] = useState<Record<string, string>>({})
+
+  async function handleEmailCert(recordId: string) {
+    setEmailingIds(prev => new Set(prev).add(recordId))
+    setEmailErrors(prev => { const n = { ...prev }; delete n[recordId]; return n })
+    try {
+      const res  = await fetch('/api/certificates/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to send')
+      setEmailedIds(prev => new Set(prev).add(recordId))
+      setTimeout(() => setEmailedIds(prev => { const n = new Set(prev); n.delete(recordId); return n }), 4000)
+    } catch (err: unknown) {
+      setEmailErrors(prev => ({ ...prev, [recordId]: err instanceof Error ? err.message : 'Send failed' }))
+    } finally {
+      setEmailingIds(prev => { const n = new Set(prev); n.delete(recordId); return n })
+    }
+  }
 
   // ── Documents ────────────────────────────────────────────────────────────────
   const [uploading, setUploading]               = useState(false)
@@ -533,15 +558,42 @@ export default function TrainingDetailPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           {attendee.confirmed && certType === 'RBT' ? (
-                            <a
-                              href={`/api/certificates/rbt-inservice?recordId=${attendee.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Download BACB RBT In-Service Form"
-                              className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
-                            >
-                              <Award className="h-3.5 w-3.5" /> RBT Form
-                            </a>
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              <a
+                                href={`/api/certificates/rbt-inservice?recordId=${attendee.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Download BACB RBT In-Service Form"
+                                className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
+                              >
+                                <Award className="h-3.5 w-3.5" /> RBT Form
+                              </a>
+                              <button
+                                onClick={() => handleEmailCert(attendee.id)}
+                                disabled={emailingIds.has(attendee.id)}
+                                title="Email certificate to staff member"
+                                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                                  emailedIds.has(attendee.id)
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : emailErrors[attendee.id]
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {emailingIds.has(attendee.id) ? (
+                                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
+                                ) : emailedIds.has(attendee.id) ? (
+                                  <><CheckCircle2 className="h-3.5 w-3.5" /> Sent</>
+                                ) : (
+                                  <><Mail className="h-3.5 w-3.5" /> Email</>
+                                )}
+                              </button>
+                              {emailErrors[attendee.id] && (
+                                <span className="text-xs text-red-600 block w-full text-right">
+                                  {emailErrors[attendee.id]}
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-gray-300 text-xs">—</span>
                           )}

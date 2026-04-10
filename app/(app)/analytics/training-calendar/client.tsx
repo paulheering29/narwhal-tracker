@@ -18,7 +18,7 @@ type StaffPerson = {
   display_last_name: string | null
 }
 
-type Record = {
+type Attendee = {
   id: string
   confirmed: boolean
   staff: StaffPerson | null
@@ -32,7 +32,7 @@ type Course = {
   end_time: string | null
   modality: string | null
   units: number | null
-  records: Record[]
+  records: Attendee[]
 }
 
 type Props = {
@@ -92,7 +92,7 @@ function normalizeCourses(raw: RawCourse[]): Course[] {
       id:        r.id,
       confirmed: r.confirmed,
       staff:     unwrapStaff(r.staff),
-    })),
+    } as Attendee)),
   }))
 }
 

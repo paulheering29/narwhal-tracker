@@ -30,6 +30,8 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isAuthPage    = pathname === '/login'
+                     || pathname === '/forgot-password'
+                     || pathname === '/reset-password'
   const isHomePage    = pathname === '/'
   const isStripeHook  = pathname === '/api/stripe/webhook'
 

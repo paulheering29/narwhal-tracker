@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { CheckCircle, AlertCircle, Pencil } from 'lucide-react'
+import { CheckCircle, AlertCircle, Pencil, UserCheck, UserX } from 'lucide-react'
 
 type StaffOption = {
   id: string
@@ -23,10 +23,10 @@ type StaffOption = {
 }
 
 interface SettingsClientProps {
-  userId:             string
+  userId:              string
   currentSignatureUrl: string | null
-  currentStaffId:     string | null
-  staffList:          StaffOption[]
+  currentStaffId:      string | null
+  staffList:           StaffOption[]
 }
 
 type Status = { type: 'success' | 'error'; message: string }
@@ -43,15 +43,19 @@ export function SettingsClient({
   currentStaffId,
   staffList,
 }: SettingsClientProps) {
-  const supabase    = createClient()
-  const [staffId,   setStaffId]   = useState(currentStaffId ?? '')
-  const [sigUrl,    setSigUrl]    = useState(currentSignatureUrl)
-  const [showPad,   setShowPad]   = useState(!currentSignatureUrl)
-  const [savingSig, setSavingSig] = useState(false)
-  const [savingLink,setSavingLink]= useState(false)
-  const [status,    setStatus]    = useState<Status | null>(null)
+  const supabase = createClient()
 
-  // ── Save staff link without touching signature ──────────────
+  const [staffId,    setStaffId]    = useState(currentStaffId ?? '')
+  const [sigUrl,     setSigUrl]     = useState(currentSignatureUrl)
+  const [showPad,    setShowPad]    = useState(!currentSignatureUrl)
+  const [savingSig,  setSavingSig]  = useState(false)
+  const [savingLink, setSavingLink] = useState(false)
+  const [status,     setStatus]     = useState<Status | null>(null)
+  const [changingStaff, setChangingStaff] = useState(false)
+
+  const linkedStaff = staffList.find(s => s.id === staffId)
+
+  // ── Save staff link ───────────────────────────────────────────
   async function handleSaveLink() {
     setSavingLink(true)
     setStatus(null)
@@ -61,6 +65,7 @@ export function SettingsClient({
         .update({ staff_id: staffId || null })
         .eq('id', userId)
       if (error) throw error
+      setChangingStaff(false)
       setStatus({ type: 'success', message: 'Staff record linked to your account.' })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to save link.'
@@ -70,15 +75,14 @@ export function SettingsClient({
     }
   }
 
-  // ── Save drawn signature ─────────────────────────────────────
+  // ── Save drawn signature ──────────────────────────────────────
   const handleSaveSig = useCallback(async (dataUrl: string) => {
     setSavingSig(true)
     setStatus(null)
     try {
-      // Decode data URL to blob
-      const fetchRes  = await fetch(dataUrl)
-      const blob      = await fetchRes.blob()
-      const filePath  = `${userId}/signature.png`
+      const fetchRes = await fetch(dataUrl)
+      const blob     = await fetchRes.blob()
+      const filePath = `${userId}/signature.png`
 
       const { error: uploadErr } = await supabase.storage
         .from('signatures')
@@ -89,7 +93,6 @@ export function SettingsClient({
         .from('signatures')
         .getPublicUrl(filePath)
 
-      // Cache-bust so the <img> refreshes immediately
       const urlWithBust = `${publicUrl}?t=${Date.now()}`
 
       const { error: profileErr } = await supabase
@@ -118,37 +121,74 @@ export function SettingsClient({
       {/* ── Staff record link ─────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Link to Your Staff Record</CardTitle>
+          <CardTitle className="text-base">Your Staff Record</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-gray-500">
-            Select <strong>your own name</strong> from the list below. This tells the system
-            which staff record belongs to you so your signature can be attached to
-            certificates for trainings you led.
-          </p>
-          <div className="flex gap-3 items-end">
-            <div className="flex-1">
-              <Select value={staffId} onValueChange={(v) => setStaffId(v ?? '')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your name…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {staffList.map(s => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {displayName(s)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {linkedStaff && !changingStaff ? (
+            /* Already linked — just show the name */
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+                  <UserCheck className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{displayName(linkedStaff)}</p>
+                  <p className="text-xs text-gray-400">Linked to your account</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setChangingStaff(true); setStatus(null) }}
+                className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+              >
+                Not you?
+              </button>
             </div>
-            <Button
-              onClick={handleSaveLink}
-              disabled={savingLink}
-              size="sm"
-            >
-              {savingLink ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
+          ) : (
+            /* Not linked or changing — show dropdown */
+            <>
+              {staffList.length === 0 ? (
+                <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                  <UserX className="h-4 w-4 shrink-0" />
+                  No trainer staff records found. Make sure your staff record is marked active.
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-500">
+                    Select <strong>your own name</strong> so your signature is attached to
+                    certificates for trainings you led.
+                  </p>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <Select value={staffId} onValueChange={v => setStaffId(v ?? '')}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select your name…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {staffList.map(s => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {displayName(s)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleSaveLink} disabled={savingLink || !staffId} size="sm">
+                      {savingLink ? 'Saving…' : 'Save'}
+                    </Button>
+                    {changingStaff && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setChangingStaff(false); setStaffId(currentStaffId ?? '') }}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -159,17 +199,12 @@ export function SettingsClient({
         </CardHeader>
         <CardContent className="space-y-4">
 
-          {/* Show existing signature */}
           {sigUrl && !showPad && (
             <div className="space-y-3">
               <p className="text-sm text-gray-500">Your current signature:</p>
               <div className="inline-block border border-gray-200 rounded-lg p-4 bg-white">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={sigUrl}
-                  alt="Saved signature"
-                  className="max-h-28 w-auto"
-                />
+                <img src={sigUrl} alt="Saved signature" className="max-h-28 w-auto" />
               </div>
               <div>
                 <Button
@@ -185,7 +220,6 @@ export function SettingsClient({
             </div>
           )}
 
-          {/* Signature pad */}
           {showPad && (
             <SignaturePad onSave={handleSaveSig} saving={savingSig} />
           )}

@@ -132,8 +132,8 @@ function MonthGrid({
   const firstDow  = getFirstDow(year, month)
   const trainingCount = Array.from({ length: days }, (_, i) => {
     const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
-    return coursesByDate.has(key) ? 1 : 0
-  }).reduce((a, b) => a + b, 0)
+    return coursesByDate.has(key)
+  }).filter(Boolean).length
 
   // Build weeks: array of 7-element rows (null = padding)
   const cells: (number | null)[] = [

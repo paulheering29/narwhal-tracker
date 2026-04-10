@@ -13,8 +13,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog'
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
+} from '@/components/ui/sheet'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -358,14 +358,14 @@ export default function TrainingsPage() {
         </Table>
       </div>
 
-      {/* ── Add / Edit Dialog ─────────────────────────────────────────────── */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Training' : 'Add Training'}</DialogTitle>
-          </DialogHeader>
+      {/* ── Add / Edit Sheet ──────────────────────────────────────────────── */}
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit Training' : 'Add Training'}</SheetTitle>
+          </SheetHeader>
 
-          <div className="space-y-5 py-2">
+          <div className="space-y-5 px-6 py-5">
             {/* Name + Description */}
             <div className="space-y-2">
               <Label>Training Name *</Label>
@@ -482,14 +482,14 @@ export default function TrainingsPage() {
             {error && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{error}</p>}
           </div>
 
-          <DialogFooter>
+          <SheetFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Training'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

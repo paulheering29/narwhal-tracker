@@ -12,8 +12,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog'
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
+} from '@/components/ui/sheet'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -396,7 +396,7 @@ export function AdminUsersClient({
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by name, email, or EHR ID…"
+                placeholder="Search by name or email…"
                 value={staffSearch}
                 onChange={e => setStaffSearch(e.target.value)}
                 className="pl-9"
@@ -421,7 +421,6 @@ export function AdminUsersClient({
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>EHR ID</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -430,7 +429,7 @@ export function AdminUsersClient({
               <TableBody>
                 {filteredStaff.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10 text-gray-400">
+                    <TableCell colSpan={5} className="text-center py-10 text-gray-400">
                       {staffSearch ? 'No staff match your search.' : 'No staff yet. Add your first team member.'}
                     </TableCell>
                   </TableRow>
@@ -444,7 +443,6 @@ export function AdminUsersClient({
                       {getDisplayName(s)}
                     </TableCell>
                     <TableCell className="text-gray-500 text-sm">{s.email ?? '—'}</TableCell>
-                    <TableCell className="font-mono text-sm text-gray-500">{s.ehr_id ?? '—'}</TableCell>
                     <TableCell className="text-gray-500">{s.role ?? '—'}</TableCell>
                     <TableCell className="text-center text-base leading-none" title={s.active ? 'Active' : 'Inactive'}>
                       {s.active ? '🟢' : '🔴'}
@@ -467,11 +465,11 @@ export function AdminUsersClient({
             </Table>
           </div>
 
-          {/* Import CSV Dialog */}
-          <Dialog open={importOpen} onOpenChange={open => { setImportOpen(open); if (!open) { setCsvRows([]); setImportResult(null) } }}>
-            <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-              <DialogHeader><DialogTitle>Import RBT Staff from CSV</DialogTitle></DialogHeader>
-              <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+          {/* Import CSV Sheet */}
+          <Sheet open={importOpen} onOpenChange={open => { setImportOpen(open); if (!open) { setCsvRows([]); setImportResult(null) } }}>
+            <SheetContent>
+              <SheetHeader><SheetTitle>Import RBT Staff from CSV</SheetTitle></SheetHeader>
+              <div className="flex flex-col gap-4 flex-1 px-6 py-5 overflow-hidden">
                 <div className="flex items-center gap-3">
                   <Button variant="outline" size="sm" onClick={downloadCsvTemplate}>
                     <Download className="mr-2 h-4 w-4" /> Download Template
@@ -536,7 +534,7 @@ export function AdminUsersClient({
                   </div>
                 )}
               </div>
-              <DialogFooter className="mt-4">
+              <SheetFooter className="mt-4">
                 <Button variant="outline" onClick={() => setImportOpen(false)}>{importResult ? 'Close' : 'Cancel'}</Button>
                 {!importResult && (
                   <Button onClick={handleImport} disabled={csvRows.filter(r => !r.error).length === 0 || importing} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
@@ -545,15 +543,15 @@ export function AdminUsersClient({
                       : `Import ${csvRows.filter(r => !r.error).length} Staff Member${csvRows.filter(r => !r.error).length !== 1 ? 's' : ''}`}
                   </Button>
                 )}
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
 
-          {/* Add Staff Dialog */}
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Add Staff Member</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-2">
+          {/* Add Staff Sheet */}
+          <Sheet open={addOpen} onOpenChange={setAddOpen}>
+            <SheetContent>
+              <SheetHeader><SheetTitle>Add Staff Member</SheetTitle></SheetHeader>
+              <div className="space-y-5 px-6 py-5">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal Name</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -569,34 +567,28 @@ export function AdminUsersClient({
                   <Label htmlFor="sf_email">Email</Label>
                   <Input id="sf_email" type="email" value={staffForm.email} onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Role</Label>
-                    <Select value={staffForm.role} onValueChange={v => setStaffForm(f => ({ ...f, role: v ?? '' }))}>
-                      <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="RBT">RBT</SelectItem>
-                        <SelectItem value="Trainer">Trainer</SelectItem>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sf_ehr">EHR ID</Label>
-                    <Input id="sf_ehr" value={staffForm.ehr_id} onChange={e => setStaffForm(f => ({ ...f, ehr_id: e.target.value }))} />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select value={staffForm.role} onValueChange={v => setStaffForm(f => ({ ...f, role: v ?? '' }))}>
+                    <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="RBT">RBT</SelectItem>
+                      <SelectItem value="Trainer">Trainer</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <p className="text-xs text-gray-400">Preferred/goes-by names can be set on the staff member&apos;s profile page.</p>
                 {staffError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{staffError}</p>}
               </div>
-              <DialogFooter>
+              <SheetFooter>
                 <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
                 <Button onClick={handleAddStaff} disabled={staffSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
                   {staffSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Add & Continue'}
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
         </>
       )}
 
@@ -664,11 +656,11 @@ export function AdminUsersClient({
             </Table>
           </div>
 
-          {/* Invite dialog */}
-          <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Add New User</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-2">
+          {/* Invite sheet */}
+          <Sheet open={inviteOpen} onOpenChange={setInviteOpen}>
+            <SheetContent>
+              <SheetHeader><SheetTitle>Add New User</SheetTitle></SheetHeader>
+              <div className="space-y-5 px-6 py-5">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="inv_first">First Name</Label>
@@ -719,20 +711,20 @@ export function AdminUsersClient({
                 )}
                 {userError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{userError}</p>}
               </div>
-              <DialogFooter>
+              <SheetFooter>
                 <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
                 <Button onClick={handleInvite} disabled={userSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
                   {userSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</> : 'Create User'}
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
 
-          {/* Edit permissions dialog */}
-          <Dialog open={editOpen} onOpenChange={setEditOpen}>
-            <DialogContent className="max-w-sm">
-              <DialogHeader><DialogTitle>Edit Permissions</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-2">
+          {/* Edit permissions sheet */}
+          <Sheet open={editOpen} onOpenChange={setEditOpen}>
+            <SheetContent>
+              <SheetHeader><SheetTitle>Edit Permissions</SheetTitle></SheetHeader>
+              <div className="space-y-5 px-6 py-5">
                 <p className="text-sm text-gray-600">
                   Editing <span className="font-medium">{editingUser?.first_name} {editingUser?.last_name}</span>
                 </p>
@@ -770,14 +762,14 @@ export function AdminUsersClient({
                 )}
                 {userError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{userError}</p>}
               </div>
-              <DialogFooter>
+              <SheetFooter>
                 <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
                 <Button onClick={handleEditPermissions} disabled={userSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
                   {userSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Permissions'}
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
         </>
       )}
 

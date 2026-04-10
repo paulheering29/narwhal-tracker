@@ -16,12 +16,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from '@/components/ui/sheet'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
@@ -408,18 +408,14 @@ export default function StaffDetailPage() {
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Preferred Last Name</dt>
               <dd className="mt-1 text-sm text-gray-900">{staff.display_last_name ?? <span className="text-gray-400 italic">same as legal</span>}</dd>
             </div>
-            {/* Row 2: Email (wide), Role, EHR ID */}
+            {/* Row 2: Email (wide), Role */}
             <div className="col-span-2">
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</dt>
               <dd className="mt-1 text-sm text-gray-900 break-all">{staff.email ?? '—'}</dd>
             </div>
-            <div>
+            <div className="col-span-2">
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Role</dt>
               <dd className="mt-1 text-sm text-gray-900">{staff.role ?? '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">EHR ID</dt>
-              <dd className="mt-1 text-sm font-mono text-gray-900">{staff.ehr_id ?? '—'}</dd>
             </div>
             {/* Row 3: Cert fields */}
             <div className="col-span-2">
@@ -557,11 +553,11 @@ export default function StaffDetailPage() {
         </div>
       )}
 
-      {/* ── Edit Staff Dialog ─────────────────────────────────────────────── */}
-      <Dialog open={editStaffOpen} onOpenChange={setEditStaffOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Edit Staff Info</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
+      {/* ── Edit Staff Sheet ──────────────────────────────────────────────── */}
+      <Sheet open={editStaffOpen} onOpenChange={setEditStaffOpen}>
+        <SheetContent>
+          <SheetHeader><SheetTitle>Edit Staff Info</SheetTitle></SheetHeader>
+          <div className="space-y-5 px-6 py-5">
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Legal Name</p>
               <div className="grid grid-cols-2 gap-4">
@@ -593,22 +589,16 @@ export default function StaffDetailPage() {
               <Label>Email</Label>
               <Input type="email" value={staffForm.email} onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select value={staffForm.role} onValueChange={v => setStaffForm(f => ({ ...f, role: v ?? '' }))}>
-                  <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="RBT">RBT</SelectItem>
-                    <SelectItem value="Trainer">Trainer</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>EHR ID</Label>
-                <Input value={staffForm.ehr_id} onChange={e => setStaffForm(f => ({ ...f, ehr_id: e.target.value }))} />
-              </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={staffForm.role} onValueChange={v => setStaffForm(f => ({ ...f, role: v ?? '' }))}>
+                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RBT">RBT</SelectItem>
+                  <SelectItem value="Trainer">Trainer</SelectItem>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -622,25 +612,25 @@ export default function StaffDetailPage() {
             </div>
             {staffError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{staffError}</p>}
           </div>
-          <DialogFooter>
+          <SheetFooter>
             <Button variant="outline" onClick={() => setEditStaffOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveStaff} disabled={savingStaff} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
               {savingStaff ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      {/* ── Cycle Dialog ──────────────────────────────────────────────────── */}
-      <Dialog open={cycleDialogOpen} onOpenChange={open => {
+      {/* ── Cycle Sheet ───────────────────────────────────────────────────── */}
+      <Sheet open={cycleDialogOpen} onOpenChange={open => {
         setCycleDialogOpen(open)
         if (!open) setOverlapWarning(null)
       }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingCycle ? 'Edit Cycle' : 'Add Certification Cycle'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{editingCycle ? 'Edit Cycle' : 'Add Certification Cycle'}</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-5 px-6 py-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date *</Label>
@@ -662,7 +652,7 @@ export default function StaffDetailPage() {
             <div className="space-y-2">
               <Label>Notes</Label>
               <Textarea
-                rows={2}
+                rows={3}
                 placeholder="Optional notes…"
                 value={cycleForm.notes}
                 onChange={e => setCycleForm(f => ({ ...f, notes: e.target.value }))}
@@ -696,15 +686,15 @@ export default function StaffDetailPage() {
           </div>
 
           {!overlapWarning && (
-            <DialogFooter>
+            <SheetFooter>
               <Button variant="outline" onClick={() => setCycleDialogOpen(false)}>Cancel</Button>
               <Button onClick={() => handleSaveCycle(false)} disabled={savingCycle} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
                 {savingCycle ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Cycle'}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

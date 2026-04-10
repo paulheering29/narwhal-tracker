@@ -11,8 +11,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog'
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
+} from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -712,11 +712,11 @@ export default function TrainingDetailPage() {
         </div>
       )}
 
-      {/* ── Edit Training Dialog ──────────────────────────────────────────────── */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Edit Training</DialogTitle></DialogHeader>
-          <div className="space-y-5 py-2">
+      {/* ── Edit Training Sheet ───────────────────────────────────────────────── */}
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetContent>
+          <SheetHeader><SheetTitle>Edit Training</SheetTitle></SheetHeader>
+          <div className="space-y-5 px-6 py-5">
             <div className="space-y-2">
               <Label>Training Name *</Label>
               <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
@@ -815,45 +815,47 @@ export default function TrainingDetailPage() {
             </div>
             {editError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{editError}</p>}
           </div>
-          <DialogFooter>
+          <SheetFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      {/* ── Link Existing Doc Dialog ──────────────────────────────────────────── */}
-      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Link Existing Document</DialogTitle></DialogHeader>
-          {loadingAvailable ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            </div>
-          ) : availableDocs.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-400">No other documents available to link.</p>
-          ) : (
-            <div className="space-y-2 py-2">
-              {availableDocs.map(doc => (
-                <button key={doc.id} onClick={() => handleLinkExisting(doc)}
-                  className="w-full flex items-center gap-3 rounded-lg border px-4 py-3 text-left hover:bg-gray-50 transition-colors">
-                  <FileText className="h-5 w-5 text-red-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.name}</p>
-                    <p className="text-xs text-gray-400">{fmtBytes(doc.file_size)}</p>
-                  </div>
-                  <Link2 className="h-4 w-4 text-blue-500 shrink-0" />
-                </button>
-              ))}
-            </div>
-          )}
-          <DialogFooter>
+      {/* ── Link Existing Doc Sheet ───────────────────────────────────────────── */}
+      <Sheet open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+        <SheetContent>
+          <SheetHeader><SheetTitle>Link Existing Document</SheetTitle></SheetHeader>
+          <div className="px-6 py-5">
+            {loadingAvailable ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              </div>
+            ) : availableDocs.length === 0 ? (
+              <p className="py-6 text-center text-sm text-gray-400">No other documents available to link.</p>
+            ) : (
+              <div className="space-y-2">
+                {availableDocs.map(doc => (
+                  <button key={doc.id} onClick={() => handleLinkExisting(doc)}
+                    className="w-full flex items-center gap-3 rounded-lg border px-4 py-3 text-left hover:bg-gray-50 transition-colors">
+                    <FileText className="h-5 w-5 text-red-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{doc.name}</p>
+                      <p className="text-xs text-gray-400">{fmtBytes(doc.file_size)}</p>
+                    </div>
+                    <Link2 className="h-4 w-4 text-blue-500 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <SheetFooter>
             <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
     </div>
   )

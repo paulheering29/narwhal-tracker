@@ -32,13 +32,22 @@ function ResetPasswordForm() {
 
   // Exchange the one-time code Supabase appended to the link for a session
   useEffect(() => {
-    const code = searchParams.get('code')
-    if (!code) {
-      setSessionError('Invalid or expired reset link. Please request a new one.')
-      return
-    }
+    // The Supabase client may have already auto-exchanged the code on page load.
+    // Check for an existing session first; only call exchangeCodeForSession if needed.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        // Already have a valid session — ready to set password
+        setReady(true)
+        return
+      }
 
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+      const code = searchParams.get('code')
+      if (!code) {
+        setSessionError('Invalid or expired reset link. Please request a new one.')
+        return
+      }
+
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
       if (error) {
         setSessionError('This reset link has expired or already been used. Please request a new one.')
       } else {

@@ -18,6 +18,7 @@ import {
   Tag,
   CreditCard,
   Award,
+  CalendarDays,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { showAdminNav, rolesDisplay } from '@/lib/permissions'
@@ -42,8 +43,9 @@ const rbtNavItems = [
 ]
 
 const analyticsItems = [
-  { href: '/analytics/topics',       label: 'Topic Analysis', icon: Tag },
-  { href: '/analytics/rbt-insights', label: 'RBT Insights',   icon: Award },
+  { href: '/analytics/training-calendar', label: 'Training Calendar', icon: CalendarDays },
+  { href: '/analytics/topics',            label: 'Topic Analysis',    icon: Tag          },
+  { href: '/analytics/rbt-insights',      label: 'RBT Insights',      icon: Award        },
 ]
 
 export function TopNav({ userTier, userRoles, userEmail }: TopNavProps) {

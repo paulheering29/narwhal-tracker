@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight, Clock, Users, ExternalLink, CheckCircle2, Circle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, ExternalLink, CheckCircle2, Circle } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import type { RawCourse } from './page'

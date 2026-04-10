@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getCompanyId } from '@/lib/get-company-id'
 import { getDisplayName } from '@/lib/display-name'
@@ -18,7 +19,10 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import { BookPlus, Loader2, Search, ChevronRight, Clock, Paperclip } from 'lucide-react'
+import {
+  BookPlus, Loader2, Search, ChevronRight, Clock, Paperclip,
+  ChevronLeft, CheckCircle2, Circle, ExternalLink, CalendarDays, List,
+} from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +51,23 @@ type Training = {
   training_document_links: { document_id: string }[]
 }
 
+type CalAttendee = {
+  id: string
+  confirmed: boolean
+  staff: StaffOption | null
+}
+
+type CalCourse = {
+  id: string
+  name: string
+  date: string
+  start_time: string | null
+  end_time: string | null
+  modality: string | null
+  units: number | null
+  records: CalAttendee[]
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MODALITY_LABELS: Record<string, string> = {
@@ -62,7 +83,6 @@ const MODALITY_STYLES: Record<string, string> = {
 }
 
 // A palette of distinct pill colours for topics.
-// Colour is assigned deterministically from the topic's UUID so it never changes.
 const TOPIC_PALETTE = [
   'bg-rose-100    text-rose-700',
   'bg-orange-100  text-orange-700',
@@ -82,6 +102,34 @@ function topicColorClass(topicId: string): string {
     hash = (hash * 31 + topicId.charCodeAt(i)) & 0xffff
   }
   return TOPIC_PALETTE[hash % TOPIC_PALETTE.length]
+}
+
+// ─── Calendar constants ───────────────────────────────────────────────────────
+
+const MONTH_NAMES = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+]
+const DOW = ['S','M','T','W','T','F','S']
+
+const MODALITY_CELL: Record<string, string> = {
+  'in-person':           'bg-emerald-100 hover:bg-emerald-200 text-emerald-900',
+  'online-synchronous':  'bg-blue-100 hover:bg-blue-200 text-blue-900',
+  'online-asynchronous': 'bg-violet-100 hover:bg-violet-200 text-violet-900',
+}
+const CELL_MULTI = 'bg-amber-100 hover:bg-amber-200 text-amber-900'
+const CELL_OTHER = 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+
+const MODALITY_BADGE: Record<string, string> = {
+  'in-person':           'bg-emerald-100 text-emerald-700',
+  'online-synchronous':  'bg-blue-100 text-blue-700',
+  'online-asynchronous': 'bg-violet-100 text-violet-700',
+}
+
+const MODALITY_LABEL: Record<string, string> = {
+  'in-person':           'In-person',
+  'online-synchronous':  'Online sync',
+  'online-asynchronous': 'Online async',
 }
 
 const emptyForm = {
@@ -107,12 +155,128 @@ function fmtDate(d: string | null) {
   })
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate()
+}
+
+function getFirstDow(year: number, month: number): number {
+  return new Date(year, month, 1).getDay()
+}
+
+function fmtSheetDate(year: number, month: number, day: number): string {
+  return new Date(year, month, day).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  })
+}
+
+function getCalDisplayName(s: StaffOption): string {
+  return `${s.display_first_name || s.first_name} ${s.display_last_name || s.last_name}`
+}
+
+// ─── MonthGrid component ──────────────────────────────────────────────────────
+
+function MonthGrid({
+  year, month, coursesByDate, today, onDayClick,
+}: {
+  year: number
+  month: number
+  coursesByDate: Map<string, { modality: string | null }[]>
+  today: string
+  onDayClick: (dateKey: string) => void
+}) {
+  const days     = getDaysInMonth(year, month)
+  const firstDow = getFirstDow(year, month)
+  const trainingCount = Array.from({ length: days }, (_, i) => {
+    const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
+    return coursesByDate.has(key)
+  }).filter(Boolean).length
+
+  const cells: (number | null)[] = [
+    ...Array(firstDow).fill(null),
+    ...Array.from({ length: days }, (_, i) => i + 1),
+  ]
+  while (cells.length % 7 !== 0) cells.push(null)
+  const weeks: (number | null)[][] = []
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Month header */}
+      <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#457595' }}>
+        <span className="text-sm font-bold text-white tracking-wide uppercase">
+          {MONTH_NAMES[month]}
+        </span>
+        {trainingCount > 0 && (
+          <span className="inline-flex items-center justify-center h-5 min-w-5 rounded-full bg-white/25 px-1.5 text-xs font-bold text-white">
+            {trainingCount}
+          </span>
+        )}
+      </div>
+
+      {/* Day-of-week headers */}
+      <div className="grid grid-cols-7 border-b border-gray-100">
+        {DOW.map((d, i) => (
+          <div key={i} className="text-center text-[10px] font-semibold text-gray-400 py-1.5">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div className="p-1">
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7">
+            {week.map((day, di) => {
+              if (!day) return <div key={di} />
+              const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+              const dayTrainings = coursesByDate.get(key) ?? []
+              const hasTraining  = dayTrainings.length > 0
+              const isToday      = key === today
+              const isFuture     = key > today
+
+              const modalities = Array.from(new Set(dayTrainings.map(c => c.modality ?? '')))
+              const cellBg = !hasTraining
+                ? ''
+                : modalities.length > 1
+                  ? CELL_MULTI
+                  : (MODALITY_CELL[modalities[0]] ?? CELL_OTHER)
+
+              return (
+                <button
+                  key={di}
+                  onClick={() => hasTraining && onDayClick(key)}
+                  className={`
+                    relative flex items-center justify-center rounded-lg text-[11px] font-medium transition-colors
+                    aspect-square w-full
+                    ${hasTraining ? `cursor-pointer ${cellBg}` : 'cursor-default'}
+                    ${!hasTraining && isFuture ? 'text-gray-400' : ''}
+                    ${!hasTraining && !isFuture ? 'text-gray-700' : ''}
+                    ${isToday ? 'ring-2 ring-inset ring-[#457595] font-bold' : ''}
+                  `}
+                >
+                  {day}
+                  {dayTrainings.length > 1 && (
+                    <span className="absolute bottom-0.5 right-0.5 text-[8px] font-bold opacity-60 leading-none">
+                      {dayTrainings.length}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function TrainingsPage() {
   const supabase = createClient()
   const router   = useRouter()
 
+  // List view state
   const [trainings, setTrainings]     = useState<Training[]>([])
   const [staffList, setStaffList]     = useState<StaffOption[]>([])
   const [topicList, setTopicList]     = useState<TopicOption[]>([])
@@ -125,6 +289,15 @@ export default function TrainingsPage() {
   const [saving, setSaving]           = useState(false)
   const [error, setError]             = useState<string | null>(null)
   const [loadError, setLoadError]     = useState<string | null>(null)
+
+  // Tab + calendar state
+  const [activeTab, setActiveTab]             = useState<'list' | 'calendar'>('list')
+  const [calYear, setCalYear]                 = useState(new Date().getFullYear())
+  const [calSelectedDate, setCalSelectedDate] = useState<string | null>(null)
+  const [calDayCourses, setCalDayCourses]     = useState<CalCourse[]>([])
+  const [calLoadingDay, setCalLoadingDay]     = useState(false)
+
+  const today = new Date().toISOString().split('T')[0]
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -243,7 +416,7 @@ export default function TrainingsPage() {
     load()
   }
 
-  // ── Filter ──────────────────────────────────────────────────────────────────
+  // ── List filter ─────────────────────────────────────────────────────────────
 
   const filtered = trainings.filter(t => {
     const trainerDisplay = t.staff ? getDisplayName(t.staff) : (t.trainer_name ?? '')
@@ -251,10 +424,67 @@ export default function TrainingsPage() {
       .toLowerCase().includes(search.toLowerCase())
   })
 
+  // ── Calendar helpers ─────────────────────────────────────────────────────────
+
+  // Group trainings for the selected calYear
+  const calCoursesByDate = new Map<string, Training[]>()
+  for (const t of trainings) {
+    if (!t.date || !t.date.startsWith(String(calYear))) continue
+    if (!calCoursesByDate.has(t.date)) calCoursesByDate.set(t.date, [])
+    calCoursesByDate.get(t.date)!.push(t)
+  }
+
+  async function handleCalDayClick(dateKey: string) {
+    setCalSelectedDate(dateKey)
+    setCalDayCourses([])
+    setCalLoadingDay(true)
+
+    const coursesOnDay = calCoursesByDate.get(dateKey) ?? []
+    const ids = coursesOnDay.map(c => c.id)
+
+    if (ids.length === 0) { setCalLoadingDay(false); return }
+
+    const { data } = await supabase
+      .from('training_records')
+      .select('id, confirmed, course_id, staff:staff_id(id, first_name, last_name, display_first_name, display_last_name)')
+      .in('course_id', ids)
+
+    const recordsByCourse = new Map<string, CalAttendee[]>()
+    for (const r of (data ?? []) as unknown as { id: string; confirmed: boolean; course_id: string; staff: StaffOption | StaffOption[] | null }[]) {
+      const cid = r.course_id
+      if (!recordsByCourse.has(cid)) recordsByCourse.set(cid, [])
+      const staffVal = Array.isArray(r.staff) ? (r.staff[0] ?? null) : r.staff
+      recordsByCourse.get(cid)!.push({ id: r.id, confirmed: r.confirmed, staff: staffVal })
+    }
+
+    const result: CalCourse[] = coursesOnDay.map(c => ({
+      id:         c.id,
+      name:       c.name,
+      date:       c.date ?? '',
+      start_time: c.start_time,
+      end_time:   c.end_time,
+      modality:   c.modality,
+      units:      c.units,
+      records:    recordsByCourse.get(c.id) ?? [],
+    }))
+
+    setCalDayCourses(result)
+    setCalLoadingDay(false)
+  }
+
+  const calSelectedParts = calSelectedDate
+    ? {
+        year:  parseInt(calSelectedDate.slice(0, 4)),
+        month: parseInt(calSelectedDate.slice(5, 7)) - 1,
+        day:   parseInt(calSelectedDate.slice(8, 10)),
+      }
+    : null
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-8">
+      {/* Page header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Trainings</h1>
@@ -265,98 +495,279 @@ export default function TrainingsPage() {
         </Button>
       </div>
 
-      <div className="mb-4 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input placeholder="Search by name, trainer, or modality…" value={search}
-          onChange={e => setSearch(e.target.value)} className="pl-9" />
+      {/* Tab switcher */}
+      <div className="flex items-center gap-1 mb-6 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('list')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === 'list'
+              ? 'border-[#457595] text-[#457595]'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <List className="h-4 w-4" />
+          List View
+        </button>
+        <button
+          onClick={() => setActiveTab('calendar')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === 'calendar'
+              ? 'border-[#457595] text-[#457595]'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <CalendarDays className="h-4 w-4" />
+          Calendar View
+        </button>
       </div>
 
-      <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Training Name</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Time</TableHead>
-              <TableHead>PDUs</TableHead>
-              <TableHead>Modality</TableHead>
-              <TableHead>Topic</TableHead>
-              <TableHead>Trainer</TableHead>
-              <TableHead>Docs</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-10 text-gray-400">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-              </TableCell></TableRow>
-            ) : loadError ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-10">
-                <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2 inline-block">{loadError}</p>
-              </TableCell></TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-10 text-gray-400">
-                {search ? 'No trainings match your search.' : 'No trainings yet. Add your first one.'}
-              </TableCell></TableRow>
-            ) : filtered.map(t => {
-              const trainerDisplay = t.staff
-                ? getDisplayName(t.staff)
-                : t.trainer_name
-                  ? `${t.trainer_name} (Ext.)`
-                  : '—'
-              const docCount = t.training_document_links?.length ?? 0
+      {/* ── List View ──────────────────────────────────────────────────────── */}
+      {activeTab === 'list' && (
+        <>
+          <div className="mb-4 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input placeholder="Search by name, trainer, or modality…" value={search}
+              onChange={e => setSearch(e.target.value)} className="pl-9" />
+          </div>
 
-              return (
-                <TableRow key={t.id} className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => router.push(`/trainings/${t.id}`)}>
-                  <TableCell className="font-medium text-blue-600">{t.name}</TableCell>
-                  <TableCell className="text-gray-600 whitespace-nowrap">{fmtDate(t.date)}</TableCell>
-                  <TableCell className="text-gray-500 whitespace-nowrap text-sm">
-                    {t.start_time && t.end_time
-                      ? <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{fmtTime(t.start_time)}–{fmtTime(t.end_time)}</span>
-                      : '—'}
-                  </TableCell>
-                  <TableCell className="text-gray-600">{t.units != null ? `${t.units} PDU${t.units !== 1 ? 's' : ''}` : '—'}</TableCell>
-                  <TableCell>
-                    {t.modality ? (
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${MODALITY_STYLES[t.modality] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {MODALITY_LABELS[t.modality] ?? t.modality}
-                      </span>
-                    ) : '—'}
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      const topic = t.topic_id ? topicList.find(tp => tp.id === t.topic_id) : null
-                      return topic ? (
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${topicColorClass(topic.id)}`}>
-                          {topic.name}
-                        </span>
-                      ) : <span className="text-gray-300 text-sm">—</span>
-                    })()}
-                  </TableCell>
-                  <TableCell className="text-gray-500 text-sm">{trainerDisplay}</TableCell>
-                  <TableCell>
-                    {docCount > 0 ? (
-                      <span className="flex items-center gap-1 text-sm text-gray-500">
-                        <Paperclip className="h-3.5 w-3.5" />{docCount}
-                      </span>
-                    ) : <span className="text-gray-300 text-sm">—</span>}
-                  </TableCell>
-                  <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                    <Button size="sm" variant="ghost" onClick={e => openEdit(t, e)}>
-                      Edit
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => router.push(`/trainings/${t.id}`)}>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    </Button>
-                  </TableCell>
+          <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Training Name</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>PDUs</TableHead>
+                  <TableHead>Modality</TableHead>
+                  <TableHead>Topic</TableHead>
+                  <TableHead>Trainer</TableHead>
+                  <TableHead>Docs</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-gray-400">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                  </TableCell></TableRow>
+                ) : loadError ? (
+                  <TableRow><TableCell colSpan={9} className="text-center py-10">
+                    <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2 inline-block">{loadError}</p>
+                  </TableCell></TableRow>
+                ) : filtered.length === 0 ? (
+                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-gray-400">
+                    {search ? 'No trainings match your search.' : 'No trainings yet. Add your first one.'}
+                  </TableCell></TableRow>
+                ) : filtered.map(t => {
+                  const trainerDisplay = t.staff
+                    ? getDisplayName(t.staff)
+                    : t.trainer_name
+                      ? `${t.trainer_name} (Ext.)`
+                      : '—'
+                  const docCount = t.training_document_links?.length ?? 0
+
+                  return (
+                    <TableRow key={t.id} className="cursor-pointer hover:bg-gray-50"
+                      onClick={() => router.push(`/trainings/${t.id}`)}>
+                      <TableCell className="font-medium text-blue-600">{t.name}</TableCell>
+                      <TableCell className="text-gray-600 whitespace-nowrap">{fmtDate(t.date)}</TableCell>
+                      <TableCell className="text-gray-500 whitespace-nowrap text-sm">
+                        {t.start_time && t.end_time
+                          ? <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{fmtTime(t.start_time)}–{fmtTime(t.end_time)}</span>
+                          : '—'}
+                      </TableCell>
+                      <TableCell className="text-gray-600">{t.units != null ? `${t.units} PDU${t.units !== 1 ? 's' : ''}` : '—'}</TableCell>
+                      <TableCell>
+                        {t.modality ? (
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${MODALITY_STYLES[t.modality] ?? 'bg-gray-100 text-gray-600'}`}>
+                            {MODALITY_LABELS[t.modality] ?? t.modality}
+                          </span>
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const topic = t.topic_id ? topicList.find(tp => tp.id === t.topic_id) : null
+                          return topic ? (
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${topicColorClass(topic.id)}`}>
+                              {topic.name}
+                            </span>
+                          ) : <span className="text-gray-300 text-sm">—</span>
+                        })()}
+                      </TableCell>
+                      <TableCell className="text-gray-500 text-sm">{trainerDisplay}</TableCell>
+                      <TableCell>
+                        {docCount > 0 ? (
+                          <span className="flex items-center gap-1 text-sm text-gray-500">
+                            <Paperclip className="h-3.5 w-3.5" />{docCount}
+                          </span>
+                        ) : <span className="text-gray-300 text-sm">—</span>}
+                      </TableCell>
+                      <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                        <Button size="sm" variant="ghost" onClick={e => openEdit(t, e)}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => router.push(`/trainings/${t.id}`)}>
+                          <ChevronRight className="h-4 w-4 text-gray-400" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+
+      {/* ── Calendar View ──────────────────────────────────────────────────── */}
+      {activeTab === 'calendar' && (
+        <>
+          {/* Year nav + legend */}
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCalYear(y => y - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-lg font-bold text-gray-800 w-14 text-center">{calYear}</span>
+              <Button variant="outline" size="sm" onClick={() => setCalYear(y => y + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-5 flex-wrap">
+              {Object.entries(MODALITY_LABEL).map(([key, label]) => (
+                <div key={key} className="flex items-center gap-1.5">
+                  <span className={`h-4 w-4 rounded ${MODALITY_CELL[key]?.split(' ')[0] ?? 'bg-gray-200'}`} />
+                  <span className="text-xs text-gray-500">{label}</span>
+                </div>
+              ))}
+              <div className="flex items-center gap-1.5">
+                <span className="h-4 w-4 rounded bg-amber-100" />
+                <span className="text-xs text-gray-500">Multiple trainings</span>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 12 }, (_, i) => (
+                <MonthGrid
+                  key={i}
+                  year={calYear}
+                  month={i}
+                  coursesByDate={calCoursesByDate}
+                  today={today}
+                  onDayClick={handleCalDayClick}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Day detail sheet */}
+          <Sheet open={!!calSelectedDate} onOpenChange={open => { if (!open) setCalSelectedDate(null) }}>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>
+                  {calSelectedParts
+                    ? fmtSheetDate(calSelectedParts.year, calSelectedParts.month, calSelectedParts.day)
+                    : ''}
+                </SheetTitle>
+              </SheetHeader>
+
+              <div className="px-6 py-5 space-y-6">
+                {calLoadingDay ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                  </div>
+                ) : calDayCourses.map(c => {
+                  const isFuture    = c.date > today
+                  const confirmed   = c.records.filter(r => r.confirmed)
+                  const unconfirmed = c.records.filter(r => !r.confirmed)
+
+                  return (
+                    <div key={c.id} className="rounded-xl border border-gray-200 overflow-hidden">
+                      {/* Training header */}
+                      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 text-sm leading-snug">{c.name}</p>
+                            <div className="mt-1.5 flex items-center gap-3 flex-wrap">
+                              {c.start_time && (
+                                <span className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Clock className="h-3 w-3" />
+                                  {fmtTime(c.start_time)}{c.end_time ? `–${fmtTime(c.end_time)}` : ''}
+                                </span>
+                              )}
+                              {c.modality && (
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${MODALITY_BADGE[c.modality] ?? 'bg-gray-100 text-gray-600'}`}>
+                                  {MODALITY_LABEL[c.modality] ?? c.modality}
+                                </span>
+                              )}
+                              {c.units != null && (
+                                <span className="text-xs text-gray-400">{c.units} PDU{c.units !== 1 ? 's' : ''}</span>
+                              )}
+                            </div>
+                          </div>
+                          <Link
+                            href={`/trainings/${c.id}`}
+                            className="shrink-0 flex items-center gap-1 text-xs font-medium text-[#457595] hover:underline"
+                          >
+                            Open <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Attendees */}
+                      <div className="px-4 py-3">
+                        {c.records.length === 0 ? (
+                          <p className="text-xs text-gray-400 italic">No attendees recorded yet.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {confirmed.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
+                                  {isFuture ? 'Registered' : 'Attended'} · {confirmed.length}
+                                </p>
+                                <ul className="space-y-1">
+                                  {confirmed.map(r => (
+                                    <li key={r.id} className="flex items-center gap-2 text-sm text-gray-700">
+                                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                      {r.staff ? getCalDisplayName(r.staff) : <span className="text-gray-400 italic">Unknown</span>}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {unconfirmed.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
+                                  {isFuture ? 'Invited' : 'Unconfirmed'} · {unconfirmed.length}
+                                </p>
+                                <ul className="space-y-1">
+                                  {unconfirmed.map(r => (
+                                    <li key={r.id} className="flex items-center gap-2 text-sm text-gray-500">
+                                      <Circle className="h-3.5 w-3.5 text-gray-300 shrink-0" />
+                                      {r.staff ? getCalDisplayName(r.staff) : <span className="italic">Unknown</span>}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </>
+      )}
 
       {/* ── Add / Edit Sheet ──────────────────────────────────────────────── */}
       <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>

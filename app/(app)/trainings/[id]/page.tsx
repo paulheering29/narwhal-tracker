@@ -500,7 +500,7 @@ export default function TrainingDetailPage() {
 
         {/* Left: current attendees */}
         <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b bg-gray-50">
+          <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-gray-700">
               {attendees.length} added
               {attendees.length > 0 && (
@@ -509,6 +509,34 @@ export default function TrainingDetailPage() {
                 </span>
               )}
             </p>
+            {(() => {
+              const rbtConfirmed = attendees.filter(a => a.confirmed && activeCycleMap[a.staff_id] === 'RBT')
+              if (rbtConfirmed.length === 0) return null
+              const allEmailed  = rbtConfirmed.every(a => emailedIds.has(a.id))
+              const anyEmailing = rbtConfirmed.some(a => emailingIds.has(a.id))
+              async function emailAll() {
+                for (const a of rbtConfirmed) await handleEmailCert(a.id)
+              }
+              return (
+                <button
+                  onClick={emailAll}
+                  disabled={anyEmailing}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    allEmailed
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {anyEmailing ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
+                  ) : allEmailed ? (
+                    <><CheckCircle2 className="h-3.5 w-3.5" /> All Sent</>
+                  ) : (
+                    <><Mail className="h-3.5 w-3.5" /> Email All RBTs</>
+                  )}
+                </button>
+              )
+            })()}
           </div>
           {attendees.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-400">

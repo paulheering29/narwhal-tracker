@@ -20,7 +20,7 @@ interface SidebarProps {
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/staff', label: 'RBT', icon: Users },
+  { href: '/staff', label: 'Staff', icon: Users },
   { href: '/trainings', label: 'Trainings', icon: BookOpen },
   { href: '/training', label: 'Training Records', icon: ClipboardList },
 ]

@@ -18,12 +18,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
-  UserPlus, Pencil, Loader2, ShieldCheck, Users,
-  Upload, Download, CheckCircle2, XCircle, UserX, UserCheck, ChevronRight, Search,
+  Pencil, Loader2, ShieldCheck,
+  CheckCircle2, UserPlus,
   Tag, Trash2, Plus, Building2, CreditCard,
 } from 'lucide-react'
 import { ALL_ROLES } from '@/lib/permissions'
-import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { BillingClient } from '@/app/(app)/billing/client'
 import type { Plan, CompanyBilling } from '@/lib/plans'
 
@@ -55,66 +54,6 @@ type StaffMember = {
 }
 
 
-// ─── CSV helpers ──────────────────────────────────────────────────────────────
-
-type CsvRow = {
-  first_name: string; last_name: string; role: string
-  email: string; ehr_id: string
-  error: string | null; rowNum: number
-}
-
-function parseCsvLine(line: string): string[] {
-  const values: string[] = []
-  let current = ''; let inQuotes = false
-  for (const char of line) {
-    if (char === '"') { inQuotes = !inQuotes }
-    else if (char === ',' && !inQuotes) { values.push(current.trim()); current = '' }
-    else { current += char }
-  }
-  values.push(current.trim())
-  return values
-}
-
-function parseStaffCsv(text: string): CsvRow[] {
-  const lines = text.replace(/\r/g, '').trim().split('\n')
-  if (lines.length < 2) return []
-  const headers = parseCsvLine(lines[0]).map(h =>
-    h.toLowerCase().replace(/\s+/g, '_').replace(/['"]/g, '')
-  )
-  return lines.slice(1).map((line, i) => {
-    if (!line.trim()) return null
-    const values = parseCsvLine(line)
-    const get = (key: string) => values[headers.indexOf(key)]?.replace(/^"|"$/g, '') ?? ''
-    const first_name = get('first_name'); const last_name = get('last_name')
-    const role = get('role'); const email = get('email'); const ehr_id = get('ehr_id')
-    let error: string | null = null
-    if (!first_name && !last_name) error = 'Missing first and last name'
-    else if (!first_name) error = 'Missing first name'
-    else if (!last_name)  error = 'Missing last name'
-    else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) error = 'Invalid email'
-    return { first_name, last_name, role, email, ehr_id, error, rowNum: i + 2 }
-  }).filter(Boolean) as CsvRow[]
-}
-
-function downloadCsvTemplate() {
-  const csv = [
-    'first_name,last_name,role,email,ehr_id',
-    'Jane,Doe,RBT,jane.doe@example.com,EHR001',
-    'John,Smith,Trainer,john.smith@example.com,EHR002',
-  ].join('\n')
-  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-  const a = document.createElement('a')
-  a.href = url; a.download = 'rbt_import_template.csv'; a.click()
-  URL.revokeObjectURL(url)
-}
-
-
-const emptyStaffForm = {
-  first_name: '', last_name: '', email: '', role: '', ehr_id: '',
-  display_first_name: '', display_last_name: '', certification_number: '',
-  original_certification_date: '', credentials: ''
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type Topic = { id: string; name: string; created_at: string }
@@ -145,11 +84,11 @@ export function AdminUsersClient({
   const searchParams = useSearchParams()
 
   const isAccountOwner = currentRoles.includes('Account Owner')
-  type AdminTab = 'rbt' | 'admin' | 'topics' | 'billing' | 'company'
+  type AdminTab = 'admin' | 'topics' | 'billing' | 'company'
   const initialTab: AdminTab = (() => {
     const q = searchParams.get('tab')
     if (q === 'billing' || q === 'topics' || q === 'admin' || q === 'company') return q
-    return 'rbt'
+    return 'admin'
   })()
   const [tab, setTab] = useState<AdminTab>(initialTab)
 
@@ -278,21 +217,7 @@ export function AdminUsersClient({
   const [deletingTopicId, setDeletingTopicId] = useState<string | null>(null)
 
   // ── Staff state ──────────────────────────────────────────────────────────────
-  const [staff, setStaff]       = useState<StaffMember[]>(initialStaff)
-  const [staffSearch, setStaffSearch] = useState('')
-  const csvInputRef             = useRef<HTMLInputElement>(null)
-
-  const [addRbtOpen, setAddRbtOpen]   = useState(false)
-  const [staffForm, setStaffForm]     = useState(emptyStaffForm)
-  const [staffSaving, setStaffSaving] = useState(false)
-  const [staffError, setStaffError]   = useState<string | null>(null)
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const [localRbtCount, setLocalRbtCount] = useState(planLimits.currentRbts)
-
-  const [importOpen, setImportOpen]     = useState(false)
-  const [csvRows, setCsvRows]           = useState<CsvRow[]>([])
-  const [importing, setImporting]       = useState(false)
-  const [importResult, setImportResult] = useState<{ imported: number; errors: number } | null>(null)
+  const [staff, setStaff] = useState<StaffMember[]>(initialStaff)
 
   // ── User state ───────────────────────────────────────────────────────────────
   const [inviteOpen, setInviteOpen]     = useState(false)
@@ -318,79 +243,6 @@ export function AdminUsersClient({
       .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number, credentials')
       .order('last_name')
     setStaff(data ?? [])
-  }
-
-  function openAddRbt() {
-    const form = { ...emptyStaffForm, role: 'RBT' }
-    setStaffForm(form)
-    setStaffError(null)
-    setAddRbtOpen(true)
-  }
-
-  async function handleAddStaff() {
-    if (!staffForm.first_name.trim() || !staffForm.last_name.trim()) {
-      setStaffError('First name and last name are required.')
-      return
-    }
-    // Gate: if adding an RBT and already at limit, show upgrade dialog
-    if (staffForm.role === 'RBT' && localRbtCount >= planLimits.maxRbts) {
-      setAddRbtOpen(false)
-      setUpgradeOpen(true)
-      return
-    }
-    setStaffSaving(true); setStaffError(null)
-    const companyId = await getCompanyId()
-    if (!companyId) { setStaffError('Could not determine your company.'); setStaffSaving(false); return }
-    const { data: newStaff, error: insertErr } = await supabase.from('staff').insert({
-      company_id: companyId,
-      first_name: staffForm.first_name, last_name: staffForm.last_name,
-      display_first_name: staffForm.display_first_name || null,
-      display_last_name: staffForm.display_last_name || null,
-      email:  staffForm.email  || null,
-      role:   staffForm.role   || null,
-      ehr_id: staffForm.ehr_id || null,
-      certification_number: staffForm.certification_number || null,
-      original_certification_date: staffForm.original_certification_date || null,
-      credentials: staffForm.credentials || null,
-    }).select('id').single()
-    if (insertErr) { setStaffError(insertErr.message); setStaffSaving(false); return }
-    if (staffForm.role === 'RBT') setLocalRbtCount(c => c + 1)
-    setStaffSaving(false)
-    setAddRbtOpen(false)
-    setStaffForm(emptyStaffForm)
-    router.push(`/staff/${newStaff.id}`)
-  }
-
-  async function toggleActive(s: StaffMember, e: React.MouseEvent) {
-    e.stopPropagation()
-    await supabase.from('staff').update({ active: !s.active }).eq('id', s.id)
-    reloadStaff()
-  }
-
-  function openImport() { setCsvRows([]); setImportResult(null); setImportOpen(true) }
-
-  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => { setCsvRows(parseStaffCsv(ev.target?.result as string)); setImportResult(null) }
-    reader.readAsText(file); e.target.value = ''
-  }
-
-  async function handleImport() {
-    const valid = csvRows.filter(r => !r.error)
-    if (valid.length === 0) return
-    setImporting(true)
-    const companyId = await getCompanyId()
-    if (!companyId) { setImporting(false); return }
-    const inserts = valid.map(r => ({
-      company_id: companyId, first_name: r.first_name, last_name: r.last_name,
-      role: r.role || null, email: r.email || null, ehr_id: r.ehr_id || null,
-    }))
-    const { error: insertErr } = await supabase.from('staff').insert(inserts)
-    setImporting(false)
-    if (insertErr) { setImportResult({ imported: 0, errors: valid.length }); return }
-    setImportResult({ imported: valid.length, errors: csvRows.filter(r => r.error).length })
-    setCsvRows([]); reloadStaff()
   }
 
   // ── User actions ─────────────────────────────────────────────────────────────
@@ -501,14 +353,7 @@ export function AdminUsersClient({
 
   // ── Filtered staff ───────────────────────────────────────────────────────────
 
-  const rbtStaff    = staff.filter(s => s.role === 'RBT')
-  const adminStaff  = staff.filter(s => s.role !== 'RBT')
-
-  const filteredStaff = rbtStaff.filter(s => {
-    const display = getDisplayName(s)
-    return `${display} ${s.first_name} ${s.last_name} ${s.email ?? ''} ${s.ehr_id ?? ''}`
-      .toLowerCase().includes(staffSearch.toLowerCase())
-  })
+  const adminStaff = staff.filter(s => s.role !== 'RBT')
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -523,10 +368,9 @@ export function AdminUsersClient({
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         {([
-          { key: 'rbt'     as const, label: 'RBT',              icon: Users,       count: rbtStaff.length   as number | undefined },
-          { key: 'admin'   as const, label: 'Trainers & Admin', icon: ShieldCheck, count: adminStaff.length as number | undefined },
-          { key: 'topics'  as const, label: 'Topics',           icon: Tag,         count: topics.length     as number | undefined },
-          { key: 'billing' as const, label: 'Billing',          icon: CreditCard,  count: undefined         as number | undefined },
+          { key: 'admin'   as const, label: 'Permissions', icon: ShieldCheck, count: adminStaff.length as number | undefined },
+          { key: 'topics'  as const, label: 'Topics',      icon: Tag,         count: topics.length     as number | undefined },
+          { key: 'billing' as const, label: 'Billing',     icon: CreditCard,  count: undefined         as number | undefined },
           ...(isAccountOwner
             ? [{ key: 'company' as const, label: 'Company', icon: Building2, count: undefined as number | undefined }]
             : []),
@@ -551,230 +395,7 @@ export function AdminUsersClient({
         ))}
       </div>
 
-      {/* ── RBT Tab ─────────────────────────────────────────────────────────── */}
-      {tab === 'rbt' && (
-        <>
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by name or email…"
-                value={staffSearch}
-                onChange={e => setStaffSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={openImport}>
-                <Upload className="mr-2 h-4 w-4" /> Import CSV
-              </Button>
-              <Button
-                onClick={openAddRbt}
-                className="bg-[#0A253D] hover:bg-[#0d2f4f]"
-              >
-                <UserPlus className="mr-2 h-4 w-4" /> Add RBT
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStaff.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10 text-gray-400">
-                      {staffSearch ? 'No staff match your search.' : 'No staff yet. Add your first team member.'}
-                    </TableCell>
-                  </TableRow>
-                ) : filteredStaff.map(s => (
-                  <TableRow
-                    key={s.id}
-                    className={`cursor-pointer hover:bg-gray-50 ${!s.active ? 'opacity-50' : ''}`}
-                    onClick={() => router.push(`/staff/${s.id}`)}
-                  >
-                    <TableCell className="font-medium text-blue-600 hover:underline">
-                      {getDisplayName(s)}
-                    </TableCell>
-                    <TableCell className="text-gray-500 text-sm">{s.email ?? '—'}</TableCell>
-                    <TableCell className="text-gray-500">{s.role ?? '—'}</TableCell>
-                    <TableCell className="text-center text-base leading-none" title={s.active ? 'Active' : 'Inactive'}>
-                      {s.active ? '🟢' : '🔴'}
-                    </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button size="sm" variant="ghost" onClick={e => toggleActive(s, e)}
-                        title={s.active ? 'Deactivate' : 'Activate'}>
-                        {s.active
-                          ? <UserX className="h-4 w-4 text-red-500" />
-                          : <UserCheck className="h-4 w-4 text-emerald-500" />}
-                      </Button>
-                      <Button size="sm" variant="ghost"
-                        onClick={e => { e.stopPropagation(); router.push(`/staff/${s.id}`) }}>
-                        <ChevronRight className="h-4 w-4 text-gray-400" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Import CSV Sheet */}
-          <Sheet open={importOpen} onOpenChange={open => { setImportOpen(open); if (!open) { setCsvRows([]); setImportResult(null) } }}>
-            <SheetContent>
-              <SheetHeader><SheetTitle>Import RBT Staff from CSV</SheetTitle></SheetHeader>
-              <div className="flex flex-col gap-4 flex-1 px-6 py-5 overflow-hidden">
-                <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm" onClick={downloadCsvTemplate}>
-                    <Download className="mr-2 h-4 w-4" /> Download Template
-                  </Button>
-                  <span className="text-sm text-gray-400">fill it out and upload below</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button variant="outline" onClick={() => csvInputRef.current?.click()}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    {csvRows.length > 0 ? 'Choose a different file' : 'Choose CSV file'}
-                  </Button>
-                  <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvFile} />
-                  {csvRows.length > 0 && (
-                    <span className="text-sm text-gray-600">
-                      {csvRows.length} rows · <span className="text-emerald-600">{csvRows.filter(r => !r.error).length} valid</span>
-                      {csvRows.some(r => r.error) && <> · <span className="text-red-500">{csvRows.filter(r => r.error).length} with errors</span></>}
-                    </span>
-                  )}
-                </div>
-                {importResult && (
-                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                    <p className="text-sm text-emerald-800">
-                      <span className="font-medium">{importResult.imported} staff member{importResult.imported !== 1 ? 's' : ''} imported.</span>
-                      {importResult.errors > 0 && ` ${importResult.errors} row${importResult.errors !== 1 ? 's' : ''} skipped.`}
-                    </p>
-                  </div>
-                )}
-                {csvRows.length > 0 && !importResult && (
-                  <div className="flex-1 overflow-y-auto rounded-lg border min-h-0">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          {['#','First Name','Last Name','Role','Email','EHR ID','Status'].map(h => (
-                            <th key={h} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {csvRows.map(row => (
-                          <tr key={row.rowNum} className={row.error ? 'bg-red-50' : 'bg-white'}>
-                            <td className="px-3 py-2 text-gray-400">{row.rowNum}</td>
-                            <td className="px-3 py-2">{row.first_name || <span className="text-red-400 italic">—</span>}</td>
-                            <td className="px-3 py-2">{row.last_name  || <span className="text-red-400 italic">—</span>}</td>
-                            <td className="px-3 py-2 text-gray-500">{row.role   || '—'}</td>
-                            <td className="px-3 py-2 text-gray-500">{row.email  || '—'}</td>
-                            <td className="px-3 py-2 text-gray-500">{row.ehr_id || '—'}</td>
-                            <td className="px-3 py-2">
-                              {row.error
-                                ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><XCircle className="h-3.5 w-3.5" />{row.error}</span>
-                                : <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />OK</span>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {csvRows.length === 0 && !importResult && (
-                  <div className="flex-1 rounded-lg border border-dashed flex items-center justify-center text-sm text-gray-400 min-h-[120px]">
-                    Upload a CSV file to preview rows before importing
-                  </div>
-                )}
-              </div>
-              <SheetFooter className="mt-4">
-                <Button variant="outline" onClick={() => setImportOpen(false)}>{importResult ? 'Close' : 'Cancel'}</Button>
-                {!importResult && (
-                  <Button onClick={handleImport} disabled={csvRows.filter(r => !r.error).length === 0 || importing} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
-                    {importing
-                      ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing…</>
-                      : `Import ${csvRows.filter(r => !r.error).length} Staff Member${csvRows.filter(r => !r.error).length !== 1 ? 's' : ''}`}
-                  </Button>
-                )}
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
-
-          {/* Add RBT Sheet */}
-          <Sheet open={addRbtOpen} onOpenChange={setAddRbtOpen}>
-            <SheetContent>
-              <SheetHeader><SheetTitle>Add RBT</SheetTitle></SheetHeader>
-              <div className="space-y-5 px-6 py-5">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal Name</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="rbt_first">First Name *</Label>
-                    <Input id="rbt_first" value={staffForm.first_name} onChange={e => setStaffForm(f => ({ ...f, first_name: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="rbt_last">Last Name *</Label>
-                    <Input id="rbt_last" value={staffForm.last_name} onChange={e => setStaffForm(f => ({ ...f, last_name: e.target.value }))} />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="rbt_email">Email</Label>
-                  <Input id="rbt_email" type="email" value={staffForm.email} onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))} />
-                </div>
-
-                <div className="pt-3 border-t">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">RBT Details</p>
-                  <div className="space-y-2">
-                    <Label htmlFor="rbt_cert_num">RBT Number</Label>
-                    <Input id="rbt_cert_num" placeholder="e.g. 12345" value={staffForm.certification_number} onChange={e => setStaffForm(f => ({ ...f, certification_number: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2 mt-4">
-                    <Label htmlFor="rbt_cert_date">Original Certification Date</Label>
-                    <Input id="rbt_cert_date" type="date" value={staffForm.original_certification_date} onChange={e => setStaffForm(f => ({ ...f, original_certification_date: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2 mt-4">
-                    <Label htmlFor="rbt_creds">Credentials</Label>
-                    <Input id="rbt_creds" placeholder="e.g. RBT" value={staffForm.credentials} onChange={e => setStaffForm(f => ({ ...f, credentials: e.target.value }))} />
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Preferred Name (Optional)</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rbt_pref_first">First Name</Label>
-                      <Input id="rbt_pref_first" placeholder="e.g. Alex" value={staffForm.display_first_name} onChange={e => setStaffForm(f => ({ ...f, display_first_name: e.target.value }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="rbt_pref_last">Last Name</Label>
-                      <Input id="rbt_pref_last" placeholder="e.g. Smith" value={staffForm.display_last_name} onChange={e => setStaffForm(f => ({ ...f, display_last_name: e.target.value }))} />
-                    </div>
-                  </div>
-                </div>
-
-                {staffError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{staffError}</p>}
-              </div>
-              <SheetFooter>
-                <Button variant="outline" onClick={() => setAddRbtOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddStaff} disabled={staffSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
-                  {staffSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Add & Continue'}
-                </Button>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
-        </>
-      )}
-
-      {/* ── Trainers & Admin Tab ────────────────────────────────────────────── */}
+      {/* ── Permissions Tab ─────────────────────────────────────────────────── */}
       {tab === 'admin' && (
         <>
           <div className="mb-4 flex items-center justify-between">
@@ -1246,14 +867,6 @@ export function AdminUsersClient({
         </div>
       )}
 
-      {/* Upgrade dialog — shown when RBT limit is hit */}
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        currentPlan={planLimits.planName}
-        currentRbts={localRbtCount}
-        maxRbts={planLimits.maxRbts}
-      />
     </div>
   )
 }

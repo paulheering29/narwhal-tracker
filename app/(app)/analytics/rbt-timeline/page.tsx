@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { cookies } from 'next/headers'
 import { RbtTimelineClient } from './client'
 
 export default async function RbtTimelinePage() {
   await cookies()
   const supabase = await createClient()
+  const service = createServiceClient()
 
   const [{ data: staff }, { data: comparisons }] = await Promise.all([
     supabase
@@ -13,7 +15,7 @@ export default async function RbtTimelinePage() {
       .eq('role', 'RBT')
       .not('original_certification_date', 'is', null)
       .order('original_certification_date', { ascending: true }),
-    supabase
+    service
       .from('timeline_comparisons')
       .select('name, year, value')
       .order('year', { ascending: true }),

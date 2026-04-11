@@ -845,38 +845,50 @@ export default function TrainingsPage() {
       {/* ── Training Records Tab ─────────────────────────────────────────── */}
       {activeTab === 'records' && (
         <>
-          <div className="mb-4 flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input placeholder="Search by name or training…" value={trSearch}
-                onChange={e => setTrSearch(e.target.value)} className="pl-9" />
+          <div className="mb-4 flex flex-wrap gap-4 items-end">
+            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+              <label className="text-xs font-medium text-gray-500">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input placeholder="Search by name or training…" value={trSearch}
+                  onChange={e => setTrSearch(e.target.value)} className="pl-9" />
+              </div>
             </div>
-            <Select value={trFilterStaff} onValueChange={v => setTrFilterStaff(v ?? 'all')}>
-              <SelectTrigger className="w-44"><SelectValue placeholder="All Staff" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Staff</SelectItem>
-                {trStaff.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={trFilterCourse} onValueChange={v => setTrFilterCourse(v ?? 'all')}>
-              <SelectTrigger className="w-44"><SelectValue placeholder="All Trainings" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Trainings</SelectItem>
-                {trCourses.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={trFilterAttendance} onValueChange={v => setTrFilterAttendance(v ?? 'all')}>
-              <SelectTrigger className="w-44"><SelectValue placeholder="All Attendance" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Attendance</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500">Staff</label>
+              <Select value={trFilterStaff} onValueChange={v => setTrFilterStaff(v ?? 'all')}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="All Staff" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Staff</SelectItem>
+                  {trStaff.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500">Training</label>
+              <Select value={trFilterCourse} onValueChange={v => setTrFilterCourse(v ?? 'all')}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="All Trainings" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Trainings</SelectItem>
+                  {trCourses.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500">Attendance</label>
+              <Select value={trFilterAttendance} onValueChange={v => setTrFilterAttendance(v ?? 'all')}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="All Attendance" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Attendance</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {!trLoading && trLoaded && (

@@ -22,15 +22,6 @@ import {
   SheetTitle,
   SheetFooter,
 } from '@/components/ui/sheet'
-import { Card, CardContent } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { getCompanyId } from '@/lib/get-company-id'
 import { getDisplayName, getLegalName, hasPreferredName } from '@/lib/display-name'
 import { getCycleStatus, isActiveCycle, cycleStatusStyles } from '@/lib/cycle-status'
@@ -380,8 +371,20 @@ export default function StaffDetailPage() {
   // activeCycle retained for future use (e.g. status badge)
   void cycles.find(c => isActiveCycle(c.start_date, c.end_date))
 
+  const basicsRows: { label: string; value: React.ReactNode; mono?: boolean }[] = [
+    { label: 'Legal First Name',    value: staff.first_name },
+    { label: 'Legal Last Name',     value: staff.last_name },
+    { label: 'Preferred First',     value: staff.display_first_name ?? <span className="text-gray-400 italic">same as legal</span> },
+    { label: 'Preferred Last',      value: staff.display_last_name  ?? <span className="text-gray-400 italic">same as legal</span> },
+    { label: 'Email',               value: staff.email ?? '—' },
+    { label: 'Role',                value: staff.role ?? '—' },
+    { label: 'Credentials',         value: staff.credentials ?? <span className="text-gray-400 italic">—</span> },
+    { label: 'BACB Cert #',         value: staff.certification_number ?? '—', mono: true },
+    { label: 'Original Cert Date',  value: staff.original_certification_date ? formatDate(staff.original_certification_date) : '—' },
+  ]
+
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-8 max-w-[1400px]">
 
       {/* Header */}
       <div className="mb-6">
@@ -409,211 +412,155 @@ export default function StaffDetailPage() {
         </div>
       </div>
 
-      {/* Staff Info Card */}
-      <Card className="mb-6 shadow-sm">
-        <CardContent className="pt-6">
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4">
-            {/* Row 1: Names */}
+      {/* 3-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+        {/* ── Column 1: Basics ─────────────────────────────────────────────── */}
+        <section>
+          <div className="mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">Basics</h2>
+            <p className="text-sm text-gray-500">Staff details</p>
+          </div>
+          <div className="rounded-lg border bg-white shadow-sm divide-y divide-gray-100">
+            {basicsRows.map(row => (
+              <div key={row.label} className="px-4 py-3">
+                <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">{row.label}</dt>
+                <dd className={`mt-1 text-sm text-gray-900 break-words ${row.mono ? 'font-mono' : ''}`}>
+                  {row.value}
+                </dd>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Column 2: Certification Cycles ───────────────────────────────── */}
+        <section>
+          <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal First Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">{staff.first_name}</dd>
+              <h2 className="text-lg font-semibold text-gray-900">Certification Cycles</h2>
+              <p className="text-sm text-gray-500">{cycles.length} cycle{cycles.length !== 1 ? 's' : ''} on record</p>
             </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal Last Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">{staff.last_name}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Preferred First Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">{staff.display_first_name ?? <span className="text-gray-400 italic">same as legal</span>}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Preferred Last Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">{staff.display_last_name ?? <span className="text-gray-400 italic">same as legal</span>}</dd>
-            </div>
-            {/* Row 2: Email (wide), Role */}
-            <div className="col-span-2">
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</dt>
-              <dd className="mt-1 text-sm text-gray-900 break-all">{staff.email ?? '—'}</dd>
-            </div>
-            <div className="col-span-2">
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Role</dt>
-              <dd className="mt-1 text-sm text-gray-900">{staff.role ?? '—'}</dd>
-            </div>
-            {/* Row 3: Credentials (wide) */}
-            <div className="col-span-4">
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Credentials</dt>
-              <dd className="mt-1 text-sm text-gray-900">{staff.credentials ?? <span className="text-gray-400 italic">—</span>}</dd>
-            </div>
-            {/* Row 4: Cert fields */}
-            <div className="col-span-2">
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">BACB Cert #</dt>
-              <dd className="mt-1 text-sm font-mono text-gray-900">{staff.certification_number ?? '—'}</dd>
-            </div>
-            <div className="col-span-2">
-              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Original Cert Date</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {staff.original_certification_date
-                  ? formatDate(staff.original_certification_date)
-                  : '—'}
-              </dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
+            <Button onClick={openAddCycle} size="sm" className="bg-[#0A253D] hover:bg-[#0d2f4f] shrink-0">
+              <Plus className="mr-1.5 h-4 w-4" /> Add
+            </Button>
+          </div>
 
-      {/* Certification Cycles */}
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Certification Cycles</h2>
-          <p className="text-sm text-gray-500">{cycles.length} cycle{cycles.length !== 1 ? 's' : ''} on record</p>
-        </div>
-        <Button onClick={openAddCycle} size="sm" className="bg-[#0A253D] hover:bg-[#0d2f4f]">
-          <Plus className="mr-2 h-4 w-4" /> Add Cycle
-        </Button>
-      </div>
+          {cycles.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-white p-8 text-center text-sm text-gray-400 shadow-sm">
+              No certification cycles yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {cycles.map(cycle => {
+                const isExpanded = expandedCycleId === cycle.id
+                const records = cycleRecords[cycle.id]
+                const status = getCycleStatus(cycle.start_date, cycle.end_date)
 
-      {cycles.length === 0 ? (
-        <div className="rounded-lg border border-dashed bg-white p-10 text-center text-sm text-gray-400 shadow-sm">
-          No certification cycles yet. Add this person&apos;s first cycle.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {cycles.map(cycle => {
-            const isExpanded = expandedCycleId === cycle.id
-            const records = cycleRecords[cycle.id]
+                return (
+                  <div key={cycle.id} className="rounded-lg border bg-white shadow-sm overflow-hidden">
+                    {/* Cycle header row */}
+                    <div
+                      className="flex items-center gap-2 px-3 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => toggleCycle(cycle)}
+                    >
+                      <button className="text-gray-400 shrink-0">
+                        {isExpanded
+                          ? <ChevronDown className="h-4 w-4" />
+                          : <ChevronRight className="h-4 w-4" />}
+                      </button>
 
-            return (
-              <div key={cycle.id} className="rounded-lg border bg-white shadow-sm overflow-hidden">
-                {/* Cycle header row */}
-                <div
-                  className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => toggleCycle(cycle)}
-                >
-                  <button className="text-gray-400 shrink-0">
-                    {isExpanded
-                      ? <ChevronDown className="h-4 w-4" />
-                      : <ChevronRight className="h-4 w-4" />}
-                  </button>
+                      <span className="text-sm text-gray-700 font-medium">
+                        {formatDate(cycle.start_date)} — {formatDate(cycle.end_date)}
+                      </span>
 
-                  <span className="text-sm text-gray-600">
-                    {formatDate(cycle.start_date)} — {formatDate(cycle.end_date)}
-                  </span>
-
-                  {(() => {
-                    const status = getCycleStatus(cycle.start_date, cycle.end_date)
-                    return (
-                      <span className={`ml-auto shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${cycleStatusStyles[status]}`}>
+                      <span className={`ml-auto shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${cycleStatusStyles[status]}`}>
                         {status}
                       </span>
-                    )
-                  })()}
 
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="shrink-0"
-                    onClick={e => { e.stopPropagation(); openEditCycle(cycle) }}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-
-                {/* Expanded: training records */}
-                {isExpanded && (
-                  <div className="border-t bg-gray-50 px-4 py-3">
-                    {cycle.notes && (
-                      <p className="mb-3 text-sm text-gray-500 italic">{cycle.notes}</p>
-                    )}
-
-                    {loadingRecords && !records ? (
-                      <div className="flex items-center gap-2 py-4 text-sm text-gray-400">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Loading training records…
-                      </div>
-                    ) : !records || records.length === 0 ? (
-                      <p className="py-4 text-sm text-gray-400 text-center">
-                        No training records fall within this cycle&apos;s dates.
-                      </p>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-xs">Training</TableHead>
-                            <TableHead className="text-xs">Completed</TableHead>
-                            <TableHead className="text-xs">Expiry</TableHead>
-                            <TableHead className="text-xs">Notes</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {records.map(r => (
-                            <TableRow key={r.id}>
-                              <TableCell className="text-sm font-medium">{r.courses?.name}</TableCell>
-                              <TableCell className="text-sm text-gray-600">{formatDate(r.completed_date)}</TableCell>
-                              <TableCell className="text-sm text-gray-600">
-                                {r.expiry_date ? formatDate(r.expiry_date) : '—'}
-                              </TableCell>
-                              <TableCell className="text-sm text-gray-500">{r.notes ?? '—'}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-
-                    <div className="mt-2 flex justify-end">
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="text-xs text-gray-500"
-                        onClick={e => {
-                          e.stopPropagation()
-                          setCycleRecords(prev => { const n = { ...prev }; delete n[cycle.id]; return n })
-                          loadCycleRecords(cycle)
-                        }}
+                        className="shrink-0 h-7 w-7 p-0"
+                        onClick={e => { e.stopPropagation(); openEditCycle(cycle) }}
                       >
-                        <RefreshCw className="mr-1 h-3 w-3" /> Refresh
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
                     </div>
+
+                    {/* Expanded: training records */}
+                    {isExpanded && (
+                      <div className="border-t bg-gray-50 px-3 py-3">
+                        {cycle.notes && (
+                          <p className="mb-3 text-xs text-gray-500 italic">{cycle.notes}</p>
+                        )}
+
+                        {loadingRecords && !records ? (
+                          <div className="flex items-center gap-2 py-3 text-sm text-gray-400">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+                          </div>
+                        ) : !records || records.length === 0 ? (
+                          <p className="py-3 text-xs text-gray-400 text-center">
+                            No training records in this cycle&apos;s dates.
+                          </p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {records.map(r => (
+                              <li key={r.id} className="rounded-md bg-white border border-gray-100 px-3 py-2">
+                                <p className="text-sm font-medium text-gray-900">{r.courses?.name}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  Completed {formatDate(r.completed_date)}
+                                  {r.expiry_date && <> · Expires {formatDate(r.expiry_date)}</>}
+                                </p>
+                                {r.notes && <p className="text-xs text-gray-500 mt-1 italic">{r.notes}</p>}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        <div className="mt-2 flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs text-gray-500 h-7"
+                            onClick={e => {
+                              e.stopPropagation()
+                              setCycleRecords(prev => { const n = { ...prev }; delete n[cycle.id]; return n })
+                              loadCycleRecords(cycle)
+                            }}
+                          >
+                            <RefreshCw className="mr-1 h-3 w-3" /> Refresh
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+                )
+              })}
+            </div>
+          )}
+        </section>
 
-      {/* All Trainings */}
-      <div className="mt-10 mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">All Trainings</h2>
-        <p className="text-sm text-gray-500">
-          {allRecords.length} record{allRecords.length !== 1 ? 's' : ''} on file
-        </p>
-      </div>
+        {/* ── Column 3: All Trainings ──────────────────────────────────────── */}
+        <section>
+          <div className="mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">All Trainings</h2>
+            <p className="text-sm text-gray-500">
+              {allRecords.length} record{allRecords.length !== 1 ? 's' : ''} on file
+            </p>
+          </div>
 
-      {allRecords.length === 0 ? (
-        <div className="rounded-lg border border-dashed bg-white p-10 text-center text-sm text-gray-400 shadow-sm">
-          No training records yet.
-        </div>
-      ) : (
-        <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Training</TableHead>
-                <TableHead className="text-xs">Completed</TableHead>
-                <TableHead className="text-xs">Units</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
-                <TableHead className="text-xs">Expiry</TableHead>
-                <TableHead className="text-xs">Notes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          {allRecords.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-white p-8 text-center text-sm text-gray-400 shadow-sm">
+              No training records yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
               {allRecords.map(r => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-sm font-medium">{r.courses?.name ?? '—'}</TableCell>
-                  <TableCell className="text-sm text-gray-600">{formatDate(r.completed_date)}</TableCell>
-                  <TableCell className="text-sm text-gray-600 tabular-nums">{r.courses?.units ?? '—'}</TableCell>
-                  <TableCell>
+                <div key={r.id} className="rounded-lg border bg-white shadow-sm p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-900">{r.courses?.name ?? '—'}</p>
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                         r.confirmed
                           ? 'bg-emerald-100 text-emerald-700'
                           : 'bg-amber-100 text-amber-700'
@@ -621,17 +568,20 @@ export default function StaffDetailPage() {
                     >
                       {r.confirmed ? 'Confirmed' : 'Pending'}
                     </span>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">
-                    {r.expiry_date ? formatDate(r.expiry_date) : '—'}
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-500">{r.notes ?? '—'}</TableCell>
-                </TableRow>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Completed {formatDate(r.completed_date)}
+                    {r.courses?.units != null && <> · {r.courses.units} unit{r.courses.units === 1 ? '' : 's'}</>}
+                    {r.expiry_date && <> · Expires {formatDate(r.expiry_date)}</>}
+                  </p>
+                  {r.notes && <p className="mt-2 text-xs text-gray-500 italic">{r.notes}</p>}
+                </div>
               ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+            </div>
+          )}
+        </section>
+
+      </div>
 
       {/* ── Edit Staff Sheet ──────────────────────────────────────────────── */}
       <Sheet open={editStaffOpen} onOpenChange={setEditStaffOpen}>

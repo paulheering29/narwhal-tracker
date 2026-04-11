@@ -8,20 +8,27 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [profileRes, staffRes] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id, first_name, last_name, signature_url, staff_id')
-      .eq('id', user.id)
-      .single(),
-    supabase
-      .from('staff')
-      .select('id, first_name, last_name, display_first_name, display_last_name, email, role')
-      .eq('active', true)
-      .order('last_name'),
-  ])
+  // Fetch profile with regular client (scoped to user.id — always works)
+  const profileRes = await supabase
+    .from('profiles')
+    .select('id, company_id, first_name, last_name, signature_url, staff_id')
+    .eq('id', user.id)
+    .single()
 
-  const profile   = profileRes.data
+  const profile = profileRes.data
+
+  // Fetch staff with service client — bypass RLS to guarantee results
+  // (RLS JWT claims can be stale/missing for new users)
+  const service = createServiceClient()
+  const staffRes = profile?.company_id
+    ? await service
+        .from('staff')
+        .select('id, first_name, last_name, display_first_name, display_last_name, email, role')
+        .eq('company_id', profile.company_id)
+        .eq('active', true)
+        .order('last_name')
+    : { data: [] }
+
   const staffList = staffRes.data ?? []
 
   // Always try to match by email — overrides any stale/incorrect existing link
@@ -33,7 +40,6 @@ export default async function SettingsPage() {
     )
     if (matched && matched.id !== resolvedStaffId) {
       // Email match found — save it (replaces any stale link)
-      const service = createServiceClient()
       await service
         .from('profiles')
         .update({ staff_id: matched.id })
@@ -44,8 +50,8 @@ export default async function SettingsPage() {
     }
   }
 
-  // Only show non-RBT staff in the dropdown — this page is for trainers
-  const trainerStaff = staffList.filter(s => s.role !== 'RBT')
+  // Show all active staff — don't filter by role, anyone may need to link
+  const trainerStaff = staffList
 
   return (
     <div className="p-8 max-w-2xl">

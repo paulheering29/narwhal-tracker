@@ -164,7 +164,7 @@ export async function generateFormal(data: CertData): Promise<Uint8Array> {
   curY = sigLineY + 20
 
   // ── Footer logos — sit inside the gold inner border (B2=24 from edge) ────────
-  const FOOT_Y    = B2 + 10   // clear the gold border with a little breathing room
+  const FOOT_Y    = B2 + 28   // clear the gold border with a little breathing room
   const narwhalSz = 5.5
 
   // Narwhal logo bottom-right

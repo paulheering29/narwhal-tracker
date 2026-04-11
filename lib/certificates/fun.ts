@@ -184,7 +184,7 @@ export async function generateFun(data: CertData): Promise<Uint8Array> {
   curY += sigH + 18
 
   // ── Footer logos ─────────────────────────────────────────────────────────────
-  const FOOT_Y = 10
+  const FOOT_Y = 28
   const narwhalSz = 5.5
   try {
     const nBytes = fs.readFileSync(data.narwhalLogoPath)

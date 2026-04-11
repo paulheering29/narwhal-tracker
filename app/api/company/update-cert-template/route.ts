@@ -26,14 +26,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { preferred_cert_template } = await request.json()
-  if (!VALID_TEMPLATES.includes(preferred_cert_template)) {
+  const { enabled_cert_templates } = await request.json()
+
+  if (!Array.isArray(enabled_cert_templates) || enabled_cert_templates.length === 0) {
+    return NextResponse.json({ error: 'At least one template must be selected' }, { status: 400 })
+  }
+
+  const invalid = enabled_cert_templates.find((t: string) => !VALID_TEMPLATES.includes(t))
+  if (invalid) {
     return NextResponse.json({ error: 'Invalid template' }, { status: 400 })
   }
 
   const { error } = await service
     .from('companies')
-    .update({ preferred_cert_template })
+    .update({
+      enabled_cert_templates,
+      preferred_cert_template: enabled_cert_templates[0],
+    })
     .eq('id', me.company_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TemplatePickerDialog } from '@/components/template-picker-dialog'
 import {
   ArrowLeft, Pencil, Loader2, Upload, FileText, Download,
   Link2, Link2Off, Clock, Calendar, CheckCircle2, Circle, Search, Award, Mail,
@@ -141,14 +142,23 @@ export default function TrainingDetailPage() {
   const [emailedIds, setEmailedIds]   = useState<Set<string>>(new Set())
   const [emailErrors, setEmailErrors] = useState<Record<string, string>>({})
 
-  async function handleEmailCert(recordId: string) {
+  // ── Certificate templates ──────────────────────────────────────────────────────
+  const [enabledCertTemplates, setEnabledCertTemplates] = useState<string[]>(['bacb'])
+  const [templatePickerOpen, setTemplatePickerOpen]     = useState(false)
+  const [templatePickerLoading, setTemplatePickerLoading] = useState(false)
+  const [pendingRecordId, setPendingRecordId]           = useState<string | null>(null)
+  const [pendingAction, setPendingAction]               = useState<'download' | 'email'>('download')
+
+  async function handleEmailCert(recordId: string, template?: string) {
     setEmailingIds(prev => new Set(prev).add(recordId))
     setEmailErrors(prev => { const n = { ...prev }; delete n[recordId]; return n })
     try {
+      const body: Record<string, unknown> = { recordId }
+      if (template) body.template = template
       const res  = await fetch('/api/certificates/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recordId }),
+        body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Failed to send')
@@ -158,6 +168,46 @@ export default function TrainingDetailPage() {
       setEmailErrors(prev => ({ ...prev, [recordId]: err instanceof Error ? err.message : 'Send failed' }))
     } finally {
       setEmailingIds(prev => { const n = new Set(prev); n.delete(recordId); return n })
+    }
+  }
+
+  function handleDownloadOrEmail(recordId: string, action: 'download' | 'email') {
+    if (enabledCertTemplates.length > 1) {
+      setPendingRecordId(recordId)
+      setPendingAction(action)
+      setTemplatePickerOpen(true)
+    } else {
+      if (action === 'download') {
+        handleDownloadCert(recordId, enabledCertTemplates[0])
+      } else {
+        handleEmailCert(recordId, enabledCertTemplates[0])
+      }
+    }
+  }
+
+  async function handleDownloadCert(recordId: string, template?: string) {
+    try {
+      const url = new URL('/api/certificates/rbt-inservice', window.location.origin)
+      url.searchParams.set('recordId', recordId)
+      if (template) url.searchParams.set('template', template)
+      window.open(url.toString(), '_blank')
+    } catch (err) {
+      console.error('Download failed:', err)
+    }
+  }
+
+  async function handleTemplateSelect(template: string) {
+    if (!pendingRecordId) return
+    setTemplatePickerLoading(true)
+    try {
+      if (pendingAction === 'download') {
+        await handleDownloadCert(pendingRecordId, template)
+      } else {
+        await handleEmailCert(pendingRecordId, template)
+      }
+    } finally {
+      setTemplatePickerLoading(false)
+      setPendingRecordId(null)
     }
   }
 
@@ -219,11 +269,22 @@ export default function TrainingDetailPage() {
   useEffect(() => {
     async function init() {
       setLoading(true)
-      const [,,,, topicsRes] = await Promise.all([
+      const [,,,, topicsRes, companyRes] = await Promise.all([
         loadTraining(), loadDocs(), loadStaff(), loadAttendees(),
         supabase.from('topics').select('id, name').order('name'),
+        getCompanyId().then(cid =>
+          supabase
+            .from('companies')
+            .select('enabled_cert_templates')
+            .eq('id', cid)
+            .single()
+        ),
       ])
       setTopicList((topicsRes as { data: TopicOption[] | null }).data ?? [])
+      const companyData = (companyRes as { data?: Record<string, unknown> | null }).data
+      if (companyData?.enabled_cert_templates) {
+        setEnabledCertTemplates(companyData.enabled_cert_templates as string[])
+      }
       setLoading(false)
     }
     init()
@@ -522,12 +583,14 @@ export default function TrainingDetailPage() {
               const allEmailed  = rbtConfirmed.every(a => emailedIds.has(a.id))
               const anyEmailing = rbtConfirmed.some(a => emailingIds.has(a.id))
               async function emailAll() {
-                for (const a of rbtConfirmed) await handleEmailCert(a.id)
+                const template = enabledCertTemplates.length > 0 ? enabledCertTemplates[0] : undefined
+                for (const a of rbtConfirmed) await handleEmailCert(a.id, template)
               }
               return (
                 <button
                   onClick={emailAll}
                   disabled={anyEmailing}
+                  title={enabledCertTemplates.length > 1 ? 'Emails all with the preferred template' : 'Email all RBTs'}
                   className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                     allEmailed
                       ? 'bg-emerald-100 text-emerald-700'
@@ -602,17 +665,15 @@ export default function TrainingDetailPage() {
                                 <span className="text-xs text-gray-400 italic">Available after training ends</span>
                               ) : (
                                 <>
-                                  <a
-                                    href={`/api/certificates/rbt-inservice?recordId=${attendee.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Download BACB RBT In-Service Form"
+                                  <button
+                                    onClick={() => handleDownloadOrEmail(attendee.id, 'download')}
+                                    title="Download certificate"
                                     className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
                                   >
                                     <Award className="h-3.5 w-3.5" /> RBT Form
-                                  </a>
+                                  </button>
                                   <button
-                                    onClick={() => handleEmailCert(attendee.id)}
+                                    onClick={() => handleDownloadOrEmail(attendee.id, 'email')}
                                     disabled={emailingIds.has(attendee.id)}
                                     title="Email certificate to staff member"
                                     className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
@@ -890,7 +951,18 @@ export default function TrainingDetailPage() {
               {trainerType === 'staff' ? (
                 <Select value={form.trainer_staff_id}
                   onValueChange={v => setForm(f => ({ ...f, trainer_staff_id: v ?? '' }))}>
-                  <SelectTrigger><SelectValue placeholder="Select staff member" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select staff member">
+                      {form.trainer_staff_id === '' ? (
+                        'Select staff member'
+                      ) : (
+                        (() => {
+                          const staff = staffList.find(s => s.id === form.trainer_staff_id)
+                          return staff ? getDisplayName(staff) : 'Select staff member'
+                        })()
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
                     {staffList.map(s => <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>)}
                   </SelectContent>
@@ -953,6 +1025,15 @@ export default function TrainingDetailPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Template Picker Dialog */}
+      <TemplatePickerDialog
+        open={templatePickerOpen}
+        onOpenChange={setTemplatePickerOpen}
+        enabledTemplates={enabledCertTemplates}
+        onSelect={handleTemplateSelect}
+        isLoading={templatePickerLoading}
+      />
 
     </div>
   )

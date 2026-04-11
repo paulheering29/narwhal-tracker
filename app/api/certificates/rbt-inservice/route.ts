@@ -77,6 +77,7 @@ async function generateBacb(data: CertData): Promise<Uint8Array> {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const recordId = searchParams.get('recordId')
+  const template = searchParams.get('template')
   if (!recordId) return NextResponse.json({ error: 'recordId is required' }, { status: 400 })
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -118,14 +119,23 @@ export async function GET(request: NextRequest) {
   // ── Fetch company via service client (bypasses RLS) ───────────────────────────
   const { data: company } = await service
     .from('companies')
-    .select('name, logo_url, org_contact_staff_id, preferred_cert_template')
+    .select('name, logo_url, org_contact_staff_id, preferred_cert_template, enabled_cert_templates')
     .eq('id', record.company_id as string)
     .single()
 
   const companyName       = company?.name       ?? ''
   const companyLogoUrl    = (company as Record<string, unknown> | null)?.logo_url as string | null ?? null
   const orgContactStaffId = (company as Record<string, unknown> | null)?.org_contact_staff_id as string | null ?? null
-  const template          = ((company as Record<string, unknown> | null)?.preferred_cert_template as string | null) ?? 'bacb'
+  const enabledTemplates  = ((company as Record<string, unknown> | null)?.enabled_cert_templates as string[] | null) ?? ['bacb']
+  const preferredTemplate = ((company as Record<string, unknown> | null)?.preferred_cert_template as string | null) ?? 'bacb'
+
+  // Use query param template if provided, otherwise use preferred, otherwise use first enabled
+  let selectedTemplate = template ?? preferredTemplate ?? 'bacb'
+
+  // Validate that the selected template is enabled
+  if (!enabledTemplates.includes(selectedTemplate)) {
+    selectedTemplate = enabledTemplates[0] ?? 'bacb'
+  }
 
   // ── Shape types ───────────────────────────────────────────────────────────────
   const staff = record.staff as unknown as {
@@ -205,7 +215,7 @@ export async function GET(request: NextRequest) {
 
   // ── Generate PDF ──────────────────────────────────────────────────────────────
   let pdfBytes: Uint8Array
-  switch (template) {
+  switch (selectedTemplate) {
     case 'formal': pdfBytes = await generateFormal(certData); break
     case 'fun':    pdfBytes = await generateFun(certData);    break
     case 'basic':  pdfBytes = await generateBasic(certData);  break

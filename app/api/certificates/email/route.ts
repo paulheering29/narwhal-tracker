@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { createServiceClient } from '@/lib/supabase/service'
 import { cookies } from 'next/headers'
 import { PDFDocument } from 'pdf-lib'
 import { Resend } from 'resend'
 import fs from 'fs'
 import path from 'path'
+import type { CertData } from '@/lib/certificates/types'
+import { generateFormal } from '@/lib/certificates/formal'
+import { generateFun }    from '@/lib/certificates/fun'
+import { generateBasic }  from '@/lib/certificates/basic'
 
 const MODALITY_MAP: Record<string, string> = {
   'in-person':           'In-person',
@@ -12,8 +17,70 @@ const MODALITY_MAP: Record<string, string> = {
   'online-asynchronous': 'Online asynchronous',
 }
 
+const MODALITY_LABELS: Record<string, string> = {
+  'in-person':           'In-person',
+  'online-synchronous':  'Online synchronous',
+  'online-asynchronous': 'Online asynchronous',
+}
+
+// ── BACB fillable template ───────────────────────────────────────────────────────
+async function generateBacb(data: CertData): Promise<Uint8Array> {
+  const templatePath  = path.join(process.cwd(), 'public', 'templates', 'rbt-inservice-template.pdf')
+  const templateBytes = fs.readFileSync(templatePath)
+  const pdfDoc        = await PDFDocument.load(templateBytes)
+  const form          = pdfDoc.getForm()
+
+  form.getTextField('RBT Name').setText(data.staffName)
+  form.getTextField('RBT BACB Certification Number').setText(data.certNumber)
+  form.getTextField('Event Name').setText(data.trainingName)
+  form.getTextField('Event Date').setText(data.eventDate)
+  form.getTextField('Total Number of PDUs').setText(data.pduCount)
+  form.getTextField('Organization Name').setText(data.companyName)
+  form.getTextField('In-Service Trainer Name').setText(data.trainerName)
+  form.getTextField('In-Service Trainer BACB Certification Number').setText(data.trainerCertNumber)
+
+  if (data.orgContactName) {
+    try { form.getTextField('In-Service Organization Contact Name').setText(data.orgContactName) } catch { /* ignore */ }
+  }
+  if (data.orgContactCertNumber) {
+    try { form.getTextField('In-Service Organization Contact BACB Certification Number').setText(data.orgContactCertNumber) } catch { /* ignore */ }
+  }
+
+  const modalityValue = Object.entries(MODALITY_LABELS).find(([k]) => k === data.modality)?.[1]
+  if (modalityValue) {
+    try { form.getDropdown('Event Modality').select(modalityValue) } catch { /* ignore */ }
+  }
+
+  form.getTextField('Signature Date').setText(data.eventDate)
+
+  // Signature — small to fit the field
+  if (data.trainerSignatureUrl) {
+    try {
+      const sigRes = await fetch(data.trainerSignatureUrl)
+      if (sigRes.ok) {
+        const sigBytes = new Uint8Array(await sigRes.arrayBuffer())
+        const sigImage = await pdfDoc.embedPng(sigBytes)
+        const sigField = form.getField('Signature Field')
+        const widgets  = sigField.acroField.getWidgets()
+        if (widgets.length > 0) {
+          const rect = widgets[0].getRectangle()
+          const dims = sigImage.scaleToFit(rect.width - 4, rect.height - 2)
+          const pages = pdfDoc.getPages()
+          pages[pages.length - 1].drawImage(sigImage, {
+            x: rect.x + (rect.width - dims.width) / 2,
+            y: rect.y + (rect.height - dims.height) / 2,
+            width: dims.width, height: dims.height,
+          })
+        }
+      }
+    } catch { /* best-effort */ }
+  }
+
+  return pdfDoc.save()
+}
+
 export async function POST(request: NextRequest) {
-  const { recordId } = await request.json()
+  const { recordId, template } = await request.json()
 
   if (!recordId) {
     return NextResponse.json({ error: 'recordId is required' }, { status: 400 })
@@ -116,53 +183,71 @@ export async function POST(request: NextRequest) {
       })
     : ''
 
-  // ── Fill PDF ──────────────────────────────────────────────────────────────────
-  const templatePath = path.join(process.cwd(), 'public', 'templates', 'rbt-inservice-template.pdf')
-  const templateBytes = fs.readFileSync(templatePath)
-  const pdfDoc = await PDFDocument.load(templateBytes)
-  const form   = pdfDoc.getForm()
+  // ── Fetch company to get template preferences ────────────────────────────────
+  const service = createServiceClient()
+  const { data: company } = await service
+    .from('companies')
+    .select('name, logo_url, org_contact_staff_id, preferred_cert_template, enabled_cert_templates')
+    .eq('id', (record as Record<string, unknown>).company_id as string)
+    .single()
 
-  form.getTextField('RBT Name').setText(staffName)
-  form.getTextField('RBT BACB Certification Number').setText(staff.certification_number ?? '')
-  form.getTextField('Event Name').setText(course.name ?? '')
-  form.getTextField('Event Date').setText(eventDate)
-  form.getTextField('Total Number of PDUs').setText(
-    course.units != null ? String(course.units) : ''
-  )
-  form.getTextField('Organization Name').setText(companyName)
-  form.getTextField('In-Service Trainer Name').setText(trainerName)
-  form.getTextField('In-Service Trainer BACB Certification Number').setText(trainerCertNumber)
+  const companyLogoUrl    = (company as Record<string, unknown> | null)?.logo_url as string | null ?? null
+  const orgContactStaffId = (company as Record<string, unknown> | null)?.org_contact_staff_id as string | null ?? null
+  const enabledTemplates  = ((company as Record<string, unknown> | null)?.enabled_cert_templates as string[] | null) ?? ['bacb']
+  const preferredTemplate = ((company as Record<string, unknown> | null)?.preferred_cert_template as string | null) ?? 'bacb'
 
-  const modalityValue = MODALITY_MAP[course.modality ?? '']
-  if (modalityValue) {
-    try { form.getDropdown('Event Modality').select(modalityValue) } catch { /* ignore */ }
+  // Use query param template if provided, otherwise use preferred, otherwise use first enabled
+  let selectedTemplate = template ?? preferredTemplate ?? 'bacb'
+
+  // Validate that the selected template is enabled
+  if (!enabledTemplates.includes(selectedTemplate)) {
+    selectedTemplate = enabledTemplates[0] ?? 'bacb'
   }
 
-  form.getTextField('Signature Date').setText(eventDate)
-
-  if (trainerSignatureUrl) {
-    try {
-      const sigRes = await fetch(trainerSignatureUrl)
-      if (sigRes.ok) {
-        const sigBytes = new Uint8Array(await sigRes.arrayBuffer())
-        const sigImage = await pdfDoc.embedPng(sigBytes)
-        const sigField = form.getField('Signature Field')
-        const widgets  = sigField.acroField.getWidgets()
-        if (widgets.length > 0) {
-          const rect = widgets[0].getRectangle()
-          const page = pdfDoc.getPages()[pdfDoc.getPageCount() - 1]
-          const dims = sigImage.scaleToFit(rect.width - 8, rect.height - 4)
-          page.drawImage(sigImage, {
-            x: rect.x + (rect.width  - dims.width)  / 2,
-            y: rect.y + (rect.height - dims.height) / 2,
-            width: dims.width, height: dims.height,
-          })
-        }
-      }
-    } catch { /* best-effort */ }
+  // ── Org contact ───────────────────────────────────────────────────────────────
+  let orgContactName    = ''
+  let orgContactCertNum = ''
+  if (orgContactStaffId) {
+    const { data: oc } = await service
+      .from('staff')
+      .select('first_name, last_name, display_first_name, display_last_name, certification_number, credentials')
+      .eq('id', orgContactStaffId)
+      .single()
+    if (oc) {
+      const fn = (oc.display_first_name as string | null)?.trim() || (oc.first_name as string)
+      const ln = (oc.display_last_name  as string | null)?.trim() || (oc.last_name  as string)
+      const cr = (oc.credentials as string | null)?.trim()
+      orgContactName    = cr ? `${fn} ${ln}, ${cr}` : `${fn} ${ln}`
+      orgContactCertNum = (oc.certification_number as string | null) ?? ''
+    }
   }
 
-  const pdfBytes = await pdfDoc.save()
+  // ── Build cert data ───────────────────────────────────────────────────────────
+  const certData: CertData = {
+    staffName,
+    certNumber:           staff.certification_number ?? '',
+    trainingName:         course.name                ?? '',
+    eventDate,
+    pduCount:             course.units != null ? String(course.units) : '',
+    modality:             MODALITY_LABELS[course.modality ?? ''] ?? course.modality ?? '',
+    trainerName,
+    trainerCertNumber,
+    companyName,
+    orgContactName,
+    orgContactCertNumber: orgContactCertNum,
+    trainerSignatureUrl,
+    companyLogoUrl,
+    narwhalLogoPath: path.join(process.cwd(), 'public', 'narwhal-tracker.jpg'),
+  }
+
+  // ── Generate PDF ──────────────────────────────────────────────────────────────
+  let pdfBytes: Uint8Array
+  switch (selectedTemplate) {
+    case 'formal': pdfBytes = await generateFormal(certData); break
+    case 'fun':    pdfBytes = await generateFun(certData);    break
+    case 'basic':  pdfBytes = await generateBasic(certData);  break
+    default:       pdfBytes = await generateBacb(certData);   break
+  }
 
   // ── Send via Resend ───────────────────────────────────────────────────────────
   const resend = new Resend(process.env.RESEND_API_KEY)

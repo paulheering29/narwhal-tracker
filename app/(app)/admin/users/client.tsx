@@ -20,7 +20,7 @@ import {
 import {
   UserPlus, Pencil, Loader2, ShieldCheck, Users,
   Upload, Download, CheckCircle2, XCircle, UserX, UserCheck, ChevronRight, Search,
-  Tag, Trash2, Plus,
+  Tag, Trash2, Plus, Building2,
 } from 'lucide-react'
 import { ALL_ROLES } from '@/lib/permissions'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
@@ -113,21 +113,51 @@ const emptyStaffForm = { first_name: '', last_name: '', email: '', role: '', ehr
 
 type Topic = { id: string; name: string; created_at: string }
 
+type Company = { id: string; name: string }
+
 export function AdminUsersClient({
   currentAuthId,
+  currentRoles,
   initialStaff,
   initialTopics,
+  initialCompany,
   planLimits,
 }: {
   currentAuthId: string
+  currentRoles: string[]
   initialStaff: StaffMember[]
   initialTopics: Topic[]
+  initialCompany: Company
   planLimits: { maxRbts: number; currentRbts: number; planName: string }
 }) {
   const supabase = createClient()
   const router   = useRouter()
 
-  const [tab, setTab] = useState<'rbt' | 'admin' | 'topics'>('rbt')
+  const isAccountOwner = currentRoles.includes('Account Owner')
+  const [tab, setTab] = useState<'rbt' | 'admin' | 'topics' | 'company'>('rbt')
+
+  // ── Company state ───────────────────────────────────────────────────────────
+  const [company, setCompany]             = useState<Company>(initialCompany)
+  const [companyName, setCompanyName]     = useState(initialCompany.name)
+  const [companySaving, setCompanySaving] = useState(false)
+  const [companyStatus, setCompanyStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+
+  async function handleSaveCompany() {
+    const trimmed = companyName.trim()
+    if (!trimmed) { setCompanyStatus({ type: 'error', msg: 'Company name is required.' }); return }
+    if (trimmed === company.name) { setCompanyStatus({ type: 'success', msg: 'No changes to save.' }); return }
+    setCompanySaving(true); setCompanyStatus(null)
+    const res = await fetch('/api/company/update-name', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: trimmed }),
+    })
+    const json = await res.json()
+    setCompanySaving(false)
+    if (!res.ok) { setCompanyStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
+    setCompany(c => ({ ...c, name: trimmed }))
+    setCompanyStatus({ type: 'success', msg: 'Company name updated.' })
+  }
 
   // ── Topics state ─────────────────────────────────────────────────────────────
   const [topics, setTopics]           = useState<Topic[]>(initialTopics)
@@ -376,10 +406,13 @@ export function AdminUsersClient({
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         {([
-          { key: 'rbt',    label: 'RBT',              icon: Users,       count: rbtStaff.length   },
-          { key: 'admin',  label: 'Trainers & Admin', icon: ShieldCheck, count: adminStaff.length },
-          { key: 'topics', label: 'Topics',           icon: Tag,         count: topics.length     },
-        ] as const).map(({ key, label, icon: Icon, count }) => (
+          { key: 'rbt'    as const, label: 'RBT',              icon: Users,       count: rbtStaff.length   as number | undefined },
+          { key: 'admin'  as const, label: 'Trainers & Admin', icon: ShieldCheck, count: adminStaff.length as number | undefined },
+          { key: 'topics' as const, label: 'Topics',           icon: Tag,         count: topics.length     as number | undefined },
+          ...(isAccountOwner
+            ? [{ key: 'company' as const, label: 'Company', icon: Building2, count: undefined as number | undefined }]
+            : []),
+        ]).map(({ key, label, icon: Icon, count }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -391,9 +424,11 @@ export function AdminUsersClient({
           >
             <Icon className="h-4 w-4" />
             {label}
-            <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-              {count}
-            </span>
+            {count !== undefined && (
+              <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                {count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -875,6 +910,52 @@ export function AdminUsersClient({
               </ul>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Company Tab ─────────────────────────────────────────────────────── */}
+      {tab === 'company' && isAccountOwner && (
+        <div className="max-w-lg space-y-6">
+          <p className="text-sm text-gray-500">
+            Update your organisation&apos;s display name. This appears throughout
+            the app and on generated certificates.
+          </p>
+
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="company-name">Company Name</Label>
+              <Input
+                id="company-name"
+                value={companyName}
+                onChange={e => { setCompanyName(e.target.value); setCompanyStatus(null) }}
+                placeholder="Acme Behavioral Services"
+              />
+            </div>
+
+            {companyStatus && (
+              <p
+                className={`text-sm rounded px-3 py-2 ${
+                  companyStatus.type === 'success'
+                    ? 'text-green-700 bg-green-50'
+                    : 'text-red-600 bg-red-50'
+                }`}
+              >
+                {companyStatus.msg}
+              </p>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSaveCompany}
+                disabled={companySaving || !companyName.trim()}
+                className="bg-[#0A253D] hover:bg-[#0d2f4f]"
+              >
+                {companySaving
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
+                  : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

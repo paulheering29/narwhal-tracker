@@ -15,13 +15,13 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const service = createServiceClient()
-  const { data: profile } = await service
-    .from('profiles')
+  const { data: me } = await service
+    .from('staff')
     .select('is_owner')
-    .eq('id', user.id)
+    .eq('auth_id', user.id)
     .single()
 
-  if (!profile?.is_owner) {
+  if (!me?.is_owner) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

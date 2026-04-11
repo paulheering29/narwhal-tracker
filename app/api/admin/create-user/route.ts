@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Parse body ────────────────────────────────────────────────────────────
-  const { email, password, first_name, last_name, tier, roles } = await request.json()
+  const { email, password, first_name, last_name, tier, roles, staff_id } = await request.json()
   if (!email || !password) {
     return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 })
   }
@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
     roles:      roles ?? [],
     first_name: first_name || null,
     last_name:  last_name  || null,
+    staff_id:   staff_id   || null,
   })
 
   if (profileError) {

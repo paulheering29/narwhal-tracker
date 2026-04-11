@@ -165,7 +165,7 @@ export function AdminUsersClient({
   const [editingUser, setEditingUser] = useState<Profile | null>(null)
   const [inviteForm, setInviteForm]   = useState({
     email: '', password: '', first_name: '', last_name: '',
-    tier: 'rbt' as 'rbt' | 'staff', roles: [] as string[],
+    tier: 'rbt' as 'rbt' | 'staff', roles: [] as string[], staff_id: '',
   })
   const [editTier, setEditTier]   = useState<'rbt' | 'staff'>('rbt')
   const [editRoles, setEditRoles] = useState<string[]>([])
@@ -280,13 +280,14 @@ export function AdminUsersClient({
         last_name:  inviteForm.last_name  || null,
         tier:       inviteForm.tier,
         roles:      inviteForm.roles,
+        staff_id:   inviteForm.staff_id   || null,
       }),
     })
     const json = await res.json()
     if (!res.ok) { setUserError(json.error ?? 'Failed to create user.'); setUserSaving(false); return }
     setUserSaving(false); setInviteOpen(false)
     setSuccessMsg(`User ${inviteForm.email} created. A welcome email with their login details has been sent.`)
-    setInviteForm({ email: '', password: '', first_name: '', last_name: '', tier: 'rbt', roles: [] })
+    setInviteForm({ email: '', password: '', first_name: '', last_name: '', tier: 'rbt', roles: [], staff_id: '' })
     router.refresh()
   }
 
@@ -707,6 +708,24 @@ export function AdminUsersClient({
                         </label>
                       ))}
                     </div>
+                  </div>
+                )}
+                {inviteForm.tier === 'staff' && (
+                  <div className="space-y-2">
+                    <Label>Link to Staff Record <span className="text-gray-400 font-normal">(optional)</span></Label>
+                    <Select
+                      value={inviteForm.staff_id}
+                      onValueChange={v => setInviteForm(f => ({ ...f, staff_id: v === '__none__' ? '' : (v ?? '') }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select if this person is in the staff list…" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {staff.filter(s => s.active && s.role !== 'RBT').map(s => (
+                          <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-400">Links their signature to certificates where they&apos;re listed as trainer.</p>
                   </div>
                 )}
                 {userError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{userError}</p>}

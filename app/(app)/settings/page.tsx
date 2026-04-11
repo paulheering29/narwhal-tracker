@@ -24,20 +24,22 @@ export default async function SettingsPage() {
   const profile   = profileRes.data
   const staffList = staffRes.data ?? []
 
-  // Auto-match by email if not already linked
+  // Always try to match by email — overrides any stale/incorrect existing link
   let resolvedStaffId = profile?.staff_id ?? null
 
-  if (!resolvedStaffId && user.email) {
+  if (user.email) {
     const matched = staffList.find(
       s => s.email && s.email.toLowerCase() === user.email!.toLowerCase()
     )
-    if (matched) {
-      // Save the link automatically — no manual step needed
+    if (matched && matched.id !== resolvedStaffId) {
+      // Email match found — save it (replaces any stale link)
       const service = createServiceClient()
       await service
         .from('profiles')
         .update({ staff_id: matched.id })
         .eq('id', user.id)
+      resolvedStaffId = matched.id
+    } else if (matched) {
       resolvedStaffId = matched.id
     }
   }

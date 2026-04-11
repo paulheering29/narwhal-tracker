@@ -2,8 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, CalendarDays, AlertTriangle, ClipboardCheck, ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  Users,
+  CalendarDays,
+  AlertTriangle,
+  ClipboardCheck,
+  BookOpen,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
 
 export type DetailItem = {
   id: string
@@ -12,55 +20,135 @@ export type DetailItem = {
   href: string
 }
 
+export type CardColor = 'rose' | 'emerald' | 'violet' | 'blue' | 'amber' | 'teal'
+
 export type DashboardCardData = {
   title: string
   value: number
   description: string
-  icon: 'users' | 'alert' | 'book' | 'clipboard'
-  iconClass: string
-  bgClass: string
+  icon: 'users' | 'alert' | 'book' | 'clipboard' | 'calendar' | 'shield'
+  color: CardColor
   items: DetailItem[]
+  /** When true, the card's detail list is shown without a toggle */
+  alwaysExpanded?: boolean
 }
 
 const ICON_MAP = {
   users:     Users,
   alert:     AlertTriangle,
-  book:      CalendarDays,
+  book:      BookOpen,
   clipboard: ClipboardCheck,
+  calendar:  CalendarDays,
+  shield:    ShieldCheck,
+}
+
+// Full colour palette per card — kept as literal Tailwind classes so the
+// JIT compiler picks them up.
+const COLOR_STYLES: Record<CardColor, {
+  cardBorder: string
+  accentBar:  string
+  iconBg:     string
+  iconFg:     string
+  number:     string
+  linkHover:  string
+}> = {
+  rose: {
+    cardBorder: 'border-rose-200',
+    accentBar:  'bg-gradient-to-r from-rose-400 to-rose-600',
+    iconBg:     'bg-rose-100',
+    iconFg:     'text-rose-600',
+    number:     'text-rose-600',
+    linkHover:  'hover:text-rose-700',
+  },
+  emerald: {
+    cardBorder: 'border-emerald-200',
+    accentBar:  'bg-gradient-to-r from-emerald-400 to-emerald-600',
+    iconBg:     'bg-emerald-100',
+    iconFg:     'text-emerald-600',
+    number:     'text-emerald-600',
+    linkHover:  'hover:text-emerald-700',
+  },
+  violet: {
+    cardBorder: 'border-violet-200',
+    accentBar:  'bg-gradient-to-r from-violet-400 to-violet-600',
+    iconBg:     'bg-violet-100',
+    iconFg:     'text-violet-600',
+    number:     'text-violet-600',
+    linkHover:  'hover:text-violet-700',
+  },
+  blue: {
+    cardBorder: 'border-blue-200',
+    accentBar:  'bg-gradient-to-r from-blue-400 to-blue-600',
+    iconBg:     'bg-blue-100',
+    iconFg:     'text-blue-600',
+    number:     'text-blue-600',
+    linkHover:  'hover:text-blue-700',
+  },
+  amber: {
+    cardBorder: 'border-amber-200',
+    accentBar:  'bg-gradient-to-r from-amber-400 to-amber-600',
+    iconBg:     'bg-amber-100',
+    iconFg:     'text-amber-600',
+    number:     'text-amber-600',
+    linkHover:  'hover:text-amber-700',
+  },
+  teal: {
+    cardBorder: 'border-teal-200',
+    accentBar:  'bg-gradient-to-r from-teal-400 to-teal-600',
+    iconBg:     'bg-teal-100',
+    iconFg:     'text-teal-600',
+    number:     'text-teal-600',
+    linkHover:  'hover:text-teal-700',
+  },
 }
 
 function DashboardCard({ card }: { card: DashboardCardData }) {
   const [expanded, setExpanded] = useState(false)
   const router = useRouter()
   const Icon = ICON_MAP[card.icon]
+  const c = COLOR_STYLES[card.color]
+
+  const showList = card.alwaysExpanded || expanded
 
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600">{card.title}</CardTitle>
-        <div className={`rounded-lg p-2 ${card.bgClass}`}>
-          <Icon className={`h-5 w-5 ${card.iconClass}`} />
+    <div className={`rounded-xl border-2 ${c.cardBorder} bg-white shadow-sm overflow-hidden flex flex-col`}>
+      {/* Colourful top accent bar */}
+      <div className={`h-1.5 ${c.accentBar}`} />
+
+      <div className="p-5 flex-1 flex flex-col">
+        {/* Title + icon */}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+            {card.title}
+          </h3>
+          <div className={`rounded-lg p-2.5 ${c.iconBg}`}>
+            <Icon className={`h-6 w-6 ${c.iconFg}`} />
+          </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-6xl font-bold text-gray-900">{card.value}</p>
-        <p className="mt-1 text-xs text-gray-500">{card.description}</p>
 
-        {/* Expand toggle */}
-        <button
-          onClick={() => setExpanded(e => !e)}
-          className="mt-3 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          {expanded ? (
-            <><ChevronUp className="h-3.5 w-3.5" /> Hide list</>
-          ) : (
-            <><ChevronDown className="h-3.5 w-3.5" /> Show list</>
-          )}
-        </button>
+        {/* Big number */}
+        <p className={`text-7xl font-extrabold leading-none tabular-nums ${c.number}`}>
+          {card.value}
+        </p>
+        <p className="mt-2 text-xs text-gray-500">{card.description}</p>
 
-        {/* Expanded list */}
-        {expanded && (
-          <ul className="mt-2 divide-y divide-gray-100 rounded-lg border border-gray-100 overflow-hidden">
+        {/* Expand toggle — hidden when alwaysExpanded */}
+        {!card.alwaysExpanded && (
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="mt-4 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 transition-colors self-start"
+          >
+            {expanded ? (
+              <><ChevronUp className="h-3.5 w-3.5" /> Hide list</>
+            ) : (
+              <><ChevronDown className="h-3.5 w-3.5" /> Show list</>
+            )}
+          </button>
+        )}
+
+        {/* Detail list */}
+        {showList && (
+          <ul className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-100 overflow-hidden">
             {card.items.length === 0 ? (
               <li className="px-3 py-2 text-xs text-gray-400 italic">Nothing to show</li>
             ) : (
@@ -70,7 +158,9 @@ function DashboardCard({ card }: { card: DashboardCardData }) {
                   onClick={() => router.push(item.href)}
                   className="flex flex-col px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 transition-colors"
                 >
-                  <span className="font-medium text-blue-600 hover:underline">{item.label}</span>
+                  <span className={`font-medium text-gray-800 ${c.linkHover}`}>
+                    {item.label}
+                  </span>
                   {item.sublabel && (
                     <span className="text-xs text-gray-400">{item.sublabel}</span>
                   )}
@@ -84,14 +174,14 @@ function DashboardCard({ card }: { card: DashboardCardData }) {
             )}
           </ul>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
 export function DashboardCards({ cards }: { cards: DashboardCardData[] }) {
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map(card => (
         <DashboardCard key={card.title} card={card} />
       ))}

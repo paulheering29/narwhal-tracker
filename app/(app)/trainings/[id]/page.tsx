@@ -275,16 +275,14 @@ export default function TrainingDetailPage() {
       ])
       setTopicList((topicsRes as { data: TopicOption[] | null }).data ?? [])
 
-      // Fetch company's enabled certificate templates
+      // Fetch company's enabled certificate templates via API (bypasses RLS)
       try {
-        const companyId = await getCompanyId()
-        const { data: company } = await supabase
-          .from('companies')
-          .select('enabled_cert_templates')
-          .eq('id', companyId)
-          .single()
-        if (company?.enabled_cert_templates) {
-          setEnabledCertTemplates(company.enabled_cert_templates as string[])
+        const res = await fetch('/api/company/cert-templates')
+        if (res.ok) {
+          const json = await res.json()
+          if (json.enabled_cert_templates && Array.isArray(json.enabled_cert_templates)) {
+            setEnabledCertTemplates(json.enabled_cert_templates)
+          }
         }
       } catch (err) {
         console.error('Failed to fetch company templates:', err)

@@ -369,6 +369,16 @@ export function StaffPageClient({
   const [inviteOpen, setInviteOpen]   = useState(false)
   const [editOpen, setEditOpen]       = useState(false)
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null)
+
+  // ── Basics edit state ────────────────────────────────────────────────────────
+  const [basicsEditOpen, setBasicsEditOpen] = useState(false)
+  const [editingBasicsStaff, setEditingBasicsStaff] = useState<StaffMember | null>(null)
+  const [basicsForm, setBasicsForm] = useState({
+    first_name: '', last_name: '', display_first_name: '', display_last_name: '',
+    email: '', credentials: '', certification_number: '',
+  })
+  const [basicsSaving, setBasicsSaving] = useState(false)
+  const [basicsError, setBasicsError] = useState<string | null>(null)
   const [inviteForm, setInviteForm]   = useState({
     email: '', password: '', first_name: '', last_name: '',
     tier: 'staff' as 'rbt' | 'staff', roles: [] as string[],
@@ -435,6 +445,55 @@ export function StaffPageClient({
     setEditCertNumber(s.certification_number ?? '')
     setEditCredentials(s.credentials ?? '')
     setUserError(null); setEditOpen(true)
+  }
+
+  function openEditBasics(s: StaffMember) {
+    setEditingBasicsStaff(s)
+    setBasicsForm({
+      first_name: s.first_name,
+      last_name: s.last_name,
+      display_first_name: s.display_first_name ?? '',
+      display_last_name: s.display_last_name ?? '',
+      email: s.email ?? '',
+      credentials: s.credentials ?? '',
+      certification_number: s.certification_number ?? '',
+    })
+    setBasicsError(null)
+    setBasicsEditOpen(true)
+  }
+
+  async function handleEditBasics() {
+    if (!editingBasicsStaff) return
+    if (!basicsForm.first_name.trim() || !basicsForm.last_name.trim()) {
+      setBasicsError('First name and last name are required.')
+      return
+    }
+    setBasicsSaving(true); setBasicsError(null)
+    const { error } = await supabase.from('staff')
+      .update({
+        first_name: basicsForm.first_name,
+        last_name: basicsForm.last_name,
+        display_first_name: basicsForm.display_first_name || null,
+        display_last_name: basicsForm.display_last_name || null,
+        email: basicsForm.email || null,
+        credentials: basicsForm.credentials || null,
+        certification_number: basicsForm.certification_number || null,
+      })
+      .eq('id', editingBasicsStaff.id)
+    if (error) { setBasicsError(error.message); setBasicsSaving(false); return }
+    setStaff(prev => prev.map(s =>
+      s.id === editingBasicsStaff.id ? {
+        ...s,
+        first_name: basicsForm.first_name,
+        last_name: basicsForm.last_name,
+        display_first_name: basicsForm.display_first_name || null,
+        display_last_name: basicsForm.display_last_name || null,
+        email: basicsForm.email || null,
+        credentials: basicsForm.credentials || null,
+        certification_number: basicsForm.certification_number || null,
+      } : s
+    ))
+    setBasicsSaving(false); setBasicsEditOpen(false)
   }
 
   // ── Filtered / sorted RBT rows ────────────────────────────────────────────────
@@ -659,9 +718,16 @@ export function StaffPageClient({
                       <td className="text-center py-3">
                         <span className="text-xs text-gray-400">{s.active ? 'active' : 'inactive'}</span>
                       </td>
-                      <td className="text-center py-3">
+                      <td className="text-center py-3 space-x-1">
                         <button
-                          className="rounded p-1 hover:bg-gray-100 transition-colors"
+                          className="rounded p-1 hover:bg-gray-100 transition-colors inline"
+                          onClick={e => { e.stopPropagation(); openEditBasics(s) }}
+                          title="Edit basics"
+                        >
+                          <Pencil className="h-4 w-4 text-gray-400" />
+                        </button>
+                        <button
+                          className="rounded p-1 hover:bg-gray-100 transition-colors inline"
                           onClick={e => { e.stopPropagation(); router.push(`/staff/${s.id}`) }}
                         >
                           <ChevronRight className="h-4 w-4 text-gray-400" />
@@ -894,9 +960,12 @@ export function StaffPageClient({
                             ? <UserX className="h-4 w-4 text-red-500" />
                             : <UserCheck className="h-4 w-4 text-emerald-500" />}
                         </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openEditBasics(s)} title="Edit basics">
+                          <Pencil className="h-4 w-4 text-blue-600" />
+                        </Button>
                         {s.auth_id && (
                           <Button size="sm" variant="ghost" onClick={() => openEditPermissions(s)} title="Edit permissions">
-                            <Pencil className="h-4 w-4" />
+                            <ShieldCheck className="h-4 w-4 text-violet-600" />
                           </Button>
                         )}
                       </TableCell>
@@ -906,6 +975,71 @@ export function StaffPageClient({
               </TableBody>
             </Table>
           </div>
+
+          {/* Edit Basics sheet */}
+          <Sheet open={basicsEditOpen} onOpenChange={setBasicsEditOpen}>
+            <SheetContent>
+              <SheetHeader><SheetTitle>Edit Basics</SheetTitle></SheetHeader>
+              <div className="space-y-5 px-6 py-5">
+                <p className="text-sm text-gray-600">
+                  Editing <span className="font-medium">{editingBasicsStaff ? getDisplayName(editingBasicsStaff) : ''}</span>
+                </p>
+
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Legal Name</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="basics_first">First Name *</Label>
+                      <Input id="basics_first" value={basicsForm.first_name} onChange={e => setBasicsForm(f => ({ ...f, first_name: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="basics_last">Last Name *</Label>
+                      <Input id="basics_last" value={basicsForm.last_name} onChange={e => setBasicsForm(f => ({ ...f, last_name: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Preferred Name (Optional)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="basics_pref_first">First Name</Label>
+                      <Input id="basics_pref_first" value={basicsForm.display_first_name} onChange={e => setBasicsForm(f => ({ ...f, display_first_name: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="basics_pref_last">Last Name</Label>
+                      <Input id="basics_pref_last" value={basicsForm.display_last_name} onChange={e => setBasicsForm(f => ({ ...f, display_last_name: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="basics_email">Email</Label>
+                  <Input id="basics_email" type="email" value={basicsForm.email} onChange={e => setBasicsForm(f => ({ ...f, email: e.target.value }))} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="basics_credentials">Credentials</Label>
+                  <Input id="basics_credentials" value={basicsForm.credentials} onChange={e => setBasicsForm(f => ({ ...f, credentials: e.target.value }))} placeholder="e.g. M.A., BCBA, LABA" />
+                  <p className="text-xs text-gray-400">Letters that appear after the name (not a cert number).</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="basics_bacb">BACB Number</Label>
+                  <Input id="basics_bacb" value={basicsForm.certification_number} onChange={e => setBasicsForm(f => ({ ...f, certification_number: e.target.value }))} placeholder="e.g. 1-23-45678" />
+                  <p className="text-xs text-gray-400">Appears on certificates where this person is the trainer or the RBT.</p>
+                </div>
+
+                {basicsError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{basicsError}</p>}
+              </div>
+              <SheetFooter>
+                <Button variant="outline" onClick={() => setBasicsEditOpen(false)}>Cancel</Button>
+                <Button onClick={handleEditBasics} disabled={basicsSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                  {basicsSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Basics'}
+                </Button>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
 
           {/* Invite sheet */}
           <Sheet open={inviteOpen} onOpenChange={setInviteOpen}>

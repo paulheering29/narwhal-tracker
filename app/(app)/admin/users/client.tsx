@@ -229,8 +229,6 @@ export function AdminUsersClient({
   })
   const [editTier, setEditTier]         = useState<'rbt' | 'staff'>('rbt')
   const [editRoles, setEditRoles]       = useState<string[]>([])
-  const [editCertNumber, setEditCertNumber] = useState<string>('')
-  const [editCredentials, setEditCredentials] = useState<string>('')
   const [userSaving, setUserSaving]     = useState(false)
   const [userError, setUserError]       = useState<string | null>(null)
   const [successMsg, setSuccessMsg]     = useState<string | null>(null)
@@ -290,14 +288,12 @@ export function AdminUsersClient({
   async function handleEditPermissions() {
     if (!editingStaff) return
     setUserSaving(true); setUserError(null)
-    const certNum     = editCertNumber.trim() || null
-    const credentials = editCredentials.trim() || null
     const { error } = await supabase.from('staff')
-      .update({ tier: editTier, roles: editRoles, certification_number: certNum, credentials })
+      .update({ tier: editTier, roles: editRoles })
       .eq('id', editingStaff.id)
     if (error) { setUserError(error.message); setUserSaving(false); return }
     setStaff(prev => prev.map(s =>
-      s.id === editingStaff.id ? { ...s, tier: editTier, roles: editRoles, certification_number: certNum, credentials } : s
+      s.id === editingStaff.id ? { ...s, tier: editTier, roles: editRoles } : s
     ))
     setUserSaving(false); setEditOpen(false)
   }
@@ -306,8 +302,6 @@ export function AdminUsersClient({
     setEditingStaff(s)
     setEditTier(s.tier ?? (s.role === 'RBT' ? 'rbt' : 'staff'))
     setEditRoles(s.roles ?? [])
-    setEditCertNumber(s.certification_number ?? '')
-    setEditCredentials(s.credentials ?? '')
     setUserError(null)
     setEditOpen(true)
   }
@@ -572,26 +566,6 @@ export function AdminUsersClient({
                     </div>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label htmlFor="edit_credentials">Credentials</Label>
-                  <Input
-                    id="edit_credentials"
-                    value={editCredentials}
-                    onChange={e => setEditCredentials(e.target.value)}
-                    placeholder="e.g. M.A., BCBA, LABA"
-                  />
-                  <p className="text-xs text-gray-400">Letters that appear after the name (not a cert number).</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit_cert">RBT Number</Label>
-                  <Input
-                    id="edit_cert"
-                    value={editCertNumber}
-                    onChange={e => setEditCertNumber(e.target.value)}
-                    placeholder="e.g. 1-23-45678"
-                  />
-                  <p className="text-xs text-gray-400">Appears on certificates where this person is the trainer or the RBT.</p>
-                </div>
                 {userError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{userError}</p>}
               </div>
               <SheetFooter>

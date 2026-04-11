@@ -270,22 +270,22 @@ export function AdminUsersClient({
       setUserError('Email and password are required.'); return
     }
     setUserSaving(true); setUserError(null)
-    const companyId = await getCompanyId()
-    if (!companyId) { setUserError('Could not determine your company.'); setUserSaving(false); return }
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: inviteForm.email, password: inviteForm.password,
+    const res  = await fetch('/api/admin/create-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email:      inviteForm.email,
+        password:   inviteForm.password,
+        first_name: inviteForm.first_name || null,
+        last_name:  inviteForm.last_name  || null,
+        tier:       inviteForm.tier,
+        roles:      inviteForm.roles,
+      }),
     })
-    if (signUpError || !data.user) {
-      setUserError(signUpError?.message ?? 'Failed to create user.'); setUserSaving(false); return
-    }
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: data.user.id, company_id: companyId,
-      tier: inviteForm.tier, roles: inviteForm.roles,
-      first_name: inviteForm.first_name || null, last_name: inviteForm.last_name || null,
-    })
-    if (profileError) { setUserError(profileError.message); setUserSaving(false); return }
+    const json = await res.json()
+    if (!res.ok) { setUserError(json.error ?? 'Failed to create user.'); setUserSaving(false); return }
     setUserSaving(false); setInviteOpen(false)
-    setSuccessMsg(`User ${inviteForm.email} created successfully.`)
+    setSuccessMsg(`User ${inviteForm.email} created. A welcome email with their login details has been sent.`)
     setInviteForm({ email: '', password: '', first_name: '', last_name: '', tier: 'rbt', roles: [] })
     router.refresh()
   }

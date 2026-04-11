@@ -142,15 +142,15 @@ export async function POST(request: NextRequest) {
       if (sigRes.ok) {
         const sigBytes = new Uint8Array(await sigRes.arrayBuffer())
         const sigImage = await pdfDoc.embedPng(sigBytes)
-        const sigDateField = form.getTextField('Signature Date')
-        const widgets      = sigDateField.acroField.getWidgets()
+        const sigField = form.getField('Signature Field')
+        const widgets  = sigField.acroField.getWidgets()
         if (widgets.length > 0) {
-          const fieldRect = widgets[0].getRectangle()
-          const page      = pdfDoc.getPages()[pdfDoc.getPageCount() - 1]
-          const maxWidth  = 160, maxHeight = 55
-          const dims      = sigImage.scaleToFit(maxWidth, maxHeight)
+          const rect = widgets[0].getRectangle()
+          const page = pdfDoc.getPages()[pdfDoc.getPageCount() - 1]
+          const dims = sigImage.scaleToFit(rect.width - 8, rect.height - 4)
           page.drawImage(sigImage, {
-            x: fieldRect.x, y: fieldRect.y + fieldRect.height + 4,
+            x: rect.x + (rect.width  - dims.width)  / 2,
+            y: rect.y + (rect.height - dims.height) / 2,
             width: dims.width, height: dims.height,
           })
         }

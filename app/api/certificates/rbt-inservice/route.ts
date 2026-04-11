@@ -146,28 +146,24 @@ export async function GET(request: NextRequest) {
     try {
       const sigRes = await fetch(trainerSignatureUrl)
       if (sigRes.ok) {
-        const sigArrayBuffer = await sigRes.arrayBuffer()
-        const sigBytes       = new Uint8Array(sigArrayBuffer)
-        const sigImage       = await pdfDoc.embedPng(sigBytes)
+        const sigBytes = new Uint8Array(await sigRes.arrayBuffer())
+        const sigImage = await pdfDoc.embedPng(sigBytes)
 
-        // Find where the Signature Date field sits so we can position above it
-        const sigDateField = form.getTextField('Signature Date')
-        const widgets      = sigDateField.acroField.getWidgets()
+        // Draw on top of the "Signature Field" widget (the actual signature line)
+        const sigField = form.getField('Signature Field')
+        const widgets  = sigField.acroField.getWidgets()
 
         if (widgets.length > 0) {
-          const fieldRect = widgets[0].getRectangle()
-          const pages     = pdfDoc.getPages()
-          // Signature field is on the last page of the BACB form
-          const page      = pages[pages.length - 1]
+          const rect  = widgets[0].getRectangle()
+          const pages = pdfDoc.getPages()
+          const page  = pages[pages.length - 1]
 
-          // Scale the image to fit neatly above the date field
-          const maxWidth  = 160
-          const maxHeight = 55
-          const dims      = sigImage.scaleToFit(maxWidth, maxHeight)
+          // Fit inside the field rectangle with a little padding
+          const dims = sigImage.scaleToFit(rect.width - 8, rect.height - 4)
 
           page.drawImage(sigImage, {
-            x:      fieldRect.x,
-            y:      fieldRect.y + fieldRect.height + 4,
+            x:      rect.x + (rect.width  - dims.width)  / 2,
+            y:      rect.y + (rect.height - dims.height) / 2,
             width:  dims.width,
             height: dims.height,
           })

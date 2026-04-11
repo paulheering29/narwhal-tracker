@@ -49,6 +49,7 @@ type StaffMember = {
   tier: 'rbt' | 'staff' | null
   roles: string[] | null
   certification_number: string | null
+  credentials: string | null
 }
 
 
@@ -163,6 +164,7 @@ export function AdminUsersClient({
   const [editTier, setEditTier]         = useState<'rbt' | 'staff'>('rbt')
   const [editRoles, setEditRoles]       = useState<string[]>([])
   const [editCertNumber, setEditCertNumber] = useState<string>('')
+  const [editCredentials, setEditCredentials] = useState<string>('')
   const [userSaving, setUserSaving]     = useState(false)
   const [userError, setUserError]       = useState<string | null>(null)
   const [successMsg, setSuccessMsg]     = useState<string | null>(null)
@@ -172,7 +174,7 @@ export function AdminUsersClient({
   async function reloadStaff() {
     const { data } = await supabase
       .from('staff')
-      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number')
+      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number, credentials')
       .order('last_name')
     setStaff(data ?? [])
   }
@@ -289,13 +291,14 @@ export function AdminUsersClient({
   async function handleEditPermissions() {
     if (!editingStaff) return
     setUserSaving(true); setUserError(null)
-    const certNum = editCertNumber.trim() || null
+    const certNum     = editCertNumber.trim() || null
+    const credentials = editCredentials.trim() || null
     const { error } = await supabase.from('staff')
-      .update({ tier: editTier, roles: editRoles, certification_number: certNum })
+      .update({ tier: editTier, roles: editRoles, certification_number: certNum, credentials })
       .eq('id', editingStaff.id)
     if (error) { setUserError(error.message); setUserSaving(false); return }
     setStaff(prev => prev.map(s =>
-      s.id === editingStaff.id ? { ...s, tier: editTier, roles: editRoles, certification_number: certNum } : s
+      s.id === editingStaff.id ? { ...s, tier: editTier, roles: editRoles, certification_number: certNum, credentials } : s
     ))
     setUserSaving(false); setEditOpen(false)
   }
@@ -305,6 +308,7 @@ export function AdminUsersClient({
     setEditTier(s.tier ?? (s.role === 'RBT' ? 'rbt' : 'staff'))
     setEditRoles(s.roles ?? [])
     setEditCertNumber(s.certification_number ?? '')
+    setEditCredentials(s.credentials ?? '')
     setUserError(null)
     setEditOpen(true)
   }
@@ -774,6 +778,16 @@ export function AdminUsersClient({
                     </div>
                   </div>
                 )}
+                <div className="space-y-2">
+                  <Label htmlFor="edit_credentials">Credentials</Label>
+                  <Input
+                    id="edit_credentials"
+                    value={editCredentials}
+                    onChange={e => setEditCredentials(e.target.value)}
+                    placeholder="e.g. M.A., BCBA, LABA"
+                  />
+                  <p className="text-xs text-gray-400">Letters that appear after the name (not a cert number).</p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit_cert">BACB Certification Number</Label>
                   <Input

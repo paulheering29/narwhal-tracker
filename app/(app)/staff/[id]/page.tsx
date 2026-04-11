@@ -59,6 +59,7 @@ type StaffMember = {
   active: boolean
   certification_number: string | null
   original_certification_date: string | null
+  credentials: string | null
 }
 
 type Cycle = {
@@ -136,7 +137,7 @@ export default function StaffDetailPage() {
 
   // Edit staff dialog
   const [editStaffOpen, setEditStaffOpen] = useState(false)
-  const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', display_first_name: '', display_last_name: '', email: '', role: '', ehr_id: '', certification_number: '', original_certification_date: '' })
+  const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', display_first_name: '', display_last_name: '', email: '', role: '', ehr_id: '', certification_number: '', original_certification_date: '', credentials: '' })
   const [savingStaff, setSavingStaff] = useState(false)
   const [staffError, setStaffError] = useState<string | null>(null)
 
@@ -210,6 +211,7 @@ export default function StaffDetailPage() {
       ehr_id: staff.ehr_id ?? '',
       certification_number: staff.certification_number ?? '',
       original_certification_date: staff.original_certification_date ?? '',
+      credentials: staff.credentials ?? '',
     })
     setStaffError(null)
     setEditStaffOpen(true)
@@ -231,6 +233,7 @@ export default function StaffDetailPage() {
       ehr_id: staffForm.ehr_id || null,
       certification_number: staffForm.certification_number.trim() || null,
       original_certification_date: staffForm.original_certification_date || null,
+      credentials: staffForm.credentials.trim() || null,
     }).eq('id', staffId)
     if (error) { setStaffError(error.message); setSavingStaff(false); return }
     setSavingStaff(false)
@@ -417,7 +420,12 @@ export default function StaffDetailPage() {
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Role</dt>
               <dd className="mt-1 text-sm text-gray-900">{staff.role ?? '—'}</dd>
             </div>
-            {/* Row 3: Cert fields */}
+            {/* Row 3: Credentials (wide) */}
+            <div className="col-span-4">
+              <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Credentials</dt>
+              <dd className="mt-1 text-sm text-gray-900">{staff.credentials ?? <span className="text-gray-400 italic">—</span>}</dd>
+            </div>
+            {/* Row 4: Cert fields */}
             <div className="col-span-2">
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">BACB Cert #</dt>
               <dd className="mt-1 text-sm font-mono text-gray-900">{staff.certification_number ?? '—'}</dd>
@@ -599,6 +607,15 @@ export default function StaffDetailPage() {
                   <SelectItem value="Admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Credentials</Label>
+              <Input
+                placeholder="e.g. M.A., BCBA, LABA"
+                value={staffForm.credentials}
+                onChange={e => setStaffForm(f => ({ ...f, credentials: e.target.value }))}
+              />
+              <p className="text-xs text-gray-400">Letters after the name (not a cert number). Shown on certificates next to the trainer&apos;s name.</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

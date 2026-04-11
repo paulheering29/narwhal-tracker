@@ -46,14 +46,14 @@ export async function GET(request: NextRequest) {
       company:company_id ( name ),
       staff:staff_id (
         id, first_name, last_name, display_first_name, display_last_name,
-        certification_number
+        certification_number, credentials
       ),
       courses:course_id (
         id, name, date, modality, units, validity_months,
         trainer_staff_id, trainer_name, trainer_cert_number,
         trainer_staff:trainer_staff_id (
           id, first_name, last_name, display_first_name, display_last_name,
-          certification_number, signature_url
+          certification_number, signature_url, credentials
         )
       )
     `)
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
   const staff = record.staff as unknown as {
     id: string; first_name: string; last_name: string
     display_first_name: string | null; display_last_name: string | null
-    certification_number: string | null
+    certification_number: string | null; credentials: string | null
   }
   const course = record.courses as unknown as {
     id: string; name: string; date: string | null; modality: string | null; units: number | null
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     trainer_staff: {
       first_name: string; last_name: string
       display_first_name: string | null; display_last_name: string | null
-      certification_number: string | null; signature_url: string | null
+      certification_number: string | null; signature_url: string | null; credentials: string | null
     } | null
   }
 
@@ -96,14 +96,18 @@ export async function GET(request: NextRequest) {
     const ts = course.trainer_staff
     const first = ts.display_first_name?.trim() || ts.first_name
     const last  = ts.display_last_name?.trim()  || ts.last_name
-    trainerName         = `${first} ${last}`
+    const creds = ts.credentials?.trim()
+    trainerName         = creds ? `${first} ${last}, ${creds}` : `${first} ${last}`
     trainerCertNumber   = ts.certification_number ?? ''
     trainerSignatureUrl = ts.signature_url ?? null
   }
 
   // ── Build display names ─────────────────────────────────────────────────────
-  // Legal name for official certification documents
-  const staffName = `${staff.first_name} ${staff.last_name}`
+  // Legal name for official certification documents (+ credentials if present)
+  const staffCreds = staff.credentials?.trim()
+  const staffName  = staffCreds
+    ? `${staff.first_name} ${staff.last_name}, ${staffCreds}`
+    : `${staff.first_name} ${staff.last_name}`
 
   // ── Format date ─────────────────────────────────────────────────────────────
   const eventDate = course.date

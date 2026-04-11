@@ -119,7 +119,7 @@ const emptyStaffForm = {
 
 type Topic = { id: string; name: string; created_at: string }
 
-type Company = { id: string; name: string; logo_url?: string | null; org_contact_staff_id?: string | null }
+type Company = { id: string; name: string; logo_url?: string | null; org_contact_staff_id?: string | null; preferred_cert_template?: string | null }
 
 export function AdminUsersClient({
   currentAuthId,
@@ -165,6 +165,10 @@ export function AdminUsersClient({
   const [orgContactId, setOrgContactId]       = useState<string>(initialCompany.org_contact_staff_id ?? '' as string)
   const [orgContactSaving, setOrgContactSaving] = useState(false)
   const [orgContactStatus, setOrgContactStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+
+  const [certTemplate, setCertTemplate]           = useState<string>(initialCompany.preferred_cert_template ?? 'bacb')
+  const [certTemplateSaving, setCertTemplateSaving] = useState(false)
+  const [certTemplateStatus, setCertTemplateStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 
   async function resizeLogo(file: File, maxPx = 800, quality = 0.85): Promise<Blob> {
     return new Promise((resolve, reject) => {
@@ -238,6 +242,19 @@ export function AdminUsersClient({
     if (!res.ok) { setCompanyStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
     setCompany(c => ({ ...c, name: trimmed }))
     setCompanyStatus({ type: 'success', msg: 'Company name updated.' })
+  }
+
+  async function handleSaveCertTemplate() {
+    setCertTemplateSaving(true); setCertTemplateStatus(null)
+    const res = await fetch('/api/company/update-cert-template', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preferred_cert_template: certTemplate }),
+    })
+    const json = await res.json()
+    setCertTemplateSaving(false)
+    if (!res.ok) { setCertTemplateStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
+    setCertTemplateStatus({ type: 'success', msg: 'Certificate template saved.' })
   }
 
   async function handleSaveOrgContact() {
@@ -1125,6 +1142,60 @@ export function AdminUsersClient({
                 {logoStatus.msg}
               </p>
             )}
+          </div>
+
+          {/* Certificate Template */}
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Certificate Template</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Choose the style used when generating RBT In-Service certificates.</p>
+            </div>
+            <div className="space-y-3">
+              {[
+                { value: 'bacb',   label: 'Official BACB Form',     desc: 'The original BACB fillable PDF — required if your company submits directly to the BACB.' },
+                { value: 'formal', label: 'Formal (Diploma Style)', desc: 'Cream background, navy & gold borders, serif fonts — looks like a framed diploma.' },
+                { value: 'fun',    label: 'Fun',                    desc: 'Bright teal & coral, colourful badges, celebratory feel — great for team recognition.' },
+                { value: 'basic',  label: 'Basic',                  desc: 'Clean white with a navy top bar and a simple grid layout — professional and minimal.' },
+              ].map(({ value, label, desc }) => (
+                <label
+                  key={value}
+                  className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                    certTemplate === value ? 'border-[#0A253D] bg-[#0A253D]/5' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="cert-template"
+                    value={value}
+                    checked={certTemplate === value}
+                    onChange={() => { setCertTemplate(value); setCertTemplateStatus(null) }}
+                    className="mt-0.5 accent-[#0A253D]"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{label}</p>
+                    <p className="text-xs text-gray-500">{desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {certTemplateStatus && (
+              <p className={`text-sm rounded px-3 py-2 ${certTemplateStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                {certTemplateStatus.msg}
+              </p>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSaveCertTemplate}
+                disabled={certTemplateSaving}
+                className="bg-[#0A253D] hover:bg-[#0d2f4f]"
+              >
+                {certTemplateSaving
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
+                  : 'Save Template'}
+              </Button>
+            </div>
           </div>
 
           {/* In-Service Organization Contact */}

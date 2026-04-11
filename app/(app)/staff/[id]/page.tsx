@@ -84,6 +84,8 @@ type CycleDocument = {
   file_size: number | null
   mime_type: string | null
   created_at: string
+  /** Signed URL fetched client-side, added for <a href> rendering. Not stored in DB. */
+  signed_url?: string | null
 }
 
 type AllTrainingRecord = {
@@ -314,7 +316,21 @@ export default function StaffDetailPage() {
       .select('id, cycle_id, name, file_path, file_size, mime_type, created_at')
       .eq('cycle_id', cycleId)
       .order('created_at', { ascending: false })
-    setCycleDocuments(prev => ({ ...prev, [cycleId]: (data ?? []) as CycleDocument[] }))
+    const docs = (data ?? []) as CycleDocument[]
+
+    // Generate signed URLs up-front so clicking "View" is a direct <a> click
+    // (avoids Safari popup blocker on window.open after an async hop).
+    const paths = docs.map(d => d.file_path)
+    if (paths.length > 0) {
+      const { data: signed } = await supabase.storage
+        .from('cert-cycle-documents')
+        .createSignedUrls(paths, 3600)
+      if (signed) {
+        const byPath = new Map(signed.map(s => [s.path, s.signedUrl]))
+        for (const d of docs) d.signed_url = byPath.get(d.file_path) ?? null
+      }
+    }
+    setCycleDocuments(prev => ({ ...prev, [cycleId]: docs }))
   }
 
   async function handleUploadDoc(cycle: Cycle, file: File) {
@@ -363,22 +379,23 @@ export default function StaffDetailPage() {
         .single()
       if (insertError) throw insertError
 
+      // Pre-fetch a signed URL so the "View" anchor is click-ready
+      let signedUrl: string | null = null
+      const { data: signed } = await supabase.storage
+        .from('cert-cycle-documents')
+        .createSignedUrl(path, 3600)
+      if (signed?.signedUrl) signedUrl = signed.signedUrl
+
+      const newDoc: CycleDocument = { ...(inserted as CycleDocument), signed_url: signedUrl }
       setCycleDocuments(prev => ({
         ...prev,
-        [cycle.id]: [inserted as CycleDocument, ...(prev[cycle.id] ?? [])],
+        [cycle.id]: [newDoc, ...(prev[cycle.id] ?? [])],
       }))
     } catch (err: unknown) {
       setUploadError(prev => ({ ...prev, [cycle.id]: err instanceof Error ? err.message : 'Upload failed' }))
     } finally {
       setUploadingCycleId(null)
     }
-  }
-
-  async function handleViewDoc(doc: CycleDocument) {
-    const { data } = await supabase.storage
-      .from('cert-cycle-documents')
-      .createSignedUrl(doc.file_path, 3600)
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
 
   async function handleDeleteDoc(doc: CycleDocument) {
@@ -820,15 +837,22 @@ export default function StaffDetailPage() {
                                         {formatBytes(doc.file_size)} · {formatDate(doc.created_at.split('T')[0])}
                                       </p>
                                     </div>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 w-6 p-0 shrink-0"
-                                      title="View"
-                                      onClick={e => { e.stopPropagation(); handleViewDoc(doc) }}
-                                    >
-                                      <Eye className="h-3.5 w-3.5 text-gray-500" />
-                                    </Button>
+                                    {doc.signed_url ? (
+                                      <a
+                                        href={doc.signed_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="View"
+                                        className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 shrink-0"
+                                        onClick={e => e.stopPropagation()}
+                                      >
+                                        <Eye className="h-3.5 w-3.5 text-gray-500" />
+                                      </a>
+                                    ) : (
+                                      <span className="inline-flex h-6 w-6 items-center justify-center shrink-0">
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300" />
+                                      </span>
+                                    )}
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -1168,15 +1192,21 @@ export default function StaffDetailPage() {
                           <p className="text-xs font-medium text-gray-800 truncate">{doc.name}</p>
                           <p className="text-[10px] text-gray-400">{formatBytes(doc.file_size)}</p>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0 shrink-0"
-                          title="View"
-                          onClick={() => handleViewDoc(doc)}
-                        >
-                          <Eye className="h-3.5 w-3.5 text-gray-500" />
-                        </Button>
+                        {doc.signed_url ? (
+                          <a
+                            href={doc.signed_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View"
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 shrink-0"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-gray-500" />
+                          </a>
+                        ) : (
+                          <span className="inline-flex h-6 w-6 items-center justify-center shrink-0">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300" />
+                          </span>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"

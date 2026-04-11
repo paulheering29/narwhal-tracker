@@ -35,7 +35,13 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
+  Upload,
+  FileText,
+  Image as ImageIcon,
+  Trash2,
+  Eye,
 } from 'lucide-react'
+import { resizeImage } from '@/lib/resize-image'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,6 +74,16 @@ type TrainingRecord = {
   expiry_date: string | null
   notes: string | null
   courses: { name: string } | null
+}
+
+type CycleDocument = {
+  id: string
+  cycle_id: string
+  name: string
+  file_path: string
+  file_size: number | null
+  mime_type: string | null
+  created_at: string
 }
 
 type AllTrainingRecord = {
@@ -127,6 +143,13 @@ function dayBefore(dateStr: string) {
   return d.toISOString().split('T')[0]
 }
 
+function formatBytes(b: number | null) {
+  if (!b) return ''
+  if (b < 1024) return `${b} B`
+  if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`
+  return `${(b / 1048576).toFixed(1)} MB`
+}
+
 function detectOverlap(cycles: Cycle[], startDate: string, endDate: string, excludeId?: string): OverlapWarning | null {
   for (const cycle of cycles) {
     if (cycle.id === excludeId) continue
@@ -159,6 +182,12 @@ export default function StaffDetailPage() {
   const [expandedCycleId, setExpandedCycleId] = useState<string | null>(null)
   const [cycleRecords, setCycleRecords] = useState<Record<string, TrainingRecord[]>>({})
   const [loadingRecords, setLoadingRecords] = useState(false)
+
+  // Documents per cycle (loaded on expand)
+  const [cycleDocuments, setCycleDocuments] = useState<Record<string, CycleDocument[]>>({})
+  const [uploadingCycleId, setUploadingCycleId] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<Record<string, string>>({})
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
 
   // Edit staff dialog
   const [editStaffOpen, setEditStaffOpen] = useState(false)
@@ -276,12 +305,101 @@ export default function StaffDetailPage() {
     setLoadingRecords(false)
   }
 
+  async function loadCycleDocuments(cycleId: string) {
+    const { data } = await supabase
+      .from('certification_cycle_documents')
+      .select('id, cycle_id, name, file_path, file_size, mime_type, created_at')
+      .eq('cycle_id', cycleId)
+      .order('created_at', { ascending: false })
+    setCycleDocuments(prev => ({ ...prev, [cycleId]: (data ?? []) as CycleDocument[] }))
+  }
+
+  async function handleUploadDoc(cycle: Cycle, file: File) {
+    setUploadingCycleId(cycle.id)
+    setUploadError(prev => { const n = { ...prev }; delete n[cycle.id]; return n })
+    try {
+      const companyId = await getCompanyId()
+      if (!companyId) throw new Error('No company')
+
+      // Validate file type
+      const isImage = file.type.startsWith('image/')
+      const isPdf   = file.type === 'application/pdf'
+      if (!isImage && !isPdf) {
+        throw new Error('Only images (JPG/PNG/WebP) and PDF files are allowed.')
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('File must be under 10 MB.')
+      }
+
+      // Resize + compress if it's an image; PDFs pass through
+      const blob: Blob = isImage ? await resizeImage(file, 1600, 0.8) : file
+      const ext = isImage ? 'jpg' : 'pdf'
+      const fileName = `${crypto.randomUUID()}.${ext}`
+      const path = `${companyId}/${cycle.id}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('cert-cycle-documents')
+        .upload(path, blob, {
+          contentType: isImage ? 'image/jpeg' : 'application/pdf',
+          upsert: false,
+        })
+      if (uploadError) throw uploadError
+
+      // Insert metadata row
+      const { data: inserted, error: insertError } = await supabase
+        .from('certification_cycle_documents')
+        .insert({
+          company_id: companyId,
+          cycle_id:   cycle.id,
+          name:       file.name,
+          file_path:  path,
+          file_size:  blob.size,
+          mime_type:  isImage ? 'image/jpeg' : 'application/pdf',
+        })
+        .select('id, cycle_id, name, file_path, file_size, mime_type, created_at')
+        .single()
+      if (insertError) throw insertError
+
+      setCycleDocuments(prev => ({
+        ...prev,
+        [cycle.id]: [inserted as CycleDocument, ...(prev[cycle.id] ?? [])],
+      }))
+    } catch (err: unknown) {
+      setUploadError(prev => ({ ...prev, [cycle.id]: err instanceof Error ? err.message : 'Upload failed' }))
+    } finally {
+      setUploadingCycleId(null)
+    }
+  }
+
+  async function handleViewDoc(doc: CycleDocument) {
+    const { data } = await supabase.storage
+      .from('cert-cycle-documents')
+      .createSignedUrl(doc.file_path, 3600)
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
+
+  async function handleDeleteDoc(doc: CycleDocument) {
+    if (!confirm(`Delete "${doc.name}"? This cannot be undone.`)) return
+    setDeletingDocId(doc.id)
+    try {
+      await supabase.storage.from('cert-cycle-documents').remove([doc.file_path])
+      await supabase.from('certification_cycle_documents').delete().eq('id', doc.id)
+      setCycleDocuments(prev => ({
+        ...prev,
+        [doc.cycle_id]: (prev[doc.cycle_id] ?? []).filter(d => d.id !== doc.id),
+      }))
+    } finally {
+      setDeletingDocId(null)
+    }
+  }
+
   function toggleCycle(cycle: Cycle) {
     if (expandedCycleId === cycle.id) {
       setExpandedCycleId(null)
     } else {
       setExpandedCycleId(cycle.id)
       loadCycleRecords(cycle)
+      if (!cycleDocuments[cycle.id]) loadCycleDocuments(cycle.id)
     }
   }
 
@@ -607,6 +725,95 @@ export default function StaffDetailPage() {
                             ))}
                           </ul>
                         )}
+
+                        {/* ── Documents ──────────────────────────── */}
+                        <div className="mt-4 pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              Documentation
+                            </p>
+                            <label
+                              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${
+                                uploadingCycleId === cycle.id
+                                  ? 'bg-gray-100 text-gray-400 cursor-wait'
+                                  : 'bg-[#0A253D] text-white hover:bg-[#0d2f4f]'
+                              }`}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {uploadingCycleId === cycle.id ? (
+                                <><Loader2 className="h-3 w-3 animate-spin" /> Uploading…</>
+                              ) : (
+                                <><Upload className="h-3 w-3" /> Add file</>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,application/pdf"
+                                className="hidden"
+                                disabled={uploadingCycleId === cycle.id}
+                                onChange={e => {
+                                  const f = e.target.files?.[0]
+                                  if (f) handleUploadDoc(cycle, f)
+                                  e.target.value = ''
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          {uploadError[cycle.id] && (
+                            <p className="mb-2 text-xs text-red-600 bg-red-50 rounded px-2 py-1">
+                              {uploadError[cycle.id]}
+                            </p>
+                          )}
+
+                          {(cycleDocuments[cycle.id] ?? []).length === 0 ? (
+                            <p className="py-2 text-xs text-gray-400 text-center">
+                              No documents uploaded.
+                            </p>
+                          ) : (
+                            <ul className="space-y-1.5">
+                              {(cycleDocuments[cycle.id] ?? []).map(doc => {
+                                const isImg = doc.mime_type?.startsWith('image/')
+                                return (
+                                  <li
+                                    key={doc.id}
+                                    className="flex items-center gap-2 rounded-md bg-white border border-gray-100 px-2.5 py-1.5"
+                                  >
+                                    {isImg
+                                      ? <ImageIcon className="h-4 w-4 text-blue-500 shrink-0" />
+                                      : <FileText className="h-4 w-4 text-red-500 shrink-0" />}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium text-gray-800 truncate">{doc.name}</p>
+                                      <p className="text-[10px] text-gray-400">
+                                        {formatBytes(doc.file_size)} · {formatDate(doc.created_at.split('T')[0])}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0 shrink-0"
+                                      title="View"
+                                      onClick={e => { e.stopPropagation(); handleViewDoc(doc) }}
+                                    >
+                                      <Eye className="h-3.5 w-3.5 text-gray-500" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0 shrink-0"
+                                      title="Delete"
+                                      disabled={deletingDocId === doc.id}
+                                      onClick={e => { e.stopPropagation(); handleDeleteDoc(doc) }}
+                                    >
+                                      {deletingDocId === doc.id
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
+                                        : <Trash2 className="h-3.5 w-3.5 text-red-500" />}
+                                    </Button>
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          )}
+                        </div>
 
                         <div className="mt-2 flex justify-end">
                           <Button

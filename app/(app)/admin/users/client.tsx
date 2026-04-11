@@ -248,7 +248,6 @@ export function AdminUsersClient({
   const [staffSearch, setStaffSearch] = useState('')
   const csvInputRef             = useRef<HTMLInputElement>(null)
 
-  const [addOpen, setAddOpen]         = useState(false)
   const [addRbtOpen, setAddRbtOpen]   = useState(false)
   const [staffForm, setStaffForm]     = useState(emptyStaffForm)
   const [staffSaving, setStaffSaving] = useState(false)
@@ -287,12 +286,6 @@ export function AdminUsersClient({
     setStaff(data ?? [])
   }
 
-  function openAddStaff() {
-    setStaffForm({ ...emptyStaffForm })
-    setStaffError(null)
-    setAddOpen(true)
-  }
-
   function openAddRbt() {
     const form = { ...emptyStaffForm, role: 'RBT' }
     setStaffForm(form)
@@ -307,7 +300,7 @@ export function AdminUsersClient({
     }
     // Gate: if adding an RBT and already at limit, show upgrade dialog
     if (staffForm.role === 'RBT' && localRbtCount >= planLimits.maxRbts) {
-      setAddOpen(false)
+      setAddRbtOpen(false)
       setUpgradeOpen(true)
       return
     }
@@ -329,11 +322,7 @@ export function AdminUsersClient({
     if (insertErr) { setStaffError(insertErr.message); setStaffSaving(false); return }
     if (staffForm.role === 'RBT') setLocalRbtCount(c => c + 1)
     setStaffSaving(false)
-    if (staffForm.role === 'RBT') {
-      setAddRbtOpen(false)
-    } else {
-      setAddOpen(false)
-    }
+    setAddRbtOpen(false)
     setStaffForm(emptyStaffForm)
     router.push(`/staff/${newStaff.id}`)
   }
@@ -682,50 +671,6 @@ export function AdminUsersClient({
                       : `Import ${csvRows.filter(r => !r.error).length} Staff Member${csvRows.filter(r => !r.error).length !== 1 ? 's' : ''}`}
                   </Button>
                 )}
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
-
-          {/* Add Generic Staff Sheet */}
-          <Sheet open={addOpen} onOpenChange={setAddOpen}>
-            <SheetContent>
-              <SheetHeader><SheetTitle>Add Staff Member</SheetTitle></SheetHeader>
-              <div className="space-y-5 px-6 py-5">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal Name</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sf_first">First Name *</Label>
-                    <Input id="sf_first" value={staffForm.first_name} onChange={e => setStaffForm(f => ({ ...f, first_name: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sf_last">Last Name *</Label>
-                    <Input id="sf_last" value={staffForm.last_name} onChange={e => setStaffForm(f => ({ ...f, last_name: e.target.value }))} />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="sf_email">Email</Label>
-                  <Input id="sf_email" type="email" value={staffForm.email} onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Role</Label>
-                  <Select value={staffForm.role} onValueChange={v => setStaffForm(f => ({ ...f, role: v ?? '' }))}>
-                    <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Trainer">Trainer</SelectItem>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {staffError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{staffError}</p>}
-              </div>
-              <SheetFooter>
-                <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddStaff} disabled={staffSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
-                  {staffSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Add & Continue'}
-                </Button>
               </SheetFooter>
             </SheetContent>
           </Sheet>

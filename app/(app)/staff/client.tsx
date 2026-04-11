@@ -115,9 +115,19 @@ function getSortValue(s: StaffRow, key: SortKey): number | string {
 // ─── CSV helpers ──────────────────────────────────────────────────────────────
 
 type CsvRow = {
-  first_name: string; last_name: string; role: string
-  email: string; ehr_id: string
-  error: string | null; rowNum: number
+  first_name: string
+  last_name: string
+  preferred_first_name: string
+  preferred_last_name: string
+  email: string
+  ehr_id: string
+  credentials: string
+  rbt_number: string
+  original_certification_date: string | null
+  current_cycle_start_date: string | null
+  current_cycle_end_date:   string | null
+  error: string | null
+  rowNum: number
 }
 
 function parseCsvLine(line: string): string[] {
@@ -132,32 +142,122 @@ function parseCsvLine(line: string): string[] {
   return values
 }
 
+/**
+ * Normalize a date string to YYYY-MM-DD. Accepts:
+ *   YYYY-MM-DD  (pass through)
+ *   M/D/YYYY or MM/DD/YYYY
+ *   M-D-YYYY or MM-DD-YYYY
+ * Returns null if empty. Returns 'INVALID' sentinel if malformed.
+ */
+function normalizeDate(raw: string): string | null | 'INVALID' {
+  const s = raw.trim()
+  if (!s) return null
+  // Already ISO
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  // US style M/D/YYYY or M-D-YYYY
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/)
+  if (m) {
+    const mm = m[1].padStart(2, '0')
+    const dd = m[2].padStart(2, '0')
+    let yyyy = m[3]
+    if (yyyy.length === 2) yyyy = (parseInt(yyyy) < 50 ? '20' : '19') + yyyy
+    const out = `${yyyy}-${mm}-${dd}`
+    // Sanity check
+    if (isNaN(new Date(out + 'T00:00:00').getTime())) return 'INVALID'
+    return out
+  }
+  return 'INVALID'
+}
+
 function parseStaffCsv(text: string): CsvRow[] {
   const lines = text.replace(/\r/g, '').trim().split('\n')
   if (lines.length < 2) return []
   const headers = parseCsvLine(lines[0]).map(h =>
     h.toLowerCase().replace(/\s+/g, '_').replace(/['"]/g, '')
   )
+  // Accept a few aliases so users can paste headers from different sources
+  const aliasMap: Record<string, string[]> = {
+    first_name:                  ['first_name', 'firstname', 'first'],
+    last_name:                   ['last_name', 'lastname', 'last'],
+    preferred_first_name:        ['preferred_first_name', 'preferred_first', 'display_first_name', 'display_first', 'nickname'],
+    preferred_last_name:         ['preferred_last_name', 'preferred_last', 'display_last_name', 'display_last'],
+    email:                       ['email', 'email_address'],
+    ehr_id:                      ['ehr_id', 'ehrid', 'ehr'],
+    credentials:                 ['credentials', 'creds'],
+    rbt_number:                  ['rbt_number', 'rbt', 'certification_number', 'cert_number', 'rbt_#'],
+    original_certification_date: ['original_certification_date', 'original_cert_date', 'cert_date', 'certification_date'],
+    current_cycle_start_date:    ['current_cycle_start_date', 'cycle_start_date', 'cycle_start', 'start_date'],
+    current_cycle_end_date:      ['current_cycle_end_date', 'cycle_end_date', 'cycle_end', 'end_date'],
+  }
+  const headerIndex: Record<string, number> = {}
+  for (const [canonical, variants] of Object.entries(aliasMap)) {
+    for (const v of variants) {
+      const idx = headers.indexOf(v)
+      if (idx !== -1) { headerIndex[canonical] = idx; break }
+    }
+  }
+
   return lines.slice(1).map((line, i) => {
     if (!line.trim()) return null
     const values = parseCsvLine(line)
-    const get = (key: string) => values[headers.indexOf(key)]?.replace(/^"|"$/g, '') ?? ''
-    const first_name = get('first_name'); const last_name = get('last_name')
-    const role = get('role'); const email = get('email'); const ehr_id = get('ehr_id')
+    const get = (key: string) => {
+      const idx = headerIndex[key]
+      if (idx == null) return ''
+      return values[idx]?.replace(/^"|"$/g, '').trim() ?? ''
+    }
+
+    const first_name                  = get('first_name')
+    const last_name                   = get('last_name')
+    const preferred_first_name        = get('preferred_first_name')
+    const preferred_last_name         = get('preferred_last_name')
+    const email                       = get('email')
+    const ehr_id                      = get('ehr_id')
+    const credentials                 = get('credentials')
+    const rbt_number                  = get('rbt_number')
+
+    const origDateRaw  = get('original_certification_date')
+    const startDateRaw = get('current_cycle_start_date')
+    const endDateRaw   = get('current_cycle_end_date')
+
+    const original_certification_date = normalizeDate(origDateRaw)
+    const current_cycle_start_date    = normalizeDate(startDateRaw)
+    const current_cycle_end_date      = normalizeDate(endDateRaw)
+
     let error: string | null = null
     if (!first_name && !last_name) error = 'Missing first and last name'
     else if (!first_name) error = 'Missing first name'
     else if (!last_name)  error = 'Missing last name'
     else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) error = 'Invalid email'
-    return { first_name, last_name, role, email, ehr_id, error, rowNum: i + 2 }
+    else if (original_certification_date === 'INVALID') error = 'Invalid original cert date'
+    else if (current_cycle_start_date === 'INVALID') error = 'Invalid cycle start date'
+    else if (current_cycle_end_date === 'INVALID')   error = 'Invalid cycle end date'
+    else if (current_cycle_start_date && !current_cycle_end_date) error = 'Cycle end date required with start'
+    else if (current_cycle_end_date && !current_cycle_start_date) error = 'Cycle start date required with end'
+    else if (current_cycle_start_date && current_cycle_end_date && current_cycle_start_date >= current_cycle_end_date) error = 'Cycle end must be after start'
+
+    return {
+      first_name,
+      last_name,
+      preferred_first_name,
+      preferred_last_name,
+      email,
+      ehr_id,
+      credentials,
+      rbt_number,
+      original_certification_date: original_certification_date === 'INVALID' ? null : original_certification_date,
+      current_cycle_start_date:    current_cycle_start_date    === 'INVALID' ? null : current_cycle_start_date,
+      current_cycle_end_date:      current_cycle_end_date      === 'INVALID' ? null : current_cycle_end_date,
+      error,
+      rowNum: i + 2,
+    }
   }).filter(Boolean) as CsvRow[]
 }
 
 function downloadCsvTemplate() {
   const csv = [
-    'first_name,last_name,role,email,ehr_id',
-    'Jane,Doe,RBT,jane.doe@example.com,EHR001',
-    'John,Smith,Trainer,john.smith@example.com,EHR002',
+    'first_name,last_name,preferred_first_name,preferred_last_name,email,ehr_id,credentials,rbt_number,original_certification_date,current_cycle_start_date,current_cycle_end_date',
+    'Jane,Doe,Janie,,jane.doe@example.com,EHR001,"M.A., RBT",RBT12345,2023-08-15,2025-08-15,2027-08-14',
+    'John,Smith,,,john.smith@example.com,EHR002,"B.S., RBT",RBT67890,2024-02-01,2026-02-01,2028-01-31',
   ].join('\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
   const a = document.createElement('a')
@@ -347,13 +447,53 @@ export function StaffPageClient({
     setImporting(true)
     const companyId = await getCompanyId()
     if (!companyId) { setImporting(false); return }
+
     const inserts = valid.map(r => ({
-      company_id: companyId, first_name: r.first_name, last_name: r.last_name,
-      role: r.role || null, email: r.email || null, ehr_id: r.ehr_id || null,
+      company_id: companyId,
+      first_name: r.first_name,
+      last_name:  r.last_name,
+      display_first_name: r.preferred_first_name || null,
+      display_last_name:  r.preferred_last_name  || null,
+      email:  r.email  || null,
+      ehr_id: r.ehr_id || null,
+      role:   'RBT',
+      credentials: r.credentials || null,
+      certification_number:        r.rbt_number || null,
+      original_certification_date: r.original_certification_date,
     }))
-    const { error: insertErr } = await supabase.from('staff').insert(inserts)
+
+    const { data: insertedStaff, error: insertErr } = await supabase
+      .from('staff')
+      .insert(inserts)
+      .select('id, first_name, last_name')
+
+    if (insertErr || !insertedStaff) {
+      setImporting(false)
+      setImportResult({ imported: 0, errors: valid.length })
+      return
+    }
+
+    // Build cycle inserts for rows that provided both start & end dates.
+    // Match inserted rows back to csv rows by order (insert preserves order).
+    const cycleInserts = insertedStaff
+      .map((s, i) => {
+        const r = valid[i]
+        if (!r?.current_cycle_start_date || !r?.current_cycle_end_date) return null
+        return {
+          company_id: companyId,
+          staff_id:   s.id,
+          certification_type: 'RBT',
+          start_date: r.current_cycle_start_date,
+          end_date:   r.current_cycle_end_date,
+        }
+      })
+      .filter(Boolean) as Array<Record<string, unknown>>
+
+    if (cycleInserts.length > 0) {
+      await supabase.from('certification_cycles').insert(cycleInserts)
+    }
+
     setImporting(false)
-    if (insertErr) { setImportResult({ imported: 0, errors: valid.length }); return }
     setImportResult({ imported: valid.length, errors: csvRows.filter(r => r.error).length })
     setCsvRows([]); reloadStaff()
   }
@@ -743,8 +883,12 @@ export function StaffPageClient({
           {/* Import CSV Sheet */}
           <Sheet open={importOpen} onOpenChange={open => { setImportOpen(open); if (!open) { setCsvRows([]); setImportResult(null) } }}>
             <SheetContent>
-              <SheetHeader><SheetTitle>Import RBT Staff from CSV</SheetTitle></SheetHeader>
+              <SheetHeader><SheetTitle>Import RBTs from CSV</SheetTitle></SheetHeader>
               <div className="flex flex-col gap-4 flex-1 px-6 py-5 overflow-hidden">
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Imports only RBTs. Include cycle start &amp; end dates to create each RBT&rsquo;s current certification cycle in the same step.
+                  Dates accept <code className="px-1 bg-gray-100 rounded">YYYY-MM-DD</code> or <code className="px-1 bg-gray-100 rounded">MM/DD/YYYY</code>.
+                </p>
                 <div className="flex items-center gap-3">
                   <Button variant="outline" size="sm" onClick={downloadCsvTemplate}>
                     <Download className="mr-2 h-4 w-4" /> Download Template
@@ -774,31 +918,39 @@ export function StaffPageClient({
                   </div>
                 )}
                 {csvRows.length > 0 && !importResult && (
-                  <div className="flex-1 overflow-y-auto rounded-lg border min-h-0">
-                    <table className="w-full text-sm">
+                  <div className="flex-1 overflow-auto rounded-lg border min-h-0">
+                    <table className="w-max min-w-full text-sm">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
-                          {['#','First Name','Last Name','Role','Email','EHR ID','Status'].map(h => (
-                            <th key={h} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
+                          {['#','First','Last','Preferred','Email','EHR ID','Creds','RBT #','Orig Cert','Cycle Start','Cycle End','Status'].map(h => (
+                            <th key={h} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {csvRows.map(row => (
-                          <tr key={row.rowNum} className={row.error ? 'bg-red-50' : 'bg-white'}>
-                            <td className="px-3 py-2 text-gray-400">{row.rowNum}</td>
-                            <td className="px-3 py-2">{row.first_name || <span className="text-red-400 italic">—</span>}</td>
-                            <td className="px-3 py-2">{row.last_name  || <span className="text-red-400 italic">—</span>}</td>
-                            <td className="px-3 py-2 text-gray-500">{row.role   || '—'}</td>
-                            <td className="px-3 py-2 text-gray-500">{row.email  || '—'}</td>
-                            <td className="px-3 py-2 text-gray-500">{row.ehr_id || '—'}</td>
-                            <td className="px-3 py-2">
-                              {row.error
-                                ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><XCircle className="h-3.5 w-3.5" />{row.error}</span>
-                                : <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />OK</span>}
-                            </td>
-                          </tr>
-                        ))}
+                        {csvRows.map(row => {
+                          const pref = [row.preferred_first_name, row.preferred_last_name].filter(Boolean).join(' ')
+                          return (
+                            <tr key={row.rowNum} className={row.error ? 'bg-red-50' : 'bg-white'}>
+                              <td className="px-3 py-2 text-gray-400 whitespace-nowrap">{row.rowNum}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{row.first_name || <span className="text-red-400 italic">—</span>}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{row.last_name  || <span className="text-red-400 italic">—</span>}</td>
+                              <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{pref || '—'}</td>
+                              <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{row.email  || '—'}</td>
+                              <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{row.ehr_id || '—'}</td>
+                              <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{row.credentials || '—'}</td>
+                              <td className="px-3 py-2 text-gray-500 whitespace-nowrap tabular-nums">{row.rbt_number || '—'}</td>
+                              <td className="px-3 py-2 text-gray-500 whitespace-nowrap tabular-nums">{row.original_certification_date || '—'}</td>
+                              <td className="px-3 py-2 text-gray-500 whitespace-nowrap tabular-nums">{row.current_cycle_start_date || '—'}</td>
+                              <td className="px-3 py-2 text-gray-500 whitespace-nowrap tabular-nums">{row.current_cycle_end_date || '—'}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {row.error
+                                  ? <span className="inline-flex items-center gap-1 text-xs text-red-600"><XCircle className="h-3.5 w-3.5" />{row.error}</span>
+                                  : <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />OK</span>}
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>

@@ -33,6 +33,7 @@ type Profile = {
   roles: string[]
   first_name: string | null
   last_name: string | null
+  staff_id: string | null
 }
 
 // ─── Role badge colours ───────────────────────────────────────────────────────
@@ -167,9 +168,10 @@ export function AdminUsersClient({
     email: '', password: '', first_name: '', last_name: '',
     tier: 'rbt' as 'rbt' | 'staff', roles: [] as string[], staff_id: '',
   })
-  const [editTier, setEditTier]   = useState<'rbt' | 'staff'>('rbt')
-  const [editRoles, setEditRoles] = useState<string[]>([])
-  const [userSaving, setUserSaving] = useState(false)
+  const [editTier, setEditTier]       = useState<'rbt' | 'staff'>('rbt')
+  const [editRoles, setEditRoles]     = useState<string[]>([])
+  const [editStaffId, setEditStaffId] = useState<string>('')
+  const [userSaving, setUserSaving]   = useState(false)
   const [userError, setUserError]   = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
@@ -295,17 +297,18 @@ export function AdminUsersClient({
     if (!editingUser) return
     setUserSaving(true); setUserError(null)
     const { error } = await supabase.from('profiles')
-      .update({ tier: editTier, roles: editRoles })
+      .update({ tier: editTier, roles: editRoles, staff_id: editStaffId || null })
       .eq('id', editingUser.id)
     if (error) { setUserError(error.message); setUserSaving(false); return }
     setUsers(prev => prev.map(u =>
-      u.id === editingUser.id ? { ...u, tier: editTier, roles: editRoles } : u
+      u.id === editingUser.id ? { ...u, tier: editTier, roles: editRoles, staff_id: editStaffId || null } : u
     ))
     setUserSaving(false); setEditOpen(false)
   }
 
   function openEditPermissions(u: Profile) {
-    setEditingUser(u); setEditTier(u.tier); setEditRoles(u.roles); setUserError(null); setEditOpen(true)
+    setEditingUser(u); setEditTier(u.tier); setEditRoles(u.roles)
+    setEditStaffId(u.staff_id ?? ''); setUserError(null); setEditOpen(true)
   }
 
   // ── Topic actions ────────────────────────────────────────────────────────────
@@ -779,6 +782,22 @@ export function AdminUsersClient({
                     </div>
                   </div>
                 )}
+                <div className="space-y-2">
+                  <Label>Staff Record <span className="text-gray-400 font-normal">(for signature on certificates)</span></Label>
+                  <Select
+                    value={editStaffId}
+                    onValueChange={v => setEditStaffId(v === '__none__' ? '' : (v ?? ''))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Link to a staff record…" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— None —</SelectItem>
+                      {staff.filter(s => s.active).map(s => (
+                        <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-400">Select which staff record belongs to this user so their signature appears on certs.</p>
+                </div>
                 {userError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{userError}</p>}
               </div>
               <SheetFooter>

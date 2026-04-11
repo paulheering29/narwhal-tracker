@@ -109,7 +109,11 @@ function downloadCsvTemplate() {
 }
 
 
-const emptyStaffForm = { first_name: '', last_name: '', email: '', role: '', ehr_id: '' }
+const emptyStaffForm = {
+  first_name: '', last_name: '', email: '', role: '', ehr_id: '',
+  display_first_name: '', display_last_name: '', certification_number: '',
+  original_certification_date: '', credentials: ''
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -244,8 +248,9 @@ export function AdminUsersClient({
   const [staffSearch, setStaffSearch] = useState('')
   const csvInputRef             = useRef<HTMLInputElement>(null)
 
-  const [addOpen, setAddOpen]   = useState(false)
-  const [staffForm, setStaffForm] = useState(emptyStaffForm)
+  const [addOpen, setAddOpen]         = useState(false)
+  const [addRbtOpen, setAddRbtOpen]   = useState(false)
+  const [staffForm, setStaffForm]     = useState(emptyStaffForm)
   const [staffSaving, setStaffSaving] = useState(false)
   const [staffError, setStaffError]   = useState<string | null>(null)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
@@ -283,11 +288,16 @@ export function AdminUsersClient({
   }
 
   function openAddStaff() {
-    // Check RBT limit if adding an RBT
-    // (We check before opening; also checked on save for the role=RBT case)
-    setStaffForm(emptyStaffForm)
+    setStaffForm({ ...emptyStaffForm })
     setStaffError(null)
     setAddOpen(true)
+  }
+
+  function openAddRbt() {
+    const form = { ...emptyStaffForm, role: 'RBT' }
+    setStaffForm(form)
+    setStaffError(null)
+    setAddRbtOpen(true)
   }
 
   async function handleAddStaff() {
@@ -307,13 +317,24 @@ export function AdminUsersClient({
     const { data: newStaff, error: insertErr } = await supabase.from('staff').insert({
       company_id: companyId,
       first_name: staffForm.first_name, last_name: staffForm.last_name,
+      display_first_name: staffForm.display_first_name || null,
+      display_last_name: staffForm.display_last_name || null,
       email:  staffForm.email  || null,
       role:   staffForm.role   || null,
       ehr_id: staffForm.ehr_id || null,
+      certification_number: staffForm.certification_number || null,
+      original_certification_date: staffForm.original_certification_date || null,
+      credentials: staffForm.credentials || null,
     }).select('id').single()
     if (insertErr) { setStaffError(insertErr.message); setStaffSaving(false); return }
     if (staffForm.role === 'RBT') setLocalRbtCount(c => c + 1)
-    setStaffSaving(false); setAddOpen(false); setStaffForm(emptyStaffForm)
+    setStaffSaving(false)
+    if (staffForm.role === 'RBT') {
+      setAddRbtOpen(false)
+    } else {
+      setAddOpen(false)
+    }
+    setStaffForm(emptyStaffForm)
     router.push(`/staff/${newStaff.id}`)
   }
 
@@ -525,7 +546,7 @@ export function AdminUsersClient({
                 <Upload className="mr-2 h-4 w-4" /> Import CSV
               </Button>
               <Button
-                onClick={openAddStaff}
+                onClick={openAddRbt}
                 className="bg-[#0A253D] hover:bg-[#0d2f4f]"
               >
                 <UserPlus className="mr-2 h-4 w-4" /> Add RBT
@@ -665,7 +686,7 @@ export function AdminUsersClient({
             </SheetContent>
           </Sheet>
 
-          {/* Add Staff Sheet */}
+          {/* Add Generic Staff Sheet */}
           <Sheet open={addOpen} onOpenChange={setAddOpen}>
             <SheetContent>
               <SheetHeader><SheetTitle>Add Staff Member</SheetTitle></SheetHeader>
@@ -681,26 +702,90 @@ export function AdminUsersClient({
                     <Input id="sf_last" value={staffForm.last_name} onChange={e => setStaffForm(f => ({ ...f, last_name: e.target.value }))} />
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="sf_email">Email</Label>
                   <Input id="sf_email" type="email" value={staffForm.email} onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))} />
                 </div>
+
                 <div className="space-y-2">
                   <Label>Role</Label>
                   <Select value={staffForm.role} onValueChange={v => setStaffForm(f => ({ ...f, role: v ?? '' }))}>
                     <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="RBT">RBT</SelectItem>
                       <SelectItem value="Trainer">Trainer</SelectItem>
                       <SelectItem value="Admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-xs text-gray-400">Preferred/goes-by names can be set on the staff member&apos;s profile page.</p>
+
                 {staffError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{staffError}</p>}
               </div>
               <SheetFooter>
                 <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+                <Button onClick={handleAddStaff} disabled={staffSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                  {staffSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Add & Continue'}
+                </Button>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+
+          {/* Add RBT Sheet */}
+          <Sheet open={addRbtOpen} onOpenChange={setAddRbtOpen}>
+            <SheetContent>
+              <SheetHeader><SheetTitle>Add RBT</SheetTitle></SheetHeader>
+              <div className="space-y-5 px-6 py-5">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal Name</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rbt_first">First Name *</Label>
+                    <Input id="rbt_first" value={staffForm.first_name} onChange={e => setStaffForm(f => ({ ...f, first_name: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rbt_last">Last Name *</Label>
+                    <Input id="rbt_last" value={staffForm.last_name} onChange={e => setStaffForm(f => ({ ...f, last_name: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rbt_email">Email</Label>
+                  <Input id="rbt_email" type="email" value={staffForm.email} onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))} />
+                </div>
+
+                <div className="pt-3 border-t">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">RBT Details</p>
+                  <div className="space-y-2">
+                    <Label htmlFor="rbt_cert_num">RBT Number</Label>
+                    <Input id="rbt_cert_num" placeholder="e.g. 12345" value={staffForm.certification_number} onChange={e => setStaffForm(f => ({ ...f, certification_number: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2 mt-4">
+                    <Label htmlFor="rbt_cert_date">Original Certification Date</Label>
+                    <Input id="rbt_cert_date" type="date" value={staffForm.original_certification_date} onChange={e => setStaffForm(f => ({ ...f, original_certification_date: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2 mt-4">
+                    <Label htmlFor="rbt_creds">Credentials</Label>
+                    <Input id="rbt_creds" placeholder="e.g. RBT" value={staffForm.credentials} onChange={e => setStaffForm(f => ({ ...f, credentials: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Preferred Name (Optional)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="rbt_pref_first">First Name</Label>
+                      <Input id="rbt_pref_first" placeholder="e.g. Alex" value={staffForm.display_first_name} onChange={e => setStaffForm(f => ({ ...f, display_first_name: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rbt_pref_last">Last Name</Label>
+                      <Input id="rbt_pref_last" placeholder="e.g. Smith" value={staffForm.display_last_name} onChange={e => setStaffForm(f => ({ ...f, display_last_name: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+
+                {staffError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{staffError}</p>}
+              </div>
+              <SheetFooter>
+                <Button variant="outline" onClick={() => setAddRbtOpen(false)}>Cancel</Button>
                 <Button onClick={handleAddStaff} disabled={staffSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
                   {staffSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Add & Continue'}
                 </Button>

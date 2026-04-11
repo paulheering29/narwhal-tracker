@@ -160,8 +160,9 @@ export function SettingsClient({
               ) : (
                 <>
                   <p className="text-sm text-gray-500">
-                    Select <strong>your own name</strong> so your signature is attached to
-                    certificates for trainings you led.
+                    We couldn&apos;t automatically detect your staff record. Select
+                    <strong> your own name</strong> from the list below — only trainer-level
+                    staff are shown.
                   </p>
                   <div className="flex gap-3 items-end">
                     <div className="flex-1">

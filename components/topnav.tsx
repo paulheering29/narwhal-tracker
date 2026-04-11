@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  ClipboardList,
   ShieldCheck,
   LogOut,
   UserCircle,
@@ -30,10 +29,9 @@ interface TopNavProps {
 const BG = '#457595'
 
 const staffNavItems = [
-  { href: '/dashboard',  label: 'Dashboard',        icon: LayoutDashboard },
-  { href: '/staff',      label: 'RBT',              icon: Users           },
-  { href: '/trainings',  label: 'Trainings',        icon: BookOpen        },
-  { href: '/training',   label: 'Training Records', icon: ClipboardList   },
+  { href: '/dashboard',  label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/staff',      label: 'RBT',       icon: Users           },
+  { href: '/trainings',  label: 'Trainings', icon: BookOpen        },
 ]
 
 const rbtNavItems = [

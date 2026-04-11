@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getCompanyId } from '@/lib/get-company-id'
@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table'
 import {
   BookPlus, Loader2, Search, ChevronRight, Clock, Paperclip,
-  ChevronLeft, CheckCircle2, Circle, ExternalLink, CalendarDays, List,
+  ChevronLeft, CheckCircle2, Circle, ExternalLink, CalendarDays, List, ClipboardList,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,6 +32,26 @@ type StaffOption = {
 }
 
 type TopicOption = { id: string; name: string }
+
+type TrainingRecord = {
+  id: string
+  staff_id: string
+  course_id: string
+  completed_date: string
+  expiry_date: string | null
+  confirmed: boolean
+  notes: string | null
+  staff: { first_name: string; last_name: string; display_first_name: string | null; display_last_name: string | null } | null
+  courses: { name: string } | null
+}
+
+type StaffRow = {
+  id: string
+  first_name: string; last_name: string
+  display_first_name: string | null; display_last_name: string | null
+}
+
+type CourseRow = { id: string; name: string }
 
 type Training = {
   id: string
@@ -274,8 +294,9 @@ function MonthGrid({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function TrainingsPage() {
-  const supabase = createClient()
-  const router   = useRouter()
+  const supabase     = createClient()
+  const router       = useRouter()
+  const searchParams = useSearchParams()
 
   // List view state
   const [trainings, setTrainings]     = useState<Training[]>([])
@@ -291,8 +312,39 @@ export default function TrainingsPage() {
   const [error, setError]             = useState<string | null>(null)
   const [loadError, setLoadError]     = useState<string | null>(null)
 
+  // Training records tab state
+  const [trRecords, setTrRecords]               = useState<TrainingRecord[]>([])
+  const [trStaff, setTrStaff]                   = useState<StaffRow[]>([])
+  const [trCourses, setTrCourses]               = useState<CourseRow[]>([])
+  const [trLoading, setTrLoading]               = useState(false)
+  const [trLoaded, setTrLoaded]                 = useState(false)
+  const [trSearch, setTrSearch]                 = useState('')
+  const [trFilterStaff, setTrFilterStaff]       = useState('all')
+  const [trFilterCourse, setTrFilterCourse]     = useState('all')
+  const [trFilterAttendance, setTrFilterAttendance] = useState('all')
+
+  async function loadTrainingRecords() {
+    if (trLoaded) return
+    setTrLoading(true)
+    const supabase = createClient()
+    const [recordsRes, staffRes, coursesRes] = await Promise.all([
+      supabase
+        .from('training_records')
+        .select('id, staff_id, course_id, completed_date, expiry_date, confirmed, notes, staff(first_name, last_name, display_first_name, display_last_name), courses(name)')
+        .order('completed_date', { ascending: false }),
+      supabase.from('staff').select('id, first_name, last_name, display_first_name, display_last_name').eq('active', true).order('last_name'),
+      supabase.from('courses').select('id, name').order('name'),
+    ])
+    setTrRecords((recordsRes.data ?? []) as unknown as TrainingRecord[])
+    setTrStaff(staffRes.data ?? [])
+    setTrCourses(coursesRes.data ?? [])
+    setTrLoaded(true)
+    setTrLoading(false)
+  }
+
   // Tab + calendar state
-  const [activeTab, setActiveTab]             = useState<'list' | 'calendar'>('list')
+  const initialTab = searchParams.get('tab') === 'records' ? 'records' : 'list'
+  const [activeTab, setActiveTab]             = useState<'list' | 'calendar' | 'records'>(initialTab as 'list' | 'calendar' | 'records')
   const [calYear, setCalYear]                 = useState(new Date().getFullYear())
   const [calSelectedDate, setCalSelectedDate] = useState<string | null>(null)
   const [calDayCourses, setCalDayCourses]     = useState<CalCourse[]>([])
@@ -341,7 +393,10 @@ export default function TrainingsPage() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    if (searchParams.get('tab') === 'records') loadTrainingRecords()
+  }, [])
 
   // ── Dialog helpers ──────────────────────────────────────────────────────────
 
@@ -520,6 +575,17 @@ export default function TrainingsPage() {
         >
           <CalendarDays className="h-4 w-4" />
           Calendar View
+        </button>
+        <button
+          onClick={() => { setActiveTab('records'); loadTrainingRecords() }}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === 'records'
+              ? 'border-[#457595] text-[#457595]'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <ClipboardList className="h-4 w-4" />
+          Training Records
         </button>
       </div>
 
@@ -773,6 +839,112 @@ export default function TrainingsPage() {
               </div>
             </SheetContent>
           </Sheet>
+        </>
+      )}
+
+      {/* ── Training Records Tab ─────────────────────────────────────────── */}
+      {activeTab === 'records' && (
+        <>
+          <div className="mb-4 flex flex-wrap gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input placeholder="Search by name or training…" value={trSearch}
+                onChange={e => setTrSearch(e.target.value)} className="pl-9" />
+            </div>
+            <Select value={trFilterStaff} onValueChange={v => setTrFilterStaff(v ?? 'all')}>
+              <SelectTrigger className="w-44"><SelectValue placeholder="All Staff" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Staff</SelectItem>
+                {trStaff.map(s => (
+                  <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={trFilterCourse} onValueChange={v => setTrFilterCourse(v ?? 'all')}>
+              <SelectTrigger className="w-44"><SelectValue placeholder="All Trainings" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Trainings</SelectItem>
+                {trCourses.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={trFilterAttendance} onValueChange={v => setTrFilterAttendance(v ?? 'all')}>
+              <SelectTrigger className="w-44"><SelectValue placeholder="All Attendance" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Attendance</SelectItem>
+                <SelectItem value="confirmed">Confirmed</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {!trLoading && trLoaded && (
+            <p className="mb-3 text-sm text-gray-500">
+              {trRecords.length} total · {trRecords.filter(r => r.confirmed).length} confirmed
+            </p>
+          )}
+
+          <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Staff Member</TableHead>
+                  <TableHead>Training</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Attendance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {trLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-10 text-gray-400">
+                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                    </TableCell>
+                  </TableRow>
+                ) : (() => {
+                  const filtered = trRecords.filter(r => {
+                    const name = r.staff ? getDisplayName({ first_name: r.staff.first_name, last_name: r.staff.last_name, display_first_name: r.staff.display_first_name ?? null, display_last_name: r.staff.display_last_name ?? null }) : ''
+                    return (
+                      `${name} ${r.courses?.name ?? ''}`.toLowerCase().includes(trSearch.toLowerCase()) &&
+                      (trFilterStaff === 'all' || r.staff_id === trFilterStaff) &&
+                      (trFilterCourse === 'all' || r.course_id === trFilterCourse) &&
+                      (trFilterAttendance === 'all' || (trFilterAttendance === 'confirmed' && r.confirmed) || (trFilterAttendance === 'pending' && !r.confirmed))
+                    )
+                  })
+                  return filtered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-10 text-gray-400">
+                        {trSearch || trFilterStaff !== 'all' || trFilterCourse !== 'all' || trFilterAttendance !== 'all'
+                          ? 'No records match your filters.'
+                          : 'No training records yet.'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    <>
+                      {filtered.map(r => {
+                        const staffName = r.staff ? getDisplayName({ first_name: r.staff.first_name, last_name: r.staff.last_name, display_first_name: r.staff.display_first_name ?? null, display_last_name: r.staff.display_last_name ?? null }) : '—'
+                        return (
+                          <TableRow key={r.id}>
+                            <TableCell className="font-medium">{staffName}</TableCell>
+                            <TableCell className="text-gray-700">{r.courses?.name ?? '—'}</TableCell>
+                            <TableCell className="text-gray-600 whitespace-nowrap">
+                              {new Date(r.completed_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${r.confirmed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {r.confirmed ? <><CheckCircle2 className="h-3 w-3" /> Confirmed</> : <><Circle className="h-3 w-3" /> Pending</>}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </>
+                  )
+                })()}
+              </TableBody>
+            </Table>
+          </div>
         </>
       )}
 

@@ -78,6 +78,15 @@ type TrainingRecord = {
   courses: { name: string } | null
 }
 
+type AllTrainingRecord = {
+  id: string
+  completed_date: string
+  expiry_date: string | null
+  confirmed: boolean
+  notes: string | null
+  courses: { name: string; units: number } | null
+}
+
 type OverlapWarning = {
   conflictingCycle: Cycle
   suggestedEndDate: string
@@ -128,6 +137,7 @@ export default function StaffDetailPage() {
   // Data
   const [staff, setStaff] = useState<StaffMember | null>(null)
   const [cycles, setCycles] = useState<Cycle[]>([])
+  const [allRecords, setAllRecords] = useState<AllTrainingRecord[]>([])
   const [loading, setLoading] = useState(true)
 
   // Training records per cycle (loaded on expand)
@@ -165,14 +175,23 @@ export default function StaffDetailPage() {
     setCycles(data ?? [])
   }, [staffId])
 
+  const loadAllRecords = useCallback(async () => {
+    const { data } = await supabase
+      .from('training_records')
+      .select('id, completed_date, expiry_date, confirmed, notes, courses(name, units)')
+      .eq('staff_id', staffId)
+      .order('completed_date', { ascending: false })
+    setAllRecords((data ?? []) as unknown as AllTrainingRecord[])
+  }, [staffId])
+
   useEffect(() => {
     async function init() {
       setLoading(true)
-      await Promise.all([loadStaff(), loadCycles()])
+      await Promise.all([loadStaff(), loadCycles(), loadAllRecords()])
       setLoading(false)
     }
     init()
-  }, [loadStaff, loadCycles])
+  }, [loadStaff, loadCycles, loadAllRecords])
 
   async function loadCycleRecords(cycle: Cycle) {
     if (cycleRecords[cycle.id]) return // already loaded
@@ -558,6 +577,59 @@ export default function StaffDetailPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* All Trainings */}
+      <div className="mt-10 mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">All Trainings</h2>
+        <p className="text-sm text-gray-500">
+          {allRecords.length} record{allRecords.length !== 1 ? 's' : ''} on file
+        </p>
+      </div>
+
+      {allRecords.length === 0 ? (
+        <div className="rounded-lg border border-dashed bg-white p-10 text-center text-sm text-gray-400 shadow-sm">
+          No training records yet.
+        </div>
+      ) : (
+        <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Training</TableHead>
+                <TableHead className="text-xs">Completed</TableHead>
+                <TableHead className="text-xs">Units</TableHead>
+                <TableHead className="text-xs">Status</TableHead>
+                <TableHead className="text-xs">Expiry</TableHead>
+                <TableHead className="text-xs">Notes</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {allRecords.map(r => (
+                <TableRow key={r.id}>
+                  <TableCell className="text-sm font-medium">{r.courses?.name ?? '—'}</TableCell>
+                  <TableCell className="text-sm text-gray-600">{formatDate(r.completed_date)}</TableCell>
+                  <TableCell className="text-sm text-gray-600 tabular-nums">{r.courses?.units ?? '—'}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        r.confirmed
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {r.confirmed ? 'Confirmed' : 'Pending'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-600">
+                    {r.expiry_date ? formatDate(r.expiry_date) : '—'}
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-500">{r.notes ?? '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 

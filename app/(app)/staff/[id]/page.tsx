@@ -495,9 +495,6 @@ export default function StaffDetailPage() {
               </Button>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={openEditStaff}>
-            <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Info
-          </Button>
         </div>
       </div>
 
@@ -506,9 +503,14 @@ export default function StaffDetailPage() {
 
         {/* ── Column 1: Basics ─────────────────────────────────────────────── */}
         <section>
-          <div className="mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Basics</h2>
-            <p className="text-sm text-gray-500">Staff details</p>
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Basics</h2>
+              <p className="text-sm text-gray-500">Staff details</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={openEditStaff}>
+              <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Info
+            </Button>
           </div>
           <div className="rounded-lg border bg-white shadow-sm divide-y divide-gray-100">
             {basicsRows.map(row => (

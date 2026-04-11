@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table'
 import {
   BookPlus, Loader2, Search, ChevronRight, Clock, Paperclip,
-  ChevronLeft, CheckCircle2, Circle, ExternalLink, CalendarDays, List, ClipboardList,
+  ChevronLeft, CheckCircle2, Circle, ExternalLink, CalendarDays, List, ClipboardList, Copy,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -306,6 +306,7 @@ export default function TrainingsPage() {
   const [search, setSearch]           = useState('')
   const [dialogOpen, setDialogOpen]   = useState(false)
   const [editing, setEditing]         = useState<Training | null>(null)
+  const [copying, setCopying]         = useState<Training | null>(null)
   const [form, setForm]               = useState(emptyForm)
   const [trainerType, setTrainerType] = useState<'staff' | 'external'>('staff')
   const [saving, setSaving]           = useState(false)
@@ -430,6 +431,25 @@ export default function TrainingsPage() {
     setDialogOpen(true)
   }
 
+  function openCopy(t: Training, e: React.MouseEvent) {
+    e.stopPropagation()
+    setCopying(t)
+    setEditing(null)
+    setForm({
+      ...emptyForm,
+      name:            t.name,
+      description:     t.description ?? '',
+      units:           t.units?.toString() ?? '',
+      validity_months: t.validity_months?.toString() ?? '',
+      modality:        t.modality ?? '',
+      topic_id:        t.topic_id ?? '',
+      // date, start_time, end_time, trainer fields intentionally blank
+    })
+    setTrainerType('staff')
+    setError(null)
+    setDialogOpen(true)
+  }
+
   // ── Save ────────────────────────────────────────────────────────────────────
 
   async function handleSave() {
@@ -464,11 +484,26 @@ export default function TrainingsPage() {
     } else {
       const companyId = await getCompanyId()
       if (!companyId) { setError('Could not determine your company. Please sign out and back in.'); setSaving(false); return }
-      const { error: err } = await supabase.from('courses').insert({ ...payload, company_id: companyId })
+      const { data: newCourse, error: err } = await supabase
+        .from('courses')
+        .insert({ ...payload, company_id: companyId })
+        .select('id')
+        .single()
       if (err) { setError(err.message); setSaving(false); return }
+
+      // If copying, duplicate document links from the source training
+      if (copying && newCourse && copying.training_document_links.length > 0) {
+        const docLinks = copying.training_document_links.map(link => ({
+          training_id:  newCourse.id,
+          document_id:  link.document_id,
+          company_id:   companyId,
+        }))
+        await supabase.from('training_document_links').insert(docLinks)
+      }
     }
 
     setSaving(false)
+    setCopying(null)
     setDialogOpen(false)
     load()
   }
@@ -676,6 +711,9 @@ export default function TrainingsPage() {
                         ) : <span className="text-gray-300 text-sm">—</span>}
                       </TableCell>
                       <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                        <Button size="sm" variant="ghost" onClick={e => openCopy(t, e)} title="Copy training">
+                          <Copy className="h-3.5 w-3.5 text-gray-400" />
+                        </Button>
                         <Button size="sm" variant="ghost" onClick={e => openEdit(t, e)}>
                           Edit
                         </Button>
@@ -960,14 +998,22 @@ export default function TrainingsPage() {
         </>
       )}
 
-      {/* ── Add / Edit Sheet ──────────────────────────────────────────────── */}
-      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* ── Add / Edit / Copy Sheet ───────────────────────────────────────── */}
+      <Sheet open={dialogOpen} onOpenChange={open => { setDialogOpen(open); if (!open) setCopying(null) }}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>{editing ? 'Edit Training' : 'Add Training'}</SheetTitle>
+            <SheetTitle>{editing ? 'Edit Training' : copying ? 'Copy Training' : 'Add Training'}</SheetTitle>
           </SheetHeader>
 
           <div className="space-y-5 px-6 py-5">
+            {/* Copy banner */}
+            {copying && (
+              <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800 space-y-1">
+                <p className="font-semibold">Copying from: {copying.name}</p>
+                <p className="text-blue-600">Carried over: name, description, PDUs, modality, topic, linked docs. Fill in the new date, time, and trainer below.</p>
+              </div>
+            )}
+
             {/* Name + Description */}
             <div className="space-y-2">
               <Label>Training Name *</Label>

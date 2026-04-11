@@ -448,7 +448,7 @@ export default function StaffDetailPage() {
     { label: 'Email',               value: staff.email ?? '—' },
     { label: 'Role',                value: staff.role ?? '—' },
     { label: 'Credentials',         value: staff.credentials ?? <span className="text-gray-400 italic">—</span> },
-    { label: 'BACB Cert #',         value: staff.certification_number ?? '—', mono: true },
+    { label: 'RBT Number',         value: staff.certification_number ?? '—', mono: true },
     { label: 'Original Cert Date',  value: staff.original_certification_date ? formatDate(staff.original_certification_date) : '—' },
   ]
 
@@ -789,7 +789,7 @@ export default function StaffDetailPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>BACB Cert #</Label>
+                <Label>RBT Number</Label>
                 <Input placeholder="e.g. 1-23-456789" value={staffForm.certification_number} onChange={e => setStaffForm(f => ({ ...f, certification_number: e.target.value }))} />
               </div>
               <div className="space-y-2">

@@ -838,7 +838,7 @@ export function AdminUsersClient({
                   <p className="text-xs text-gray-400">Letters that appear after the name (not a cert number).</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit_cert">BACB Certification Number</Label>
+                  <Label htmlFor="edit_cert">RBT Number</Label>
                   <Input
                     id="edit_cert"
                     value={editCertNumber}

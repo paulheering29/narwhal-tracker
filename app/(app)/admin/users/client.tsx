@@ -115,7 +115,7 @@ const emptyStaffForm = { first_name: '', last_name: '', email: '', role: '', ehr
 
 type Topic = { id: string; name: string; created_at: string }
 
-type Company = { id: string; name: string }
+type Company = { id: string; name: string; logo_url?: string | null }
 
 export function AdminUsersClient({
   currentAuthId,
@@ -154,6 +154,66 @@ export function AdminUsersClient({
   const [companyName, setCompanyName]     = useState(initialCompany.name)
   const [companySaving, setCompanySaving] = useState(false)
   const [companyStatus, setCompanyStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoStatus, setLogoStatus]       = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+
+  async function resizeLogo(file: File, maxPx = 800, quality = 0.85): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+        const canvas = document.createElement('canvas')
+        canvas.width  = Math.round(img.width  * scale)
+        canvas.height = Math.round(img.height * scale)
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas export failed')), 'image/jpeg', quality)
+      }
+      img.onerror = reject
+      img.src = url
+    })
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setLogoStatus({ type: 'error', msg: 'Only JPG and PNG files are accepted.' }); return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoStatus({ type: 'error', msg: 'File must be under 5 MB.' }); return
+    }
+    setLogoUploading(true); setLogoStatus(null)
+    try {
+      const blob = await resizeLogo(file)
+      const path = `${company.id}/logo.jpg`
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(path)
+      const bust = `${publicUrl}?t=${Date.now()}`
+
+      const res = await fetch('/api/company/update-logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logo_url: publicUrl }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to save logo URL.')
+
+      setCompany(c => ({ ...c, logo_url: bust }))
+      setLogoStatus({ type: 'success', msg: 'Logo updated.' })
+    } catch (err: unknown) {
+      setLogoStatus({ type: 'error', msg: err instanceof Error ? err.message : 'Upload failed.' })
+    } finally {
+      setLogoUploading(false)
+      if (logoInputRef.current) logoInputRef.current.value = ''
+    }
+  }
 
   async function handleSaveCompany() {
     const trimmed = companyName.trim()
@@ -942,13 +1002,14 @@ export function AdminUsersClient({
       {tab === 'company' && isAccountOwner && (
         <div className="max-w-lg space-y-6">
           <p className="text-sm text-gray-500">
-            Update your organisation&apos;s display name. This appears throughout
-            the app and on generated certificates.
+            Update your organisation&apos;s display name and logo.
           </p>
 
+          {/* Company Name */}
           <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">Company Name</h3>
             <div className="space-y-2">
-              <Label htmlFor="company-name">Company Name</Label>
+              <Label htmlFor="company-name">Name</Label>
               <Input
                 id="company-name"
                 value={companyName}
@@ -958,13 +1019,7 @@ export function AdminUsersClient({
             </div>
 
             {companyStatus && (
-              <p
-                className={`text-sm rounded px-3 py-2 ${
-                  companyStatus.type === 'success'
-                    ? 'text-green-700 bg-green-50'
-                    : 'text-red-600 bg-red-50'
-                }`}
-              >
+              <p className={`text-sm rounded px-3 py-2 ${companyStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
                 {companyStatus.msg}
               </p>
             )}
@@ -977,9 +1032,52 @@ export function AdminUsersClient({
               >
                 {companySaving
                   ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
-                  : 'Save Changes'}
+                  : 'Save Name'}
               </Button>
             </div>
+          </div>
+
+          {/* Company Logo */}
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">Company Logo</h3>
+            <p className="text-xs text-gray-400">JPG or PNG · max 5 MB · resized to 800 px on upload</p>
+
+            {/* Preview */}
+            {company.logo_url && (
+              <div className="flex items-center gap-4">
+                <img
+                  src={company.logo_url}
+                  alt="Company logo"
+                  className="h-16 w-auto max-w-[200px] rounded border object-contain"
+                />
+              </div>
+            )}
+
+            {/* Upload button */}
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/jpeg,image/png"
+              className="hidden"
+              onChange={handleLogoUpload}
+            />
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoUploading}
+              >
+                {logoUploading
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading…</>
+                  : company.logo_url ? 'Replace Logo' : 'Upload Logo'}
+              </Button>
+            </div>
+
+            {logoStatus && (
+              <p className={`text-sm rounded px-3 py-2 ${logoStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                {logoStatus.msg}
+              </p>
+            )}
           </div>
         </div>
       )}

@@ -23,7 +23,7 @@ export default async function AdminUsersPage() {
   const service = createServiceClient()
   const companyPromise = service
     .from('companies')
-    .select('id, name')
+    .select('id, name, logo_url')
     .eq('id', me.company_id)
     .single()
 

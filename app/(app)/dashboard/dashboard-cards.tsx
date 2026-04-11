@@ -112,25 +112,22 @@ function DashboardCard({ card }: { card: DashboardCardData }) {
 
   return (
     <div className={`rounded-xl border-2 ${c.cardBorder} bg-white shadow-sm overflow-hidden flex flex-col`}>
-      {/* Colourful top accent bar */}
-      <div className={`h-3 ${c.accentBar}`} />
-
-      <div className="p-5 flex-1 flex flex-col">
-        {/* Icon (top-right corner, doesn't affect centering) */}
-        <div className="flex justify-end">
-          <div className={`rounded-lg p-2.5 ${c.iconBg}`}>
-            <Icon className={`h-6 w-6 ${c.iconFg}`} />
-          </div>
-        </div>
-
-        {/* Centered title + number */}
-        <h3 className="-mt-2 text-sm font-semibold uppercase tracking-wide text-gray-600 text-center">
+      {/* Colourful header bar with the title */}
+      <div className={`${c.accentBar} px-5 py-4 flex items-center justify-between`}>
+        <h3 className="text-lg font-bold uppercase tracking-wide text-white drop-shadow-sm">
           {card.title}
         </h3>
-        <p className={`mt-2 text-center text-8xl font-extrabold leading-none tabular-nums ${c.number}`}>
+        <div className="rounded-lg p-2 bg-white/25 backdrop-blur-sm">
+          <Icon className="h-6 w-6 text-white" />
+        </div>
+      </div>
+
+      <div className="p-5 flex-1 flex flex-col">
+        {/* Giant centered number */}
+        <p className={`text-center font-extrabold leading-none tabular-nums ${c.number} text-[10rem]`}>
           {card.value}
         </p>
-        <p className="mt-2 text-xs text-gray-500 text-center">{card.description}</p>
+        <p className="mt-3 text-xs text-gray-500 text-center">{card.description}</p>
 
         {/* Expand toggle — hidden when alwaysExpanded */}
         {!card.alwaysExpanded && (

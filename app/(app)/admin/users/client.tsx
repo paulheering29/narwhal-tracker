@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getCompanyId } from '@/lib/get-company-id'
 import { getDisplayName } from '@/lib/display-name'
@@ -20,10 +20,12 @@ import {
 import {
   UserPlus, Pencil, Loader2, ShieldCheck, Users,
   Upload, Download, CheckCircle2, XCircle, UserX, UserCheck, ChevronRight, Search,
-  Tag, Trash2, Plus, Building2,
+  Tag, Trash2, Plus, Building2, CreditCard,
 } from 'lucide-react'
 import { ALL_ROLES } from '@/lib/permissions'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
+import { BillingClient } from '@/app/(app)/billing/client'
+import type { Plan, CompanyBilling } from '@/lib/plans'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -122,6 +124,8 @@ export function AdminUsersClient({
   initialTopics,
   initialCompany,
   planLimits,
+  billing,
+  allPlans,
 }: {
   currentAuthId: string
   currentRoles: string[]
@@ -129,12 +133,21 @@ export function AdminUsersClient({
   initialTopics: Topic[]
   initialCompany: Company
   planLimits: { maxRbts: number; currentRbts: number; planName: string }
+  billing: CompanyBilling | null
+  allPlans: Plan[]
 }) {
   const supabase = createClient()
   const router   = useRouter()
+  const searchParams = useSearchParams()
 
   const isAccountOwner = currentRoles.includes('Account Owner')
-  const [tab, setTab] = useState<'rbt' | 'admin' | 'topics' | 'company'>('rbt')
+  type AdminTab = 'rbt' | 'admin' | 'topics' | 'billing' | 'company'
+  const initialTab: AdminTab = (() => {
+    const q = searchParams.get('tab')
+    if (q === 'billing' || q === 'topics' || q === 'admin' || q === 'company') return q
+    return 'rbt'
+  })()
+  const [tab, setTab] = useState<AdminTab>(initialTab)
 
   // ── Company state ───────────────────────────────────────────────────────────
   const [company, setCompany]             = useState<Company>(initialCompany)
@@ -406,9 +419,10 @@ export function AdminUsersClient({
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         {([
-          { key: 'rbt'    as const, label: 'RBT',              icon: Users,       count: rbtStaff.length   as number | undefined },
-          { key: 'admin'  as const, label: 'Trainers & Admin', icon: ShieldCheck, count: adminStaff.length as number | undefined },
-          { key: 'topics' as const, label: 'Topics',           icon: Tag,         count: topics.length     as number | undefined },
+          { key: 'rbt'     as const, label: 'RBT',              icon: Users,       count: rbtStaff.length   as number | undefined },
+          { key: 'admin'   as const, label: 'Trainers & Admin', icon: ShieldCheck, count: adminStaff.length as number | undefined },
+          { key: 'topics'  as const, label: 'Topics',           icon: Tag,         count: topics.length     as number | undefined },
+          { key: 'billing' as const, label: 'Billing',          icon: CreditCard,  count: undefined         as number | undefined },
           ...(isAccountOwner
             ? [{ key: 'company' as const, label: 'Company', icon: Building2, count: undefined as number | undefined }]
             : []),
@@ -910,6 +924,17 @@ export function AdminUsersClient({
               </ul>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Billing Tab ─────────────────────────────────────────────────────── */}
+      {tab === 'billing' && (
+        <div className="-m-8">
+          <BillingClient
+            billing={billing}
+            allPlans={allPlans}
+            rbtCount={planLimits.currentRbts}
+          />
         </div>
       )}
 

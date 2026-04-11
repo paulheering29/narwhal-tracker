@@ -39,7 +39,7 @@ export async function POST() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://narwhal-tracker-eight.vercel.app'
   const portalSession = await stripe.billingPortal.sessions.create({
     customer:   company.stripe_customer_id,
-    return_url: `${baseUrl}/billing`,
+    return_url: `${baseUrl}/admin/users?tab=billing`,
   })
 
   return NextResponse.json({ url: portalSession.url })

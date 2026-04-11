@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { AdminUsersClient } from './client'
 import { canManageUsers } from '@/lib/permissions'
-import { getCompanyBilling, getRBTCount } from '@/lib/plans'
+import { getCompanyBilling, getAllPlans, getRBTCount } from '@/lib/plans'
 
 export default async function AdminUsersPage() {
   const supabase = await createClient()
@@ -27,7 +27,7 @@ export default async function AdminUsersPage() {
     .eq('id', me.company_id)
     .single()
 
-  const [{ data: staff }, { data: topics }, { data: company }, billing, rbtCount] = await Promise.all([
+  const [{ data: staff }, { data: topics }, { data: company }, billing, allPlans, rbtCount] = await Promise.all([
     supabase
       .from('staff')
       .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number, credentials')
@@ -39,6 +39,7 @@ export default async function AdminUsersPage() {
       .order('name'),
     companyPromise,
     getCompanyBilling(me.company_id),
+    getAllPlans(),
     getRBTCount(me.company_id),
   ])
 
@@ -56,6 +57,8 @@ export default async function AdminUsersPage() {
       initialTopics={topics ?? []}
       initialCompany={company ?? { id: me.company_id, name: '' }}
       planLimits={planLimits}
+      billing={billing}
+      allPlans={allPlans}
     />
   )
 }

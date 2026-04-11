@@ -42,8 +42,8 @@ export default async function SettingsPage() {
     }
   }
 
-  // Only show non-RBT staff in the manual fallback dropdown
-  const trainerStaff = staffList.filter(s => s.role !== 'RBT')
+  // Show all active staff in the fallback dropdown — anyone may need to link
+  const trainerStaff = staffList
 
   return (
     <div className="p-8 max-w-2xl">

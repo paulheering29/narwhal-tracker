@@ -147,9 +147,15 @@ export function SettingsClient({
             /* Not linked or changing — show dropdown */
             <>
               {staffList.length === 0 ? (
-                <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-                  <UserX className="h-4 w-4 shrink-0" />
-                  No trainer staff records found. Make sure your staff record is marked active.
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                    <UserX className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>
+                      No staff records found for your organisation. To link your signature to certificates,
+                      you need a staff record — go to the <strong>RBT</strong> or <strong>Admin</strong> page
+                      and add yourself as a staff member first, then come back here.
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <>

@@ -345,9 +345,11 @@ export default function StaffPage() {
                     {hasCycle ? variance.label : '—'}
                   </td>
 
-                  {/* Status dot */}
-                  <td className="text-center text-lg leading-none py-3" title={s.active ? 'Active' : 'Inactive'}>
-                    {s.active ? '🟢' : '🔴'}
+                  {/* Status */}
+                  <td className="text-center py-3">
+                    <span className="text-xs text-gray-400">
+                      {s.active ? 'active' : 'inactive'}
+                    </span>
                   </td>
 
                   {/* Navigate */}

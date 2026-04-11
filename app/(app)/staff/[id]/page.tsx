@@ -72,18 +72,29 @@ type TrainingRecord = {
 
 type AllTrainingRecord = {
   id: string
-  training_id: string | null
   completed_date: string
   expiry_date: string | null
   confirmed: boolean
   notes: string | null
-  courses: { name: string; units: number } | null
-  trainings: {
+  courses: {
     id: string
+    name: string
+    units: number
     trainer_name: string | null
     trainer_staff_id: string | null
     staff: { first_name: string; last_name: string; display_first_name: string | null; display_last_name: string | null } | null
   } | null
+}
+
+type UpcomingTraining = {
+  id: string
+  name: string
+  date: string | null
+  start_time: string | null
+  units: number | null
+  modality: string | null
+  staff: { first_name: string; last_name: string; display_first_name: string | null; display_last_name: string | null } | null
+  trainer_name: string | null
 }
 
 type OverlapWarning = {
@@ -98,6 +109,11 @@ const emptyCycleForm = {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmtTime(t: string) {
+  const [h, m] = t.split(':').map(Number)
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
+}
 
 function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
@@ -150,6 +166,51 @@ export default function StaffDetailPage() {
   const [savingStaff, setSavingStaff] = useState(false)
   const [staffError, setStaffError] = useState<string | null>(null)
 
+  // Add to training sheet
+  const [addToTrainingOpen, setAddToTrainingOpen]       = useState(false)
+  const [upcomingTrainings, setUpcomingTrainings]        = useState<UpcomingTraining[]>([])
+  const [loadingUpcoming, setLoadingUpcoming]            = useState(false)
+  const [addingToTrainingId, setAddingToTrainingId]      = useState<string | null>(null)
+  const [addedToTrainingIds, setAddedToTrainingIds]      = useState<Set<string>>(new Set())
+
+  async function openAddToTraining() {
+    setAddToTrainingOpen(true)
+    if (upcomingTrainings.length > 0) return
+    setLoadingUpcoming(true)
+    const today = new Date().toISOString().split('T')[0]
+    const { data } = await supabase
+      .from('courses')
+      .select('id, name, date, start_time, units, modality, trainer_name, trainer_staff_id, staff:trainer_staff_id(first_name, last_name, display_first_name, display_last_name)')
+      .gte('date', today)
+      .order('date', { ascending: true })
+    setUpcomingTrainings((data ?? []) as unknown as UpcomingTraining[])
+    // Pre-mark any trainings this person is already in
+    const existing = new Set(allRecords.map(r => r.courses?.id).filter(Boolean) as string[])
+    setAddedToTrainingIds(existing)
+    setLoadingUpcoming(false)
+  }
+
+  async function handleAddToTraining(training: UpcomingTraining) {
+    setAddingToTrainingId(training.id)
+    const companyId = await getCompanyId()
+    if (!companyId) { setAddingToTrainingId(null); return }
+    const completedDate = training.date ?? new Date().toISOString().split('T')[0]
+    const expiryDate = null // can be set later
+    const { error } = await supabase.from('training_records').insert({
+      company_id: companyId,
+      staff_id:   staffId,
+      course_id:  training.id,
+      completed_date: completedDate,
+      expiry_date:    expiryDate,
+      confirmed:      false,
+    })
+    if (!error) {
+      setAddedToTrainingIds(prev => new Set(Array.from(prev).concat(training.id)))
+      loadAllRecords()
+    }
+    setAddingToTrainingId(null)
+  }
+
   // Cycle dialog
   const [cycleDialogOpen, setCycleDialogOpen] = useState(false)
   const [editingCycle, setEditingCycle] = useState<Cycle | null>(null)
@@ -177,7 +238,7 @@ export default function StaffDetailPage() {
   const loadAllRecords = useCallback(async () => {
     const { data } = await supabase
       .from('training_records')
-      .select('id, training_id, completed_date, expiry_date, confirmed, notes, courses(name, units), trainings(id, trainer_name, trainer_staff_id, staff:trainer_staff_id(first_name, last_name, display_first_name, display_last_name))')
+      .select('id, completed_date, expiry_date, confirmed, notes, courses(id, name, units, trainer_name, trainer_staff_id, staff:trainer_staff_id(first_name, last_name, display_first_name, display_last_name))')
       .eq('staff_id', staffId)
       .order('completed_date', { ascending: false })
     setAllRecords((data ?? []) as unknown as AllTrainingRecord[])
@@ -550,11 +611,16 @@ export default function StaffDetailPage() {
 
         {/* ── Column 3: All Trainings ──────────────────────────────────────── */}
         <section>
-          <div className="mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">All Trainings</h2>
-            <p className="text-sm text-gray-500">
-              {allRecords.length} record{allRecords.length !== 1 ? 's' : ''} on file
-            </p>
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">All Trainings</h2>
+              <p className="text-sm text-gray-500">
+                {allRecords.length} record{allRecords.length !== 1 ? 's' : ''} on file
+              </p>
+            </div>
+            <Button onClick={openAddToTraining} size="sm" className="bg-[#0A253D] hover:bg-[#0d2f4f] shrink-0">
+              <Plus className="mr-1.5 h-4 w-4" /> Add
+            </Button>
           </div>
 
           {allRecords.length === 0 ? (
@@ -564,9 +630,9 @@ export default function StaffDetailPage() {
           ) : (
             <div className="space-y-3">
               {allRecords.map(r => {
-                const trainerName = r.trainings?.staff
-                  ? getDisplayName(r.trainings.staff)
-                  : r.trainings?.trainer_name ?? null
+                const trainerName = r.courses?.staff
+                  ? getDisplayName(r.courses.staff)
+                  : r.courses?.trainer_name ?? null
                 return (
                   <div key={r.id} className="rounded-lg border bg-white shadow-sm p-4">
                     <div className="flex items-start justify-between gap-2">
@@ -590,9 +656,9 @@ export default function StaffDetailPage() {
                       <p className="mt-1 text-xs text-gray-500">Trainer: {trainerName}</p>
                     )}
                     {r.notes && <p className="mt-1 text-xs text-gray-500 italic">{r.notes}</p>}
-                    {r.training_id && (
+                    {r.courses?.id && (
                       <Link
-                        href={`/trainings/${r.training_id}`}
+                        href={`/trainings/${r.courses.id}`}
                         className="mt-2 inline-block text-xs text-blue-600 hover:underline"
                         onClick={e => e.stopPropagation()}
                       >
@@ -607,6 +673,63 @@ export default function StaffDetailPage() {
         </section>
 
       </div>
+
+      {/* ── Add to Training Sheet ────────────────────────────────────────── */}
+      <Sheet open={addToTrainingOpen} onOpenChange={setAddToTrainingOpen}>
+        <SheetContent className="w-full sm:max-w-md flex flex-col">
+          <SheetHeader>
+            <SheetTitle>Add to a Training</SheetTitle>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {loadingUpcoming ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              </div>
+            ) : upcomingTrainings.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-12">No upcoming trainings found.</p>
+            ) : (
+              <ul className="space-y-3">
+                {upcomingTrainings.map(t => {
+                  const alreadyAdded = addedToTrainingIds.has(t.id)
+                  const isAdding    = addingToTrainingId === t.id
+                  const trainerName = t.staff ? getDisplayName(t.staff) : t.trainer_name ?? null
+                  return (
+                    <li key={t.id} className="rounded-lg border bg-white p-4 flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{t.name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {t.date
+                            ? new Date(t.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                            : 'Date TBD'}
+                          {t.start_time && <> · {fmtTime(t.start_time)}</>}
+                          {t.units != null && <> · {t.units} unit{t.units === 1 ? '' : 's'}</>}
+                        </p>
+                        {trainerName && (
+                          <p className="text-xs text-gray-400 mt-0.5">Trainer: {trainerName}</p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={alreadyAdded ? 'outline' : 'default'}
+                        className={alreadyAdded ? 'shrink-0' : 'shrink-0 bg-[#0A253D] hover:bg-[#0d2f4f]'}
+                        disabled={alreadyAdded || isAdding}
+                        onClick={() => handleAddToTraining(t)}
+                      >
+                        {isAdding
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : alreadyAdded
+                          ? 'Added'
+                          : 'Add'}
+                      </Button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* ── Edit Staff Sheet ──────────────────────────────────────────────── */}
       <Sheet open={editStaffOpen} onOpenChange={setEditStaffOpen}>

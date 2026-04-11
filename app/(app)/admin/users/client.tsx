@@ -119,7 +119,7 @@ const emptyStaffForm = {
 
 type Topic = { id: string; name: string; created_at: string }
 
-type Company = { id: string; name: string; logo_url?: string | null }
+type Company = { id: string; name: string; logo_url?: string | null; org_contact_staff_id?: string | null }
 
 export function AdminUsersClient({
   currentAuthId,
@@ -161,6 +161,10 @@ export function AdminUsersClient({
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoStatus, setLogoStatus]       = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const logoInputRef = useRef<HTMLInputElement>(null)
+
+  const [orgContactId, setOrgContactId]       = useState<string>(initialCompany.org_contact_staff_id ?? '' as string)
+  const [orgContactSaving, setOrgContactSaving] = useState(false)
+  const [orgContactStatus, setOrgContactStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 
   async function resizeLogo(file: File, maxPx = 800, quality = 0.85): Promise<Blob> {
     return new Promise((resolve, reject) => {
@@ -234,6 +238,19 @@ export function AdminUsersClient({
     if (!res.ok) { setCompanyStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
     setCompany(c => ({ ...c, name: trimmed }))
     setCompanyStatus({ type: 'success', msg: 'Company name updated.' })
+  }
+
+  async function handleSaveOrgContact() {
+    setOrgContactSaving(true); setOrgContactStatus(null)
+    const res = await fetch('/api/company/update-org-contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ org_contact_staff_id: orgContactId || null }),
+    })
+    const json = await res.json()
+    setOrgContactSaving(false)
+    if (!res.ok) { setOrgContactStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
+    setOrgContactStatus({ type: 'success', msg: 'Organization contact saved.' })
   }
 
   // ── Topics state ─────────────────────────────────────────────────────────────
@@ -1108,6 +1125,52 @@ export function AdminUsersClient({
                 {logoStatus.msg}
               </p>
             )}
+          </div>
+
+          {/* In-Service Organization Contact */}
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">In-Service Organization Contact</h3>
+              <p className="text-xs text-gray-400 mt-0.5">This person&apos;s name and BACB cert # will print on all RBT In-Service certificates.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Staff Member</Label>
+              <Select
+                value={orgContactId}
+                onValueChange={v => { setOrgContactId(v === '__none__' ? '' : (v ?? '')); setOrgContactStatus(null) }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select a staff member" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— None —</SelectItem>
+                  {initialStaff
+                    .filter(s => s.role !== 'RBT')
+                    .sort((a, b) => a.last_name.localeCompare(b.last_name))
+                    .map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {getDisplayName(s)}{s.credentials ? `, ${s.credentials}` : ''}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {orgContactStatus && (
+              <p className={`text-sm rounded px-3 py-2 ${orgContactStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                {orgContactStatus.msg}
+              </p>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSaveOrgContact}
+                disabled={orgContactSaving}
+                className="bg-[#0A253D] hover:bg-[#0d2f4f]"
+              >
+                {orgContactSaving
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
+                  : 'Save Contact'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

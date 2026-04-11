@@ -416,6 +416,13 @@ export default function TrainingDetailPage() {
   const trainerDisplay = training.staff ? getDisplayName(training.staff) : training.trainer_name ?? null
   const confirmedCount = attendees.filter(a => a.confirmed).length
 
+  // Block confirm + cert generation until after the training's end time
+  const trainingEnded = (() => {
+    if (!training.date || !training.end_time) return true // no time set → don't block
+    const endDT = new Date(`${training.date}T${training.end_time}`)
+    return new Date() >= endDT
+  })()
+
   return (
     <div className="p-8 max-w-6xl">
 
@@ -571,11 +578,15 @@ export default function TrainingDetailPage() {
                         </TableCell>
                         <TableCell>
                           <button
-                            onClick={() => toggleConfirmed(attendee)}
+                            onClick={() => trainingEnded && toggleConfirmed(attendee)}
+                            disabled={!trainingEnded}
+                            title={!trainingEnded ? 'Cannot confirm attendance until the training end time has passed' : undefined}
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                              attendee.confirmed
-                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                              !trainingEnded
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : attendee.confirmed
+                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                  : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                             }`}
                           >
                             {attendee.confirmed
@@ -587,39 +598,45 @@ export default function TrainingDetailPage() {
                         <TableCell className="text-right">
                           {attendee.confirmed && certType === 'RBT' ? (
                             <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                              <a
-                                href={`/api/certificates/rbt-inservice?recordId=${attendee.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Download BACB RBT In-Service Form"
-                                className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
-                              >
-                                <Award className="h-3.5 w-3.5" /> RBT Form
-                              </a>
-                              <button
-                                onClick={() => handleEmailCert(attendee.id)}
-                                disabled={emailingIds.has(attendee.id)}
-                                title="Email certificate to staff member"
-                                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                                  emailedIds.has(attendee.id)
-                                    ? 'bg-emerald-100 text-emerald-700'
-                                    : emailErrors[attendee.id]
-                                      ? 'bg-red-100 text-red-700'
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                              >
-                                {emailingIds.has(attendee.id) ? (
-                                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
-                                ) : emailedIds.has(attendee.id) ? (
-                                  <><CheckCircle2 className="h-3.5 w-3.5" /> Sent</>
-                                ) : (
-                                  <><Mail className="h-3.5 w-3.5" /> Email</>
-                                )}
-                              </button>
-                              {emailErrors[attendee.id] && (
-                                <span className="text-xs text-red-600 block w-full text-right">
-                                  {emailErrors[attendee.id]}
-                                </span>
+                              {!trainingEnded ? (
+                                <span className="text-xs text-gray-400 italic">Available after training ends</span>
+                              ) : (
+                                <>
+                                  <a
+                                    href={`/api/certificates/rbt-inservice?recordId=${attendee.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Download BACB RBT In-Service Form"
+                                    className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
+                                  >
+                                    <Award className="h-3.5 w-3.5" /> RBT Form
+                                  </a>
+                                  <button
+                                    onClick={() => handleEmailCert(attendee.id)}
+                                    disabled={emailingIds.has(attendee.id)}
+                                    title="Email certificate to staff member"
+                                    className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                                      emailedIds.has(attendee.id)
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : emailErrors[attendee.id]
+                                          ? 'bg-red-100 text-red-700'
+                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                  >
+                                    {emailingIds.has(attendee.id) ? (
+                                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
+                                    ) : emailedIds.has(attendee.id) ? (
+                                      <><CheckCircle2 className="h-3.5 w-3.5" /> Sent</>
+                                    ) : (
+                                      <><Mail className="h-3.5 w-3.5" /> Email</>
+                                    )}
+                                  </button>
+                                  {emailErrors[attendee.id] && (
+                                    <span className="text-xs text-red-600 block w-full text-right">
+                                      {emailErrors[attendee.id]}
+                                    </span>
+                                  )}
+                                </>
                               )}
                             </div>
                           ) : (

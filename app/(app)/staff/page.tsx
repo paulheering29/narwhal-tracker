@@ -108,6 +108,7 @@ export default function StaffPage() {
     const [staffRes, cyclesRes, recordsRes] = await Promise.all([
       supabase.from('staff')
         .select('id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active')
+        .eq('role', 'RBT')
         .order('last_name'),
       supabase.from('certification_cycles')
         .select('staff_id, start_date, end_date')

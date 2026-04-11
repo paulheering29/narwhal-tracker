@@ -48,6 +48,7 @@ type StaffMember = {
   active: boolean
   tier: 'rbt' | 'staff' | null
   roles: string[] | null
+  certification_number: string | null
 }
 
 
@@ -161,6 +162,7 @@ export function AdminUsersClient({
   })
   const [editTier, setEditTier]         = useState<'rbt' | 'staff'>('rbt')
   const [editRoles, setEditRoles]       = useState<string[]>([])
+  const [editCertNumber, setEditCertNumber] = useState<string>('')
   const [userSaving, setUserSaving]     = useState(false)
   const [userError, setUserError]       = useState<string | null>(null)
   const [successMsg, setSuccessMsg]     = useState<string | null>(null)
@@ -170,7 +172,7 @@ export function AdminUsersClient({
   async function reloadStaff() {
     const { data } = await supabase
       .from('staff')
-      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles')
+      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number')
       .order('last_name')
     setStaff(data ?? [])
   }
@@ -287,12 +289,13 @@ export function AdminUsersClient({
   async function handleEditPermissions() {
     if (!editingStaff) return
     setUserSaving(true); setUserError(null)
+    const certNum = editCertNumber.trim() || null
     const { error } = await supabase.from('staff')
-      .update({ tier: editTier, roles: editRoles })
+      .update({ tier: editTier, roles: editRoles, certification_number: certNum })
       .eq('id', editingStaff.id)
     if (error) { setUserError(error.message); setUserSaving(false); return }
     setStaff(prev => prev.map(s =>
-      s.id === editingStaff.id ? { ...s, tier: editTier, roles: editRoles } : s
+      s.id === editingStaff.id ? { ...s, tier: editTier, roles: editRoles, certification_number: certNum } : s
     ))
     setUserSaving(false); setEditOpen(false)
   }
@@ -301,6 +304,7 @@ export function AdminUsersClient({
     setEditingStaff(s)
     setEditTier(s.tier ?? (s.role === 'RBT' ? 'rbt' : 'staff'))
     setEditRoles(s.roles ?? [])
+    setEditCertNumber(s.certification_number ?? '')
     setUserError(null)
     setEditOpen(true)
   }
@@ -770,6 +774,16 @@ export function AdminUsersClient({
                     </div>
                   </div>
                 )}
+                <div className="space-y-2">
+                  <Label htmlFor="edit_cert">BACB Certification Number</Label>
+                  <Input
+                    id="edit_cert"
+                    value={editCertNumber}
+                    onChange={e => setEditCertNumber(e.target.value)}
+                    placeholder="e.g. 1-23-45678"
+                  />
+                  <p className="text-xs text-gray-400">Appears on certificates where this person is the trainer or the RBT.</p>
+                </div>
                 {userError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{userError}</p>}
               </div>
               <SheetFooter>

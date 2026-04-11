@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         trainer_staff_id, trainer_name, trainer_cert_number,
         trainer_staff:trainer_staff_id (
           id, first_name, last_name, display_first_name, display_last_name,
-          certification_number
+          certification_number, signature_url
         )
       )
     `)
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     trainer_staff: {
       first_name: string; last_name: string
       display_first_name: string | null; display_last_name: string | null
-      certification_number: string | null
+      certification_number: string | null; signature_url: string | null
     } | null
   }
 
@@ -98,15 +98,9 @@ export async function POST(request: NextRequest) {
     const ts = course.trainer_staff
     const first = ts.display_first_name?.trim() || ts.first_name
     const last  = ts.display_last_name?.trim()  || ts.last_name
-    trainerName       = `${first} ${last}`
-    trainerCertNumber = ts.certification_number ?? ''
-
-    const { data: trainerProfile } = await supabase
-      .from('profiles')
-      .select('signature_url')
-      .eq('staff_id', course.trainer_staff_id)
-      .maybeSingle()
-    trainerSignatureUrl = trainerProfile?.signature_url ?? null
+    trainerName         = `${first} ${last}`
+    trainerCertNumber   = ts.certification_number ?? ''
+    trainerSignatureUrl = ts.signature_url ?? null
   }
 
   const staffName = `${staff.first_name} ${staff.last_name}`

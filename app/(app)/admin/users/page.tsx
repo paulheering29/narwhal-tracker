@@ -20,7 +20,7 @@ export default async function AdminUsersPage() {
   const [{ data: staff }, { data: topics }, billing, rbtCount] = await Promise.all([
     supabase
       .from('staff')
-      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles')
+      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number')
       .eq('company_id', me.company_id)
       .order('last_name'),
     supabase

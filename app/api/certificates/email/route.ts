@@ -11,12 +11,6 @@ import { generateFormal } from '@/lib/certificates/formal'
 import { generateFun }    from '@/lib/certificates/fun'
 import { generateBasic }  from '@/lib/certificates/basic'
 
-const MODALITY_MAP: Record<string, string> = {
-  'in-person':           'In-person',
-  'online-synchronous':  'Online synchronous',
-  'online-asynchronous': 'Online asynchronous',
-}
-
 const MODALITY_LABELS: Record<string, string> = {
   'in-person':           'In-person',
   'online-synchronous':  'Online synchronous',

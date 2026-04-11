@@ -5,7 +5,6 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 
 interface TemplatePickerDialogProps {
   open: boolean
@@ -42,7 +41,7 @@ export function TemplatePickerDialog({
         <DialogHeader>
           <DialogTitle>Select Certificate Template</DialogTitle>
           <DialogDescription>
-            Choose which template you'd like to use for this certificate.
+            Choose which template you&rsquo;d like to use for this certificate.
           </DialogDescription>
         </DialogHeader>
 

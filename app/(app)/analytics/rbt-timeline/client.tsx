@@ -212,7 +212,7 @@ export function RbtTimelineClient({ staff, comparisons }: { staff: StaffMember[]
 
           {/* Comparison label */}
           {selectedComparison !== 'none' && (
-            <div className="mt-2 text-center text-xs text-gray-400 italic">{selectedComparison}</div>
+            <div className="mt-3 text-center text-lg font-medium text-gray-600">{selectedComparison}</div>
           )}
 
         </div>

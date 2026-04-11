@@ -113,24 +113,24 @@ function DashboardCard({ card }: { card: DashboardCardData }) {
   return (
     <div className={`rounded-xl border-2 ${c.cardBorder} bg-white shadow-sm overflow-hidden flex flex-col`}>
       {/* Colourful top accent bar */}
-      <div className={`h-1.5 ${c.accentBar}`} />
+      <div className={`h-3 ${c.accentBar}`} />
 
       <div className="p-5 flex-1 flex flex-col">
-        {/* Title + icon */}
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
-            {card.title}
-          </h3>
+        {/* Icon (top-right corner, doesn't affect centering) */}
+        <div className="flex justify-end">
           <div className={`rounded-lg p-2.5 ${c.iconBg}`}>
             <Icon className={`h-6 w-6 ${c.iconFg}`} />
           </div>
         </div>
 
-        {/* Big number */}
-        <p className={`text-7xl font-extrabold leading-none tabular-nums ${c.number}`}>
+        {/* Centered title + number */}
+        <h3 className="-mt-2 text-sm font-semibold uppercase tracking-wide text-gray-600 text-center">
+          {card.title}
+        </h3>
+        <p className={`mt-2 text-center text-8xl font-extrabold leading-none tabular-nums ${c.number}`}>
           {card.value}
         </p>
-        <p className="mt-2 text-xs text-gray-500">{card.description}</p>
+        <p className="mt-2 text-xs text-gray-500 text-center">{card.description}</p>
 
         {/* Expand toggle — hidden when alwaysExpanded */}
         {!card.alwaysExpanded && (

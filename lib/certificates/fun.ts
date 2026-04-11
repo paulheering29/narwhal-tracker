@@ -64,7 +64,7 @@ export async function generateFun(data: CertData): Promise<Uint8Array> {
   }
 
   // ── Header text ──────────────────────────────────────────────────────────────
-  const hdr1 = '🎉  Training Complete!'
+  const hdr1 = 'Training Complete!'
   const hdr1Sz = 28
   page.drawText(hdr1, { x: centerX(hdr1, bold, hdr1Sz, W), y: T(55 + hdr1Sz), font: bold, size: hdr1Sz, color: WHITE })
 

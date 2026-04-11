@@ -27,15 +27,6 @@ import { UpgradeDialog } from '@/components/upgrade-dialog'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Profile = {
-  id: string
-  tier: 'rbt' | 'staff'
-  roles: string[]
-  first_name: string | null
-  last_name: string | null
-  staff_id: string | null
-}
-
 // ─── Role badge colours ───────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, string> = {
@@ -46,6 +37,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 type StaffMember = {
   id: string
+  auth_id: string | null
   first_name: string
   last_name: string
   display_first_name: string | null
@@ -54,6 +46,8 @@ type StaffMember = {
   role: string | null
   ehr_id: string | null
   active: boolean
+  tier: 'rbt' | 'staff' | null
+  roles: string[] | null
 }
 
 
@@ -118,14 +112,12 @@ const emptyStaffForm = { first_name: '', last_name: '', email: '', role: '', ehr
 type Topic = { id: string; name: string; created_at: string }
 
 export function AdminUsersClient({
-  currentUserId,
-  initialUsers,
+  currentAuthId,
   initialStaff,
   initialTopics,
   planLimits,
 }: {
-  currentUserId: string
-  initialUsers: Profile[]
+  currentAuthId: string
   initialStaff: StaffMember[]
   initialTopics: Topic[]
   planLimits: { maxRbts: number; currentRbts: number; planName: string }
@@ -160,27 +152,25 @@ export function AdminUsersClient({
   const [importResult, setImportResult] = useState<{ imported: number; errors: number } | null>(null)
 
   // ── User state ───────────────────────────────────────────────────────────────
-  const [users, setUsers]             = useState<Profile[]>(initialUsers)
-  const [inviteOpen, setInviteOpen]   = useState(false)
-  const [editOpen, setEditOpen]       = useState(false)
-  const [editingUser, setEditingUser] = useState<Profile | null>(null)
-  const [inviteForm, setInviteForm]   = useState({
+  const [inviteOpen, setInviteOpen]     = useState(false)
+  const [editOpen, setEditOpen]         = useState(false)
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null)
+  const [inviteForm, setInviteForm]     = useState({
     email: '', password: '', first_name: '', last_name: '',
-    tier: 'rbt' as 'rbt' | 'staff', roles: [] as string[], staff_id: '',
+    tier: 'staff' as 'rbt' | 'staff', roles: [] as string[],
   })
-  const [editTier, setEditTier]       = useState<'rbt' | 'staff'>('rbt')
-  const [editRoles, setEditRoles]     = useState<string[]>([])
-  const [editStaffId, setEditStaffId] = useState<string>('')
-  const [userSaving, setUserSaving]   = useState(false)
-  const [userError, setUserError]   = useState<string | null>(null)
-  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [editTier, setEditTier]         = useState<'rbt' | 'staff'>('rbt')
+  const [editRoles, setEditRoles]       = useState<string[]>([])
+  const [userSaving, setUserSaving]     = useState(false)
+  const [userError, setUserError]       = useState<string | null>(null)
+  const [successMsg, setSuccessMsg]     = useState<string | null>(null)
 
   // ── Staff actions ────────────────────────────────────────────────────────────
 
   async function reloadStaff() {
     const { data } = await supabase
       .from('staff')
-      .select('id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active')
+      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles')
       .order('last_name')
     setStaff(data ?? [])
   }
@@ -282,33 +272,37 @@ export function AdminUsersClient({
         last_name:  inviteForm.last_name  || null,
         tier:       inviteForm.tier,
         roles:      inviteForm.roles,
-        staff_id:   inviteForm.staff_id   || null,
+        job_role:   inviteForm.tier === 'rbt' ? 'RBT' : (inviteForm.roles.includes('Admin') ? 'Admin' : 'Trainer'),
       }),
     })
     const json = await res.json()
     if (!res.ok) { setUserError(json.error ?? 'Failed to create user.'); setUserSaving(false); return }
     setUserSaving(false); setInviteOpen(false)
     setSuccessMsg(`User ${inviteForm.email} created. A welcome email with their login details has been sent.`)
-    setInviteForm({ email: '', password: '', first_name: '', last_name: '', tier: 'rbt', roles: [], staff_id: '' })
+    setInviteForm({ email: '', password: '', first_name: '', last_name: '', tier: 'staff', roles: [] })
+    reloadStaff()
     router.refresh()
   }
 
   async function handleEditPermissions() {
-    if (!editingUser) return
+    if (!editingStaff) return
     setUserSaving(true); setUserError(null)
-    const { error } = await supabase.from('profiles')
-      .update({ tier: editTier, roles: editRoles, staff_id: editStaffId || null })
-      .eq('id', editingUser.id)
+    const { error } = await supabase.from('staff')
+      .update({ tier: editTier, roles: editRoles })
+      .eq('id', editingStaff.id)
     if (error) { setUserError(error.message); setUserSaving(false); return }
-    setUsers(prev => prev.map(u =>
-      u.id === editingUser.id ? { ...u, tier: editTier, roles: editRoles, staff_id: editStaffId || null } : u
+    setStaff(prev => prev.map(s =>
+      s.id === editingStaff.id ? { ...s, tier: editTier, roles: editRoles } : s
     ))
     setUserSaving(false); setEditOpen(false)
   }
 
-  function openEditPermissions(u: Profile) {
-    setEditingUser(u); setEditTier(u.tier); setEditRoles(u.roles)
-    setEditStaffId(u.staff_id ?? ''); setUserError(null); setEditOpen(true)
+  function openEditPermissions(s: StaffMember) {
+    setEditingStaff(s)
+    setEditTier(s.tier ?? (s.role === 'RBT' ? 'rbt' : 'staff'))
+    setEditRoles(s.roles ?? [])
+    setUserError(null)
+    setEditOpen(true)
   }
 
   // ── Topic actions ────────────────────────────────────────────────────────────
@@ -352,7 +346,10 @@ export function AdminUsersClient({
 
   // ── Filtered staff ───────────────────────────────────────────────────────────
 
-  const filteredStaff = staff.filter(s => {
+  const rbtStaff    = staff.filter(s => s.role === 'RBT')
+  const adminStaff  = staff.filter(s => s.role !== 'RBT')
+
+  const filteredStaff = rbtStaff.filter(s => {
     const display = getDisplayName(s)
     return `${display} ${s.first_name} ${s.last_name} ${s.email ?? ''} ${s.ehr_id ?? ''}`
       .toLowerCase().includes(staffSearch.toLowerCase())
@@ -371,9 +368,9 @@ export function AdminUsersClient({
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         {([
-          { key: 'rbt',    label: 'RBT',    icon: Users,       count: staff.length  },
-          { key: 'admin',  label: 'Admin',  icon: ShieldCheck, count: users.length  },
-          { key: 'topics', label: 'Topics', icon: Tag,         count: topics.length },
+          { key: 'rbt',    label: 'RBT',              icon: Users,       count: rbtStaff.length   },
+          { key: 'admin',  label: 'Trainers & Admin', icon: ShieldCheck, count: adminStaff.length },
+          { key: 'topics', label: 'Topics',           icon: Tag,         count: topics.length     },
         ] as const).map(({ key, label, icon: Icon, count }) => (
           <button
             key={key}
@@ -596,11 +593,11 @@ export function AdminUsersClient({
         </>
       )}
 
-      {/* ── Admin Tab ───────────────────────────────────────────────────────── */}
+      {/* ── Trainers & Admin Tab ────────────────────────────────────────────── */}
       {tab === 'admin' && (
         <>
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-gray-500">{users.length} user{users.length !== 1 ? 's' : ''} in your organisation</p>
+            <p className="text-sm text-gray-500">{adminStaff.length} trainer{adminStaff.length !== 1 ? 's' : ''} / admin{adminStaff.length !== 1 ? 's' : ''} in your organisation</p>
             <Button onClick={() => { setUserError(null); setInviteOpen(true) }} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
               <UserPlus className="mr-2 h-4 w-4" /> Add User
             </Button>
@@ -615,44 +612,53 @@ export function AdminUsersClient({
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Tier</TableHead>
-                  <TableHead>Roles</TableHead>
+                  <TableHead>Job Role</TableHead>
+                  <TableHead>Login</TableHead>
+                  <TableHead>Permissions</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map(u => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">
-                      {u.first_name || u.last_name
-                        ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim()
-                        : <span className="text-gray-400 italic">No name set</span>}
-                      {u.id === currentUserId && <span className="ml-2 text-xs text-gray-400">(you)</span>}
+                {adminStaff.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-10 text-gray-400">
+                      No trainers or admins yet. Click &ldquo;Add User&rdquo; to create one.
                     </TableCell>
+                  </TableRow>
+                ) : adminStaff.map(s => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">
+                      {getDisplayName(s) || <span className="text-gray-400 italic">No name set</span>}
+                      {s.auth_id === currentAuthId && <span className="ml-2 text-xs text-gray-400">(you)</span>}
+                      {s.email && <div className="text-xs text-gray-400">{s.email}</div>}
+                    </TableCell>
+                    <TableCell className="text-gray-600 text-sm">{s.role ?? '—'}</TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        u.tier === 'rbt' ? 'bg-gray-100 text-gray-600' : 'bg-blue-50 text-blue-700'
-                      }`}>
-                        {u.tier === 'rbt' ? 'RBT' : 'Staff'}
-                      </span>
+                      {s.auth_id
+                        ? <span className="inline-flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />Yes</span>
+                        : <span className="text-xs text-gray-400">None</span>}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {u.roles.length === 0
-                          ? <span className="text-gray-400 text-sm">—</span>
-                          : u.roles.map(r => (
-                              <span key={r} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[r] ?? 'bg-gray-100 text-gray-700'}`}>
-                                {r}
-                              </span>
-                            ))
+                        {!s.auth_id
+                          ? <span className="text-gray-300 text-xs italic">—</span>
+                          : (s.roles?.length ?? 0) === 0
+                            ? <span className="text-gray-400 text-sm">—</span>
+                            : s.roles!.map(r => (
+                                <span key={r} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[r] ?? 'bg-gray-100 text-gray-700'}`}>
+                                  {r}
+                                </span>
+                              ))
                         }
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="ghost" onClick={() => openEditPermissions(u)}
-                        title="Edit permissions">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      {s.auth_id && (
+                        <Button size="sm" variant="ghost" onClick={() => openEditPermissions(s)}
+                          title="Edit permissions">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -713,24 +719,6 @@ export function AdminUsersClient({
                     </div>
                   </div>
                 )}
-                {inviteForm.tier === 'staff' && (
-                  <div className="space-y-2">
-                    <Label>Link to Staff Record <span className="text-gray-400 font-normal">(optional)</span></Label>
-                    <Select
-                      value={inviteForm.staff_id}
-                      onValueChange={v => setInviteForm(f => ({ ...f, staff_id: v === '__none__' ? '' : (v ?? '') }))}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Select if this person is in the staff list…" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— None —</SelectItem>
-                        {staff.filter(s => s.active && s.role !== 'RBT').map(s => (
-                          <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-400">Links their signature to certificates where they&apos;re listed as trainer.</p>
-                  </div>
-                )}
                 {userError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{userError}</p>}
               </div>
               <SheetFooter>
@@ -748,7 +736,7 @@ export function AdminUsersClient({
               <SheetHeader><SheetTitle>Edit Permissions</SheetTitle></SheetHeader>
               <div className="space-y-5 px-6 py-5">
                 <p className="text-sm text-gray-600">
-                  Editing <span className="font-medium">{editingUser?.first_name} {editingUser?.last_name}</span>
+                  Editing <span className="font-medium">{editingStaff ? getDisplayName(editingStaff) : ''}</span>
                 </p>
                 <div className="space-y-2">
                   <Label>Tier</Label>
@@ -782,22 +770,6 @@ export function AdminUsersClient({
                     </div>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label>Staff Record <span className="text-gray-400 font-normal">(for signature on certificates)</span></Label>
-                  <Select
-                    value={editStaffId}
-                    onValueChange={v => setEditStaffId(v === '__none__' ? '' : (v ?? ''))}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Link to a staff record…" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— None —</SelectItem>
-                      {staff.filter(s => s.active).map(s => (
-                        <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-400">Select which staff record belongs to this user so their signature appears on certs.</p>
-                </div>
                 {userError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{userError}</p>}
               </div>
               <SheetFooter>

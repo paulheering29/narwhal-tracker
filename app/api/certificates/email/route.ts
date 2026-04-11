@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
         <div style="background: #f9fafb; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
           <p style="margin: 0 0 16px;">Hi ${staffDisplayName},</p>
           <p style="margin: 0 0 16px;">
-            Your BACB RBT In-Service certificate for <strong>${course.name}</strong>
+            Your RBT In-Service certificate for <strong>${course.name}</strong>
             ${course.date ? ` on <strong>${eventDate}</strong>` : ''} is attached to this email.
           </p>
           <p style="margin: 0 0 16px;">

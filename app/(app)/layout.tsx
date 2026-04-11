@@ -8,14 +8,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: staff } = await supabase
+    .from('staff')
     .select('tier, roles, first_name, last_name')
-    .eq('id', user.id)
+    .eq('auth_id', user.id)
     .single()
 
-  const userTier  = (profile?.tier  ?? 'rbt')    as 'rbt' | 'staff'
-  const userRoles = (profile?.roles ?? [])        as string[]
+  const userTier  = (staff?.tier  ?? 'rbt')    as 'rbt' | 'staff'
+  const userRoles = (staff?.roles ?? [])        as string[]
   const userEmail = user.email ?? ''
 
   return (

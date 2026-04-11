@@ -22,13 +22,13 @@ export async function POST(request: NextRequest) {
 
   const service = createServiceClient()
 
-  // ── Get profile → company ─────────────────────────────────────────────────
-  const { data: profile } = await service
-    .from('profiles')
+  // ── Get staff → company ───────────────────────────────────────────────────
+  const { data: staff } = await service
+    .from('staff')
     .select('company_id')
-    .eq('id', user.id)
+    .eq('auth_id', user.id)
     .single()
-  if (!profile?.company_id) return NextResponse.json({ error: 'No company found' }, { status: 400 })
+  if (!staff?.company_id) return NextResponse.json({ error: 'No company found' }, { status: 400 })
 
   // ── Get plan + Stripe price ───────────────────────────────────────────────
   const { data: plan } = await service
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   const { data: company } = await service
     .from('companies')
     .select('id, name, stripe_customer_id')
-    .eq('id', profile.company_id)
+    .eq('id', staff.company_id)
     .single()
   if (!company) return NextResponse.json({ error: 'Company not found' }, { status: 400 })
 

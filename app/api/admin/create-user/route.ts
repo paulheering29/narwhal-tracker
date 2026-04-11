@@ -16,23 +16,24 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: callerProfile } = await supabase
-    .from('profiles')
+  const service = createServiceClient()
+
+  // Look up caller via staff (bypass RLS to avoid chicken-and-egg)
+  const { data: caller } = await service
+    .from('staff')
     .select('company_id, roles')
-    .eq('id', user.id)
+    .eq('auth_id', user.id)
     .single()
 
-  if (!callerProfile?.roles?.includes('Admin')) {
+  if (!caller?.roles?.includes('Admin')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   // ── Parse body ────────────────────────────────────────────────────────────
-  const { email, password, first_name, last_name, tier, roles, staff_id } = await request.json()
+  const { email, password, first_name, last_name, tier, roles, job_role } = await request.json()
   if (!email || !password) {
     return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 })
   }
-
-  const service = createServiceClient()
 
   // ── Create auth user (no confirmation email) ───────────────────────────────
   const { data: created, error: createError } = await service.auth.admin.createUser({
@@ -45,21 +46,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: createError?.message ?? 'Failed to create user.' }, { status: 400 })
   }
 
-  // ── Create profile ─────────────────────────────────────────────────────────
-  const { error: profileError } = await service.from('profiles').insert({
-    id:         created.user.id,
-    company_id: callerProfile.company_id,
+  // ── Create staff row linked to the new auth user ──────────────────────────
+  const { error: staffError } = await service.from('staff').insert({
+    company_id: caller.company_id,
+    auth_id:    created.user.id,
+    first_name: first_name || '',
+    last_name:  last_name  || '',
+    email,
     tier:       tier ?? 'rbt',
     roles:      roles ?? [],
-    first_name: first_name || null,
-    last_name:  last_name  || null,
-    staff_id:   staff_id   || null,
+    role:       job_role || (tier === 'rbt' ? 'RBT' : null),
+    active:     true,
   })
 
-  if (profileError) {
+  if (staffError) {
     // Roll back the auth user so we don't leave orphans
     await service.auth.admin.deleteUser(created.user.id)
-    return NextResponse.json({ error: profileError.message }, { status: 400 })
+    return NextResponse.json({ error: staffError.message }, { status: 400 })
   }
 
   // ── Send welcome email via Resend ──────────────────────────────────────────

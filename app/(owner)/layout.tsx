@@ -9,13 +9,13 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
 
   // Check is_owner via service client (bypasses RLS)
   const service = createServiceClient()
-  const { data: profile } = await service
-    .from('profiles')
+  const { data: staff } = await service
+    .from('staff')
     .select('is_owner')
-    .eq('id', user.id)
+    .eq('auth_id', user.id)
     .single()
 
-  if (!profile?.is_owner) redirect('/dashboard')
+  if (!staff?.is_owner) redirect('/dashboard')
 
   return (
     <div className="min-h-screen bg-gray-50">

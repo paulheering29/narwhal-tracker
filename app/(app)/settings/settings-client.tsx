@@ -41,11 +41,11 @@ export function SettingsClient({ userId, currentSignatureUrl }: SettingsClientPr
 
       const urlWithBust = `${publicUrl}?t=${Date.now()}`
 
-      const { error: profileErr } = await supabase
-        .from('profiles')
+      const { error: staffErr } = await supabase
+        .from('staff')
         .update({ signature_url: urlWithBust })
-        .eq('id', userId)
-      if (profileErr) throw profileErr
+        .eq('auth_id', userId)
+      if (staffErr) throw staffErr
 
       setSigUrl(urlWithBust)
       setShowPad(false)

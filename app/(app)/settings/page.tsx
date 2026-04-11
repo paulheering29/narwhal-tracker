@@ -7,10 +7,10 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: staff } = await supabase
+    .from('staff')
     .select('signature_url')
-    .eq('id', user.id)
+    .eq('auth_id', user.id)
     .single()
 
   return (
@@ -25,7 +25,7 @@ export default async function SettingsPage() {
 
       <SettingsClient
         userId={user.id}
-        currentSignatureUrl={profile?.signature_url ?? null}
+        currentSignatureUrl={staff?.signature_url ?? null}
       />
     </div>
   )

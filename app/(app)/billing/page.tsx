@@ -8,13 +8,13 @@ export default async function BillingPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: staff } = await supabase
+    .from('staff')
     .select('company_id')
-    .eq('id', user.id)
+    .eq('auth_id', user.id)
     .single()
 
-  const companyId = profile?.company_id
+  const companyId = staff?.company_id
   if (!companyId) redirect('/login')
 
   const [billing, allPlans, rbtCount] = await Promise.all([

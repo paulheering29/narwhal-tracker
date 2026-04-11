@@ -20,16 +20,16 @@ export async function POST() {
   const service = createServiceClient()
 
   // ── Get company's Stripe customer ID ──────────────────────────────────────
-  const { data: profile } = await service
-    .from('profiles')
+  const { data: staff } = await service
+    .from('staff')
     .select('company_id')
-    .eq('id', user.id)
+    .eq('auth_id', user.id)
     .single()
 
   const { data: company } = await service
     .from('companies')
     .select('stripe_customer_id')
-    .eq('id', profile?.company_id)
+    .eq('id', staff?.company_id)
     .single()
 
   if (!company?.stripe_customer_id) {

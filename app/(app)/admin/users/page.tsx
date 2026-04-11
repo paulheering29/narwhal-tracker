@@ -9,31 +9,26 @@ export default async function AdminUsersPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
+  const { data: me } = await supabase
+    .from('staff')
     .select('tier, roles, company_id')
-    .eq('id', user.id)
+    .eq('auth_id', user.id)
     .single()
 
-  if (!profile || !canManageUsers(profile.roles ?? [])) redirect('/dashboard')
+  if (!me || !canManageUsers(me.roles ?? [])) redirect('/dashboard')
 
-  const [{ data: users }, { data: staff }, { data: topics }, billing, rbtCount] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id, tier, roles, first_name, last_name, staff_id')
-      .eq('company_id', profile.company_id)
-      .order('last_name'),
+  const [{ data: staff }, { data: topics }, billing, rbtCount] = await Promise.all([
     supabase
       .from('staff')
-      .select('id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active')
-      .eq('company_id', profile.company_id)
+      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles')
+      .eq('company_id', me.company_id)
       .order('last_name'),
     supabase
       .from('topics')
       .select('id, name, created_at')
       .order('name'),
-    getCompanyBilling(profile.company_id),
-    getRBTCount(profile.company_id),
+    getCompanyBilling(me.company_id),
+    getRBTCount(me.company_id),
   ])
 
   const planLimits = {
@@ -44,8 +39,7 @@ export default async function AdminUsersPage() {
 
   return (
     <AdminUsersClient
-      currentUserId={user.id}
-      initialUsers={users ?? []}
+      currentAuthId={user.id}
       initialStaff={staff ?? []}
       initialTopics={topics ?? []}
       planLimits={planLimits}

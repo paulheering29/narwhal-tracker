@@ -165,6 +165,15 @@ export default function StaffDetailPage() {
   const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', display_first_name: '', display_last_name: '', email: '', role: '', ehr_id: '', certification_number: '', original_certification_date: '', credentials: '' })
   const [savingStaff, setSavingStaff] = useState(false)
   const [staffError, setStaffError] = useState<string | null>(null)
+  const [togglingActive, setTogglingActive] = useState(false)
+
+  async function handleToggleActive() {
+    if (!staff) return
+    setTogglingActive(true)
+    const { error } = await supabase.from('staff').update({ active: !staff.active }).eq('id', staffId)
+    if (!error) setStaff(s => s ? { ...s, active: !s.active } : s)
+    setTogglingActive(false)
+  }
 
   // Add to training sheet
   const [addToTrainingOpen, setAddToTrainingOpen]       = useState(false)
@@ -473,6 +482,17 @@ export default function StaffDetailPage() {
               <Badge variant={staff.active ? 'default' : 'secondary'}>
                 {staff.active ? 'Active' : 'Inactive'}
               </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleActive}
+                disabled={togglingActive}
+                className="h-6 text-xs px-2"
+              >
+                {togglingActive
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : staff.active ? 'Mark inactive' : 'Mark active'}
+              </Button>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={openEditStaff}>

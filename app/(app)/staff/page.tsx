@@ -83,11 +83,12 @@ export default function StaffPage() {
   const supabase = createClient()
   const router = useRouter()
 
-  const [rows, setRows]       = useState<StaffRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch]   = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('name')
-  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [rows, setRows]           = useState<StaffRow[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [search, setSearch]       = useState('')
+  const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('active')
+  const [sortKey, setSortKey]     = useState<SortKey>('name')
+  const [sortDir, setSortDir]     = useState<SortDir>('asc')
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -168,8 +169,12 @@ export default function StaffPage() {
   const filtered = [...rows
     .filter(s => {
       const display = getDisplayName(s)
-      return `${display} ${s.first_name} ${s.last_name} ${s.email ?? ''} ${s.ehr_id ?? ''}`
+      const matchesSearch = `${display} ${s.first_name} ${s.last_name} ${s.email ?? ''} ${s.ehr_id ?? ''}`
         .toLowerCase().includes(search.toLowerCase())
+      const matchesActive = filterActive === 'all'
+        || (filterActive === 'active' && s.active)
+        || (filterActive === 'inactive' && !s.active)
+      return matchesSearch && matchesActive
     })
   ].sort((a, b) => {
     const av = getSortValue(a, sortKey)
@@ -192,14 +197,31 @@ export default function StaffPage() {
         </p>
       </div>
 
-      <div className="mb-4 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          placeholder="Search by name or email…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="mb-4 flex gap-3 items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex rounded-md border border-gray-200 overflow-hidden shrink-0">
+          {(['active', 'inactive', 'all'] as const).map(opt => (
+            <button
+              key={opt}
+              onClick={() => setFilterActive(opt)}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors capitalize ${
+                filterActive === opt
+                  ? 'bg-[#0A253D] text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {opt === 'all' ? 'All' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-lg border bg-white shadow-sm overflow-x-auto">

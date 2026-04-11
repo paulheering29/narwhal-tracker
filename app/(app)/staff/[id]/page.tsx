@@ -256,6 +256,9 @@ export default function StaffDetailPage() {
   const [savingCycle, setSavingCycle] = useState(false)
   const [cycleError, setCycleError] = useState<string | null>(null)
   const [overlapWarning, setOverlapWarning] = useState<OverlapWarning | null>(null)
+  // Files staged for upload after a new cycle is created
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [pendingFilesError, setPendingFilesError] = useState<string | null>(null)
 
   // ─── Data loading ───────────────────────────────────────────────────────────
 
@@ -453,9 +456,9 @@ export default function StaffDetailPage() {
     setEditingCycle(null)
     setCycleError(null)
     setOverlapWarning(null)
-
     setCycleForm(emptyCycleForm)
-
+    setPendingFiles([])
+    setPendingFilesError(null)
     setCycleDialogOpen(true)
   }
 
@@ -468,7 +471,29 @@ export default function StaffDetailPage() {
     })
     setCycleError(null)
     setOverlapWarning(null)
+    setPendingFiles([])
+    setPendingFilesError(null)
+    if (!cycleDocuments[cycle.id]) loadCycleDocuments(cycle.id)
     setCycleDialogOpen(true)
+  }
+
+  function stagePendingFile(file: File) {
+    setPendingFilesError(null)
+    const isImage = file.type.startsWith('image/')
+    const isPdf   = file.type === 'application/pdf'
+    if (!isImage && !isPdf) {
+      setPendingFilesError('Only images (JPG/PNG/WebP) and PDF files are allowed.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setPendingFilesError('File must be under 10 MB.')
+      return
+    }
+    setPendingFiles(prev => [...prev, file])
+  }
+
+  function removePendingFile(idx: number) {
+    setPendingFiles(prev => prev.filter((_, i) => i !== idx))
   }
 
   async function handleSaveCycle(autoFixOverlap = false) {
@@ -524,19 +549,27 @@ export default function StaffDetailPage() {
       } else {
         const companyId = await getCompanyId()
         if (!companyId) throw new Error('Could not determine your company. Please sign out and sign back in.')
-        const { error } = await supabase.from('certification_cycles').insert({
+        const { data: newCycle, error } = await supabase.from('certification_cycles').insert({
           company_id: companyId,
           staff_id: staffId,
           certification_type: 'RBT',
           start_date: cycleForm.start_date,
           end_date: cycleForm.end_date,
           notes: cycleForm.notes || null,
-        })
+        }).select('id, certification_type, start_date, end_date, notes').single()
         if (error) throw error
+
+        // Upload any staged files now that we have a cycle_id
+        if (newCycle && pendingFiles.length > 0) {
+          for (const f of pendingFiles) {
+            await handleUploadDoc(newCycle as Cycle, f)
+          }
+        }
       }
 
       setOverlapWarning(null)
       setCycleDialogOpen(false)
+      setPendingFiles([])
       loadCycles()
     } catch (err: unknown) {
       setCycleError(err instanceof Error ? err.message : 'An error occurred.')
@@ -1073,6 +1106,134 @@ export default function StaffDetailPage() {
                 value={cycleForm.notes}
                 onChange={e => setCycleForm(f => ({ ...f, notes: e.target.value }))}
               />
+            </div>
+
+            {/* ── Documentation ─────────────────────────────────────────── */}
+            <div className="space-y-2 pt-2 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <Label>Documentation</Label>
+                <label
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${
+                    (editingCycle && uploadingCycleId === editingCycle.id)
+                      ? 'bg-gray-100 text-gray-400 cursor-wait'
+                      : 'bg-[#0A253D] text-white hover:bg-[#0d2f4f]'
+                  }`}
+                >
+                  {editingCycle && uploadingCycleId === editingCycle.id ? (
+                    <><Loader2 className="h-3 w-3 animate-spin" /> Uploading…</>
+                  ) : (
+                    <><Upload className="h-3 w-3" /> Add file</>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="hidden"
+                    disabled={!!(editingCycle && uploadingCycleId === editingCycle.id)}
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) {
+                        if (editingCycle) {
+                          handleUploadDoc(editingCycle, f)
+                        } else {
+                          stagePendingFile(f)
+                        }
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              </div>
+
+              {pendingFilesError && (
+                <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{pendingFilesError}</p>
+              )}
+              {editingCycle && uploadError[editingCycle.id] && (
+                <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{uploadError[editingCycle.id]}</p>
+              )}
+
+              {/* Editing: show existing uploaded docs */}
+              {editingCycle && (cycleDocuments[editingCycle.id] ?? []).length > 0 && (
+                <ul className="space-y-1.5">
+                  {(cycleDocuments[editingCycle.id] ?? []).map(doc => {
+                    const isImg = doc.mime_type?.startsWith('image/')
+                    return (
+                      <li
+                        key={doc.id}
+                        className="flex items-center gap-2 rounded-md bg-white border border-gray-100 px-2.5 py-1.5"
+                      >
+                        {isImg
+                          ? <ImageIcon className="h-4 w-4 text-blue-500 shrink-0" />
+                          : <FileText className="h-4 w-4 text-red-500 shrink-0" />}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-800 truncate">{doc.name}</p>
+                          <p className="text-[10px] text-gray-400">{formatBytes(doc.file_size)}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 shrink-0"
+                          title="View"
+                          onClick={() => handleViewDoc(doc)}
+                        >
+                          <Eye className="h-3.5 w-3.5 text-gray-500" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 shrink-0"
+                          title="Delete"
+                          disabled={deletingDocId === doc.id}
+                          onClick={() => handleDeleteDoc(doc)}
+                        >
+                          {deletingDocId === doc.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
+                            : <Trash2 className="h-3.5 w-3.5 text-red-500" />}
+                        </Button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+
+              {/* Adding new cycle: show staged pending files */}
+              {!editingCycle && pendingFiles.length > 0 && (
+                <ul className="space-y-1.5">
+                  {pendingFiles.map((f, i) => {
+                    const isImg = f.type.startsWith('image/')
+                    return (
+                      <li
+                        key={`${f.name}-${i}`}
+                        className="flex items-center gap-2 rounded-md bg-white border border-gray-100 px-2.5 py-1.5"
+                      >
+                        {isImg
+                          ? <ImageIcon className="h-4 w-4 text-blue-500 shrink-0" />
+                          : <FileText className="h-4 w-4 text-red-500 shrink-0" />}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-800 truncate">{f.name}</p>
+                          <p className="text-[10px] text-gray-400">
+                            {formatBytes(f.size)} · uploads on save
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 shrink-0"
+                          title="Remove"
+                          onClick={() => removePendingFile(i)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        </Button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+
+              {!editingCycle && pendingFiles.length === 0 && (
+                <p className="py-1 text-xs text-gray-400">
+                  Optional. Screenshots from the BACB portal, PDFs, etc.
+                </p>
+              )}
             </div>
 
             {/* Overlap warning */}

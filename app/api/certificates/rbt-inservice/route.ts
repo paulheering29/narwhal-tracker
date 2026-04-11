@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createServiceClient } from '@/lib/supabase/service'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import fs from 'fs'
 import path from 'path'
@@ -20,17 +21,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'recordId is required' }, { status: 400 })
   }
 
-  // ── Auth ────────────────────────────────────────────────────────────────────
+  // ── Auth (user client) ───────────────────────────────────────────────────────
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    }
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   )
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,12 +34,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // ── Fetch training record + joins ───────────────────────────────────────────
+  // ── Service client (bypasses companies RLS) ──────────────────────────────────
+  const service = createServiceClient()
+
+  // ── Fetch training record (user client — RLS ensures they own it) ────────────
   const { data: record, error: recordErr } = await supabase
     .from('training_records')
     .select(`
-      id, confirmed,
-      company:company_id ( name, logo_url, org_contact_staff_id ),
+      id, confirmed, company_id,
       staff:staff_id (
         id, first_name, last_name, display_first_name, display_last_name,
         certification_number, credentials
@@ -68,11 +66,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Attendance not confirmed for this record' }, { status: 400 })
   }
 
-  // ── Company info ────────────────────────────────────────────────────────────
-  const company            = record.company as unknown as { name: string; logo_url: string | null; org_contact_staff_id: string | null } | null
-  const companyName        = company?.name ?? ''
-  const companyLogoUrl     = company?.logo_url ?? null
-  const orgContactStaffId  = company?.org_contact_staff_id ?? null
+  // ── Fetch company data via service client (bypasses RLS) ─────────────────────
+  const { data: company } = await service
+    .from('companies')
+    .select('id, name, logo_url, org_contact_staff_id')
+    .eq('id', record.company_id as string)
+    .single()
+
+  const companyName       = company?.name       ?? ''
+  const companyLogoUrl    = company?.logo_url   ?? null
+  const orgContactStaffId = (company as unknown as { org_contact_staff_id: string | null } | null)?.org_contact_staff_id ?? null
 
   // ── Staff / course types ────────────────────────────────────────────────────
   const staff = record.staff as unknown as {
@@ -105,26 +108,26 @@ export async function GET(request: NextRequest) {
     trainerSignatureUrl = ts.signature_url ?? null
   }
 
-  // ── Org contact info ────────────────────────────────────────────────────────
+  // ── Org contact (service client so RLS doesn't block) ───────────────────────
   let orgContactName    = ''
   let orgContactCertNum = ''
 
   if (orgContactStaffId) {
-    const { data: oc } = await supabase
+    const { data: oc } = await service
       .from('staff')
       .select('first_name, last_name, display_first_name, display_last_name, certification_number, credentials')
       .eq('id', orgContactStaffId)
       .single()
     if (oc) {
-      const first = oc.display_first_name?.trim() || oc.first_name
-      const last  = oc.display_last_name?.trim()  || oc.last_name
-      const creds = oc.credentials?.trim()
+      const first = (oc.display_first_name as string | null)?.trim() || (oc.first_name as string)
+      const last  = (oc.display_last_name  as string | null)?.trim() || (oc.last_name  as string)
+      const creds = (oc.credentials as string | null)?.trim()
       orgContactName    = creds ? `${first} ${last}, ${creds}` : `${first} ${last}`
-      orgContactCertNum = oc.certification_number ?? ''
+      orgContactCertNum = (oc.certification_number as string | null) ?? ''
     }
   }
 
-  // ── Build display names ─────────────────────────────────────────────────────
+  // ── Build staff display name ─────────────────────────────────────────────────
   const staffCreds = staff.credentials?.trim()
   const staffName  = staffCreds
     ? `${staff.first_name} ${staff.last_name}, ${staffCreds}`
@@ -137,12 +140,13 @@ export async function GET(request: NextRequest) {
       })
     : ''
 
-  // ── Load & fill PDF template ─────────────────────────────────────────────────
+  // ── Load PDF template ────────────────────────────────────────────────────────
   const templatePath  = path.join(process.cwd(), 'public', 'templates', 'rbt-inservice-template.pdf')
   const templateBytes = fs.readFileSync(templatePath)
   const pdfDoc        = await PDFDocument.load(templateBytes)
   const form          = pdfDoc.getForm()
 
+  // ── Fill form fields ─────────────────────────────────────────────────────────
   form.getTextField('RBT Name').setText(staffName)
   form.getTextField('RBT BACB Certification Number').setText(staff.certification_number ?? '')
   form.getTextField('Event Name').setText(course.name ?? '')
@@ -154,7 +158,7 @@ export async function GET(request: NextRequest) {
   form.getTextField('In-Service Trainer Name').setText(trainerName)
   form.getTextField('In-Service Trainer BACB Certification Number').setText(trainerCertNumber)
 
-  // Org contact fields (wrapped in try/catch — field names may differ by template version)
+  // Org contact fields (try/catch — exact field names vary by template version)
   if (orgContactName) {
     try { form.getTextField('In-Service Organization Contact Name').setText(orgContactName) } catch { /* ignore */ }
   }
@@ -174,7 +178,21 @@ export async function GET(request: NextRequest) {
   const page     = pages[pages.length - 1]
   const { width } = page.getSize()
 
-  // ── Embed trainer signature (3.5× taller than the field) ────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
+  // DRAWING ORDER: white-outs first → signature on top → logos on top
+  // (if signature were drawn first, white-outs would cover it)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ── 1. White out unwanted static template text ───────────────────────────────
+  // Footer: "Updated 07/2025, Copyright © 2025, BACB® | All rights reserved."
+  //         "Behavior Analyst Certification Board | RBT Professional Development … | 1"
+  page.drawRectangle({ x: 0, y: 0, width, height: 36, color: rgb(1, 1, 1) })
+
+  // "This document must be signed in accordance with the Acceptable Signatures Policy."
+  // Cast a wide net — cover y=44 to y=110 to ensure it's removed regardless of exact position
+  page.drawRectangle({ x: 0, y: 44, width, height: 66, color: rgb(1, 1, 1) })
+
+  // ── 2. Embed trainer signature (drawn ON TOP of the white-outs) ──────────────
   if (trainerSignatureUrl) {
     try {
       const sigRes = await fetch(trainerSignatureUrl)
@@ -182,17 +200,23 @@ export async function GET(request: NextRequest) {
         const sigBytes = new Uint8Array(await sigRes.arrayBuffer())
         const sigImage = await pdfDoc.embedPng(sigBytes)
 
-        const sigField  = form.getField('Signature Field')
-        const widgets   = sigField.acroField.getWidgets()
+        const sigField = form.getField('Signature Field')
+        const widgets  = sigField.acroField.getWidgets()
 
         if (widgets.length > 0) {
-          const rect       = widgets[0].getRectangle()
-          const targetH    = rect.height * 3.5
-          const dims       = sigImage.scaleToFit(rect.width, targetH)
+          const rect = widgets[0].getRectangle()
+
+          // Scale to 3× the field height; cap width at field width
+          const targetH = rect.height * 3
+          const dims    = sigImage.scaleToFit(rect.width, targetH)
+
+          // Center signature vertically on the field: signature visual sits on the line
+          // Shift 30% downward so the handwriting baseline aligns with the field bottom
+          const yOffset = rect.y - dims.height * 0.3
 
           page.drawImage(sigImage, {
             x:      rect.x + (rect.width - dims.width) / 2,
-            y:      rect.y, // anchor to bottom of field, image grows upward
+            y:      yOffset,
             width:  dims.width,
             height: dims.height,
           })
@@ -201,68 +225,48 @@ export async function GET(request: NextRequest) {
     } catch { /* best-effort */ }
   }
 
-  // ── White out unwanted static template text ──────────────────────────────────
-  // Footer: "Updated 07/2025, Copyright © 2025, BACB® | All rights reserved."
-  //         "Behavior Analyst Certification Board | RBT Professional Development … | 1"
-  page.drawRectangle({ x: 0, y: 0, width, height: 36, color: rgb(1, 1, 1) })
-
-  // "This document must be signed in accordance with the Acceptable Signatures Policy."
-  page.drawRectangle({ x: 36, y: 56, width: width - 72, height: 22, color: rgb(1, 1, 1) })
-
-  // ── Logo layout constants ────────────────────────────────────────────────────
-  //  Narwhal logo: 3/4 inch wide = 54 pts
-  //  Company logo: 1.5× Narwhal = 81 pts
+  // ── 3. Logo layout constants ─────────────────────────────────────────────────
   const MARGIN        = 18
-  const NARWHAL_W     = 54   // pts
-  const COMPANY_W     = 81   // pts
-  const LOGO_BOTTOM_Y = 10   // bottom of logos (above page edge)
-  const TEXT_GAP      = 3    // gap between logo bottom and first text line
-  const LINE_H        = 7    // height of one text line at small font
+  const NARWHAL_W     = 54   // 3/4 inch in pts
+  const COMPANY_W     = 81   // 1.5× narwhal
+  const LOGO_BOTTOM_Y = 10
+  const TEXT_GAP      = 3
+  const LINE_H        = 7
   const font          = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const FONT_SIZE     = 5.5
 
-  // ── Narwhal Tracker logo — bottom right ──────────────────────────────────────
+  const textY2      = LOGO_BOTTOM_Y
+  const textY1      = textY2 + LINE_H
+  const logoBottomY = textY1 + TEXT_GAP
+
+  // ── 4. Narwhal Tracker logo — bottom right ───────────────────────────────────
   try {
     const narwhalPath  = path.join(process.cwd(), 'public', 'narwhal-tracker.jpg')
     const narwhalBytes = fs.readFileSync(narwhalPath)
     const narwhalImage = await pdfDoc.embedJpg(narwhalBytes)
     const narwhalDims  = narwhalImage.scaleToFit(NARWHAL_W, 60)
-
     const logoX        = width - MARGIN - narwhalDims.width
-    const textY2       = LOGO_BOTTOM_Y                   // bottom text line baseline
-    const textY1       = textY2 + LINE_H                 // top text line baseline
-    const logoBottomY  = textY1 + TEXT_GAP
 
     page.drawImage(narwhalImage, {
-      x:      logoX,
-      y:      logoBottomY,
-      width:  narwhalDims.width,
-      height: narwhalDims.height,
+      x: logoX, y: logoBottomY,
+      width: narwhalDims.width, height: narwhalDims.height,
     })
 
-    const line1      = 'Generated Using'
-    const line2      = 'NarwhalTracker.com'
-    const line1W     = font.widthOfTextAtSize(line1, FONT_SIZE)
-    const line2W     = font.widthOfTextAtSize(line2, FONT_SIZE)
-    const centerX    = logoX + narwhalDims.width / 2
+    const line1  = 'Generated Using'
+    const line2  = 'NarwhalTracker.com'
+    const centerX = logoX + narwhalDims.width / 2
 
     page.drawText(line1, {
-      x:     centerX - line1W / 2,
-      y:     textY1,
-      size:  FONT_SIZE,
-      font,
-      color: rgb(0.45, 0.45, 0.45),
+      x: centerX - font.widthOfTextAtSize(line1, FONT_SIZE) / 2,
+      y: textY1, size: FONT_SIZE, font, color: rgb(0.45, 0.45, 0.45),
     })
     page.drawText(line2, {
-      x:     centerX - line2W / 2,
-      y:     textY2,
-      size:  FONT_SIZE,
-      font,
-      color: rgb(0.45, 0.45, 0.45),
+      x: centerX - font.widthOfTextAtSize(line2, FONT_SIZE) / 2,
+      y: textY2, size: FONT_SIZE, font, color: rgb(0.45, 0.45, 0.45),
     })
   } catch { /* best-effort */ }
 
-  // ── Company logo — bottom left ───────────────────────────────────────────────
+  // ── 5. Company logo — bottom left ────────────────────────────────────────────
   if (companyLogoUrl) {
     try {
       const logoRes = await fetch(companyLogoUrl)
@@ -271,23 +275,16 @@ export async function GET(request: NextRequest) {
         const logoImage = await pdfDoc.embedJpg(logoBytes)
         const logoDims  = logoImage.scaleToFit(COMPANY_W, 90)
 
-        // Anchor the bottom of the company logo to the same y as the Narwhal logo bottom
-        const textY1       = LOGO_BOTTOM_Y + LINE_H
-        const logoBottomY  = textY1 + TEXT_GAP
-
         page.drawImage(logoImage, {
-          x:      MARGIN,
-          y:      logoBottomY,
-          width:  logoDims.width,
-          height: logoDims.height,
+          x: MARGIN, y: logoBottomY,
+          width: logoDims.width, height: logoDims.height,
         })
       }
     } catch { /* best-effort */ }
   }
 
-  const pdfBytes = await pdfDoc.save()
-
-  // ── Return PDF ───────────────────────────────────────────────────────────────
+  // ── Save & return ─────────────────────────────────────────────────────────────
+  const pdfBytes      = await pdfDoc.save()
   const safeStaffName = staffName.replace(/[^a-zA-Z0-9]/g, '-')
   const safeDateStr   = (course.date ?? 'undated').replace(/-/g, '')
   const filename      = `RBT-InService-${safeStaffName}-${safeDateStr}.pdf`

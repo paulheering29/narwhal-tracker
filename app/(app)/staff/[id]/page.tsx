@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -71,11 +72,18 @@ type TrainingRecord = {
 
 type AllTrainingRecord = {
   id: string
+  training_id: string | null
   completed_date: string
   expiry_date: string | null
   confirmed: boolean
   notes: string | null
   courses: { name: string; units: number } | null
+  trainings: {
+    id: string
+    trainer_name: string | null
+    trainer_staff_id: string | null
+    staff: { first_name: string; last_name: string; display_first_name: string | null; display_last_name: string | null } | null
+  } | null
 }
 
 type OverlapWarning = {
@@ -169,7 +177,7 @@ export default function StaffDetailPage() {
   const loadAllRecords = useCallback(async () => {
     const { data } = await supabase
       .from('training_records')
-      .select('id, completed_date, expiry_date, confirmed, notes, courses(name, units)')
+      .select('id, training_id, completed_date, expiry_date, confirmed, notes, courses(name, units), trainings(id, trainer_name, trainer_staff_id, staff:trainer_staff_id(first_name, last_name, display_first_name, display_last_name))')
       .eq('staff_id', staffId)
       .order('completed_date', { ascending: false })
     setAllRecords((data ?? []) as unknown as AllTrainingRecord[])
@@ -555,28 +563,45 @@ export default function StaffDetailPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {allRecords.map(r => (
-                <div key={r.id} className="rounded-lg border bg-white shadow-sm p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-semibold text-gray-900">{r.courses?.name ?? '—'}</p>
-                    <span
-                      className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                        r.confirmed
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}
-                    >
-                      {r.confirmed ? 'Confirmed' : 'Pending'}
-                    </span>
+              {allRecords.map(r => {
+                const trainerName = r.trainings?.staff
+                  ? getDisplayName(r.trainings.staff)
+                  : r.trainings?.trainer_name ?? null
+                return (
+                  <div key={r.id} className="rounded-lg border bg-white shadow-sm p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-gray-900">{r.courses?.name ?? '—'}</p>
+                      <span
+                        className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          r.confirmed
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}
+                      >
+                        {r.confirmed ? 'Confirmed' : 'Pending'}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Completed {formatDate(r.completed_date)}
+                      {r.courses?.units != null && <> · {r.courses.units} unit{r.courses.units === 1 ? '' : 's'}</>}
+                      {r.expiry_date && <> · Expires {formatDate(r.expiry_date)}</>}
+                    </p>
+                    {trainerName && (
+                      <p className="mt-1 text-xs text-gray-500">Trainer: {trainerName}</p>
+                    )}
+                    {r.notes && <p className="mt-1 text-xs text-gray-500 italic">{r.notes}</p>}
+                    {r.training_id && (
+                      <Link
+                        href={`/trainings/${r.training_id}`}
+                        className="mt-2 inline-block text-xs text-blue-600 hover:underline"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        View training →
+                      </Link>
+                    )}
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Completed {formatDate(r.completed_date)}
-                    {r.courses?.units != null && <> · {r.courses.units} unit{r.courses.units === 1 ? '' : 's'}</>}
-                    {r.expiry_date && <> · Expires {formatDate(r.expiry_date)}</>}
-                  </p>
-                  {r.notes && <p className="mt-2 text-xs text-gray-500 italic">{r.notes}</p>}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </section>

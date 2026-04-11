@@ -49,6 +49,7 @@ type Training = {
   topic_id: string | null
   staff: StaffOption | null
   training_document_links: { document_id: string }[]
+  training_records: { staff_id: string; staff: { role: string | null } | null }[]
 }
 
 type CalAttendee = {
@@ -313,7 +314,8 @@ export default function TrainingsPage() {
             validity_months, trainer_staff_id, trainer_name, trainer_cert_number,
             topic_id,
             staff:trainer_staff_id(id, first_name, last_name, display_first_name, display_last_name),
-            training_document_links(document_id)
+            training_document_links(document_id),
+            training_records(staff_id, staff:staff_id(role))
           `)
           .order('date', { ascending: false }),
         supabase
@@ -541,21 +543,22 @@ export default function TrainingsPage() {
                   <TableHead>Modality</TableHead>
                   <TableHead>Topic</TableHead>
                   <TableHead>Trainer</TableHead>
+                  <TableHead>RBTs</TableHead>
                   <TableHead>Docs</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-gray-400">
+                  <TableRow><TableCell colSpan={10} className="text-center py-10 text-gray-400">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </TableCell></TableRow>
                 ) : loadError ? (
-                  <TableRow><TableCell colSpan={9} className="text-center py-10">
+                  <TableRow><TableCell colSpan={10} className="text-center py-10">
                     <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2 inline-block">{loadError}</p>
                   </TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-gray-400">
+                  <TableRow><TableCell colSpan={10} className="text-center py-10 text-gray-400">
                     {search ? 'No trainings match your search.' : 'No trainings yet. Add your first one.'}
                   </TableCell></TableRow>
                 ) : filtered.map(t => {
@@ -564,6 +567,7 @@ export default function TrainingsPage() {
                     : t.trainer_name
                       ? `${t.trainer_name} (Ext.)`
                       : '—'
+                  const rbtCount = (t.training_records ?? []).filter(r => r.staff?.role === 'RBT').length
                   const docCount = t.training_document_links?.length ?? 0
 
                   return (
@@ -595,6 +599,9 @@ export default function TrainingsPage() {
                         })()}
                       </TableCell>
                       <TableCell className="text-gray-500 text-sm">{trainerDisplay}</TableCell>
+                      <TableCell className="text-gray-600 tabular-nums text-sm">
+                        {rbtCount > 0 ? rbtCount : <span className="text-gray-300">—</span>}
+                      </TableCell>
                       <TableCell>
                         {docCount > 0 ? (
                           <span className="flex items-center gap-1 text-sm text-gray-500">

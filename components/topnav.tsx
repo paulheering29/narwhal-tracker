@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Tag,
   Award,
+  GitCommitHorizontal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { showAdminNav, rolesDisplay } from '@/lib/permissions'
@@ -39,8 +40,9 @@ const rbtNavItems = [
 ]
 
 const analyticsItems = [
-  { href: '/analytics/topics',       label: 'Topic Analysis', icon: Tag   },
-  { href: '/analytics/rbt-insights', label: 'RBT Insights',   icon: Award },
+  { href: '/analytics/topics',        label: 'Topic Analysis', icon: Tag        },
+  { href: '/analytics/rbt-insights',  label: 'RBT Insights',   icon: Award      },
+  { href: '/analytics/rbt-timeline',  label: 'RBT Timeline',   icon: GitCommitHorizontal },
 ]
 
 export function TopNav({ userTier, userRoles, userEmail }: TopNavProps) {

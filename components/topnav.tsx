@@ -31,7 +31,7 @@ const BG = '#457595'
 
 const staffNavItems = [
   { href: '/dashboard',  label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/staff',      label: 'RBT',       icon: Users           },
+  { href: '/staff',      label: 'Staff',     icon: Users           },
   { href: '/trainings',  label: 'Trainings', icon: BookOpen        },
 ]
 

@@ -269,26 +269,31 @@ export default function TrainingDetailPage() {
   useEffect(() => {
     async function init() {
       setLoading(true)
-      const [,,,, topicsRes, companyRes] = await Promise.all([
+      const [,,,, topicsRes] = await Promise.all([
         loadTraining(), loadDocs(), loadStaff(), loadAttendees(),
         supabase.from('topics').select('id, name').order('name'),
-        getCompanyId().then(cid =>
-          supabase
-            .from('companies')
-            .select('enabled_cert_templates')
-            .eq('id', cid)
-            .single()
-        ),
       ])
       setTopicList((topicsRes as { data: TopicOption[] | null }).data ?? [])
-      const companyData = (companyRes as { data?: Record<string, unknown> | null }).data
-      if (companyData?.enabled_cert_templates) {
-        setEnabledCertTemplates(companyData.enabled_cert_templates as string[])
+
+      // Fetch company's enabled certificate templates
+      try {
+        const companyId = await getCompanyId()
+        const { data: company } = await supabase
+          .from('companies')
+          .select('enabled_cert_templates')
+          .eq('id', companyId)
+          .single()
+        if (company?.enabled_cert_templates) {
+          setEnabledCertTemplates(company.enabled_cert_templates as string[])
+        }
+      } catch (err) {
+        console.error('Failed to fetch company templates:', err)
       }
+
       setLoading(false)
     }
     init()
-  }, [loadTraining, loadDocs, loadStaff, loadAttendees])
+  }, [loadTraining, loadDocs, loadStaff, loadAttendees, supabase])
 
   // ── Edit training ─────────────────────────────────────────────────────────────
 

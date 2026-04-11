@@ -1006,125 +1006,230 @@ export default function TrainingsPage() {
           </SheetHeader>
 
           <div className="space-y-5 px-6 py-5">
-            {/* Copy banner */}
-            {copying && (
-              <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800 space-y-1">
-                <p className="font-semibold">Copying from: {copying.name}</p>
-                <p className="text-blue-600">Carried over: name, description, PDUs, modality, topic, linked docs. Fill in the new date, time, and trainer below.</p>
-              </div>
-            )}
 
-            {/* Name + Description */}
-            <div className="space-y-2">
-              <Label>Training Name *</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea rows={2} placeholder="Optional description…"
-                value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-            </div>
+            {copying ? (
+              <>
+                {/* Read-only reference block */}
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Carried over from original</p>
+                  <div>
+                    <p className="text-xs text-gray-500">Training Name</p>
+                    <p className="text-sm font-medium text-gray-900">{copying.name}</p>
+                  </div>
+                  {copying.description && (
+                    <div>
+                      <p className="text-xs text-gray-500">Description</p>
+                      <p className="text-sm text-gray-700">{copying.description}</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-gray-500">PDUs</p>
+                      <p className="text-sm font-medium text-gray-900">{copying.units ?? '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Modality</p>
+                      <p className="text-sm font-medium text-gray-900">{MODALITY_LABELS[copying.modality ?? ''] ?? copying.modality ?? '—'}</p>
+                    </div>
+                  </div>
+                  {copying.topic_id && (
+                    <div>
+                      <p className="text-xs text-gray-500">Topic</p>
+                      <p className="text-sm font-medium text-gray-900">{topicList.find(t => t.id === copying.topic_id)?.name ?? '—'}</p>
+                    </div>
+                  )}
+                  {copying.training_document_links.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500">Linked Docs</p>
+                      <p className="text-sm font-medium text-gray-900">{copying.training_document_links.length} doc{copying.training_document_links.length !== 1 ? 's' : ''} linked</p>
+                    </div>
+                  )}
+                </div>
 
-            {/* Date + Modality */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Date *</Label>
-                <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Modality *</Label>
-                <Select value={form.modality} onValueChange={v => setForm(f => ({ ...f, modality: v ?? '' }))}>
-                  <SelectTrigger><SelectValue placeholder="Choose one" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="in-person">In-person</SelectItem>
-                    <SelectItem value="online-synchronous">Online synchronous</SelectItem>
-                    <SelectItem value="online-asynchronous">Online asynchronous</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+                  <div className="relative flex justify-center"><span className="bg-white px-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">New session details</span></div>
+                </div>
 
-            {/* Times */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Start Time *</Label>
-                <Input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>End Time *</Label>
-                <Input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} />
-              </div>
-            </div>
+                {/* Date */}
+                <div className="space-y-2">
+                  <Label>Date *</Label>
+                  <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+                </div>
 
-            {/* PDUs */}
-            <div className="space-y-2">
-              <Label>PDUs *</Label>
-              <Input type="number" min="0" step="0.25" placeholder="e.g. 1.5"
-                value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value }))} />
-            </div>
-
-            {/* Trainer */}
-            <div className="space-y-3">
-              <Label>Trainer</Label>
-              <div className="flex rounded-md border overflow-hidden w-fit">
-                {(['staff', 'external'] as const).map(type => (
-                  <button key={type} type="button"
-                    onClick={() => setTrainerType(type)}
-                    className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-                      trainerType === type
-                        ? 'bg-[#0A253D] text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}>
-                    {type === 'staff' ? 'Staff Member' : 'External'}
-                  </button>
-                ))}
-              </div>
-
-              {trainerType === 'staff' ? (
-                <Select value={form.trainer_staff_id}
-                  onValueChange={v => setForm(f => ({ ...f, trainer_staff_id: v ?? '' }))}>
-                  <SelectTrigger><SelectValue placeholder="Select staff member" /></SelectTrigger>
-                  <SelectContent>
-                    {staffList.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
+                {/* Times */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Trainer Name</Label>
-                    <Input placeholder="e.g. Dr. Jane Doe"
-                      value={form.trainer_name}
-                      onChange={e => setForm(f => ({ ...f, trainer_name: e.target.value }))} />
+                    <Label>Start Time *</Label>
+                    <Input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Cert Number</Label>
-                    <Input placeholder="e.g. BCBA-12345"
-                      value={form.trainer_cert_number}
-                      onChange={e => setForm(f => ({ ...f, trainer_cert_number: e.target.value }))} />
+                    <Label>End Time *</Label>
+                    <Input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} />
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Topic */}
-            {topicList.length > 0 && (
-              <div className="space-y-2">
-                <Label>Topic</Label>
-                <Select
-                  value={form.topic_id}
-                  onValueChange={v => setForm(f => ({ ...f, topic_id: (!v || v === '__none__') ? '' : v }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="Select a topic (optional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">— None —</SelectItem>
-                    {topicList.map(t => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                {/* Trainer */}
+                <div className="space-y-3">
+                  <Label>Trainer</Label>
+                  <div className="flex rounded-md border overflow-hidden w-fit">
+                    {(['staff', 'external'] as const).map(type => (
+                      <button key={type} type="button"
+                        onClick={() => setTrainerType(type)}
+                        className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                          trainerType === type
+                            ? 'bg-[#0A253D] text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}>
+                        {type === 'staff' ? 'Staff Member' : 'External'}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  </div>
+
+                  {trainerType === 'staff' ? (
+                    <Select value={form.trainer_staff_id}
+                      onValueChange={v => setForm(f => ({ ...f, trainer_staff_id: v ?? '' }))}>
+                      <SelectTrigger><SelectValue placeholder="Select staff member" /></SelectTrigger>
+                      <SelectContent>
+                        {staffList.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Trainer Name</Label>
+                        <Input placeholder="e.g. Dr. Jane Doe"
+                          value={form.trainer_name}
+                          onChange={e => setForm(f => ({ ...f, trainer_name: e.target.value }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cert Number</Label>
+                        <Input placeholder="e.g. BCBA-12345"
+                          value={form.trainer_cert_number}
+                          onChange={e => setForm(f => ({ ...f, trainer_cert_number: e.target.value }))} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Name + Description */}
+                <div className="space-y-2">
+                  <Label>Training Name *</Label>
+                  <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea rows={2} placeholder="Optional description…"
+                    value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                </div>
+
+                {/* Date + Modality */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Date *</Label>
+                    <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Modality *</Label>
+                    <Select value={form.modality} onValueChange={v => setForm(f => ({ ...f, modality: v ?? '' }))}>
+                      <SelectTrigger><SelectValue placeholder="Choose one" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="in-person">In-person</SelectItem>
+                        <SelectItem value="online-synchronous">Online synchronous</SelectItem>
+                        <SelectItem value="online-asynchronous">Online asynchronous</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Times */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Start Time *</Label>
+                    <Input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Time *</Label>
+                    <Input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} />
+                  </div>
+                </div>
+
+                {/* PDUs */}
+                <div className="space-y-2">
+                  <Label>PDUs *</Label>
+                  <Input type="number" min="0" step="0.25" placeholder="e.g. 1.5"
+                    value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value }))} />
+                </div>
+
+                {/* Trainer */}
+                <div className="space-y-3">
+                  <Label>Trainer</Label>
+                  <div className="flex rounded-md border overflow-hidden w-fit">
+                    {(['staff', 'external'] as const).map(type => (
+                      <button key={type} type="button"
+                        onClick={() => setTrainerType(type)}
+                        className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                          trainerType === type
+                            ? 'bg-[#0A253D] text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}>
+                        {type === 'staff' ? 'Staff Member' : 'External'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {trainerType === 'staff' ? (
+                    <Select value={form.trainer_staff_id}
+                      onValueChange={v => setForm(f => ({ ...f, trainer_staff_id: v ?? '' }))}>
+                      <SelectTrigger><SelectValue placeholder="Select staff member" /></SelectTrigger>
+                      <SelectContent>
+                        {staffList.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{getDisplayName(s)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Trainer Name</Label>
+                        <Input placeholder="e.g. Dr. Jane Doe"
+                          value={form.trainer_name}
+                          onChange={e => setForm(f => ({ ...f, trainer_name: e.target.value }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cert Number</Label>
+                        <Input placeholder="e.g. BCBA-12345"
+                          value={form.trainer_cert_number}
+                          onChange={e => setForm(f => ({ ...f, trainer_cert_number: e.target.value }))} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Topic */}
+                {topicList.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Topic</Label>
+                    <Select
+                      value={form.topic_id}
+                      onValueChange={v => setForm(f => ({ ...f, topic_id: (!v || v === '__none__') ? '' : v }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select a topic (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {topicList.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
             )}
 
             {error && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{error}</p>}

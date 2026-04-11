@@ -11,7 +11,7 @@ const W = 612, H = 792
 
 const NAVY  = rgb(0.04, 0.15, 0.27)
 const GOLD  = rgb(0.68, 0.52, 0.08)
-const CREAM = rgb(0.98, 0.97, 0.93)
+const CREAM = rgb(1, 1, 1)
 const BLACK = rgb(0.10, 0.10, 0.10)
 const GRAY  = rgb(0.50, 0.50, 0.50)
 
@@ -163,15 +163,15 @@ export async function generateFormal(data: CertData): Promise<Uint8Array> {
 
   curY = sigLineY + 20
 
-  // ── Footer logos ─────────────────────────────────────────────────────────────
-  const FOOT_Y = 18
+  // ── Footer logos — sit inside the gold inner border (B2=24 from edge) ────────
+  const FOOT_Y    = B2 + 10   // clear the gold border with a little breathing room
   const narwhalSz = 5.5
 
   // Narwhal logo bottom-right
   try {
     const nBytes = fs.readFileSync(data.narwhalLogoPath)
     const nImg   = await pdfDoc.embedJpg(nBytes)
-    const nDims  = nImg.scaleToFit(54, 45)
+    const nDims  = nImg.scaleToFit(54, 42)
     const nx     = W - B2 - 10 - nDims.width
     page.drawImage(nImg, { x: nx, y: FOOT_Y + 14, width: nDims.width, height: nDims.height })
     const nt1 = 'Generated Using', nt2 = 'NarwhalTracker.com'
@@ -184,7 +184,7 @@ export async function generateFormal(data: CertData): Promise<Uint8Array> {
   if (data.companyLogoUrl) {
     const cImg = await embedJpgFromUrl(pdfDoc, data.companyLogoUrl)
     if (cImg) {
-      const cDims = cImg.scaleToFit(81, 55)
+      const cDims = cImg.scaleToFit(81, 52)
       page.drawImage(cImg, { x: B2 + 10, y: FOOT_Y, width: cDims.width, height: cDims.height })
     }
   }

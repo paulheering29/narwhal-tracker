@@ -647,7 +647,7 @@ export function AdminUsersClient({
           <p className="text-sm text-gray-500 mb-6">
             Update your organisation&apos;s display name and logo.
           </p>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* Company Name */}
           <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">

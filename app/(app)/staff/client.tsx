@@ -699,8 +699,8 @@ export function StaffPageClient({
       {/* ── RBT Tab ─────────────────────────────────────────────────────────── */}
       {tab === 'rbt' && (
         <>
-          <div className="mb-4 flex gap-3 items-center">
-            <div className="relative flex-1">
+          <div className="mb-4 flex flex-wrap gap-3 items-center">
+            <div className="relative flex-1 min-w-[180px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search by name or email…"
@@ -722,15 +722,83 @@ export function StaffPageClient({
                 </button>
               ))}
             </div>
-            <Button variant="outline" onClick={openImport}>
+            <Button variant="outline" onClick={openImport} className="shrink-0">
               <Upload className="mr-2 h-4 w-4" /> Import CSV
             </Button>
-            <Button onClick={openAddRbt} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={openAddRbt} className="bg-[#0A253D] hover:bg-[#0d2f4f] shrink-0">
               <UserPlus className="mr-2 h-4 w-4" /> Add RBT
             </Button>
           </div>
 
-          <div className="rounded-lg border bg-white shadow-sm overflow-x-auto">
+          {/* ── Mobile card list (hidden on md+) ─────────────────────────── */}
+          <div className="md:hidden space-y-3">
+            {loading ? (
+              <div className="py-12 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+            ) : filtered.length === 0 ? (
+              <div className="py-12 text-center text-sm text-gray-400">
+                {search ? 'No staff match your search.' : 'No RBTs yet. Add your first team member.'}
+              </div>
+            ) : filtered.map(s => {
+              const hasCycle = !!s.cycleStart
+              const variance = fmtVariance(s.variance)
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => router.push(`/staff/${s.id}`)}
+                  className={`rounded-xl border bg-white shadow-sm p-4 cursor-pointer active:bg-gray-50 transition-colors ${!s.active ? 'opacity-50' : ''}`}
+                >
+                  {/* Name row */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div>
+                      <p className="font-semibold text-blue-600 text-base leading-tight">{getDisplayName(s)}</p>
+                      <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${s.active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {s.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); openEditBasics(s) }}
+                      className="shrink-0 rounded p-1.5 hover:bg-gray-100 transition-colors"
+                    >
+                      <Pencil className="h-4 w-4 text-gray-400" />
+                    </button>
+                  </div>
+
+                  {hasCycle ? (
+                    <>
+                      {/* Cycle dates */}
+                      <div className="flex gap-4 mb-3 text-xs text-gray-500">
+                        <span><span className="font-medium text-gray-700">Cycle:</span> {fmtCycleDate(s.cycleStart!)} – {fmtCycleDate(s.cycleEnd!)}</span>
+                      </div>
+
+                      {/* Stats grid */}
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="rounded-lg bg-indigo-50 px-2 py-2">
+                          <p className="text-lg font-bold text-indigo-700 tabular-nums leading-none">{fmtPdu(s.pduDone)}</p>
+                          <p className="text-[10px] text-indigo-400 mt-0.5">Completed</p>
+                          <p className="text-xs font-medium text-indigo-500 tabular-nums">{fmtPct(s.pctDone)}</p>
+                        </div>
+                        <div className="rounded-lg bg-amber-50 px-2 py-2">
+                          <p className="text-lg font-bold text-amber-700 tabular-nums leading-none">{fmtPdu(s.pduDone + s.pduScheduled)}</p>
+                          <p className="text-[10px] text-amber-400 mt-0.5">Scheduled</p>
+                          <p className="text-xs font-medium text-amber-500 tabular-nums">{fmtPct(s.pctScheduled)}</p>
+                        </div>
+                        <div className="rounded-lg bg-teal-50 px-2 py-2">
+                          <p className={`text-lg font-bold tabular-nums leading-none ${variance.cls}`}>{variance.label}</p>
+                          <p className="text-[10px] text-teal-400 mt-0.5">Variance</p>
+                          <p className="text-xs font-medium text-teal-500 tabular-nums">{fmtPdu(s.pacingTarget)} target</p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-400 italic">No active cycle</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── Desktop table (hidden below md) ──────────────────────────── */}
+          <div className="hidden md:block rounded-lg border bg-white shadow-sm overflow-x-auto">
             <table className="w-full table-fixed border-collapse text-base">
               <colgroup>
                 <col className="w-[18%]" />

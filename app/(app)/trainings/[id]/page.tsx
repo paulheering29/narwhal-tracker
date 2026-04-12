@@ -124,7 +124,6 @@ export default function TrainingDetailPage() {
   const [attendees, setAttendees]           = useState<Attendee[]>([])
   const [activeCycleMap, setActiveCycleMap] = useState<Record<string, string>>({})
   const [staffSearch, setStaffSearch]       = useState('')
-  const [certFilter, setCertFilter]         = useState<'all' | 'RBT' | 'BCBA'>('all')
   const [selectedStaffIds, setSelectedStaffIds] = useState<Set<string>>(new Set())
   const [addingAttendees, setAddingAttendees]   = useState(false)
   const [attendeeError, setAttendeeError]       = useState<string | null>(null)
@@ -442,11 +441,11 @@ export default function TrainingDetailPage() {
     loadAttendees()
   }
 
-  // Staff not yet added, filtered by cert type and search
+  // Only active RBTs (not yet added) can be added to trainings.
   const attendeeStaffIds = new Set(attendees.map(a => a.staff_id))
   const availableStaff = staffList
     .filter(s => !attendeeStaffIds.has(s.id))
-    .filter(s => certFilter === 'all' || activeCycleMap[s.id] === certFilter)
+    .filter(s => activeCycleMap[s.id] === 'RBT')
     .filter(s => staffSearch === '' ||
       getDisplayName(s).toLowerCase().includes(staffSearch.toLowerCase()))
 
@@ -785,27 +784,14 @@ export default function TrainingDetailPage() {
             <p className="text-sm font-medium text-gray-700">Add Staff</p>
           </div>
           <div className="p-4 space-y-3 flex flex-col flex-1">
-            {/* Search + cert filter */}
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                <Input
-                  placeholder="Search staff…"
-                  value={staffSearch}
-                  onChange={e => setStaffSearch(e.target.value)}
-                  className="pl-8 h-8 text-sm"
-                />
-              </div>
-              <div className="flex rounded-md border overflow-hidden">
-                {(['all', 'RBT', 'BCBA'] as const).map(f => (
-                  <button key={f} type="button" onClick={() => setCertFilter(f)}
-                    className={`px-3 py-1 text-xs font-medium transition-colors ${
-                      certFilter === f ? 'bg-[#0A253D] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}>
-                    {f === 'all' ? 'All' : f}
-                  </button>
-                ))}
-              </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Input
+                placeholder="Search RBTs…"
+                value={staffSearch}
+                onChange={e => setStaffSearch(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
             </div>
 
             {/* Staff list */}
@@ -813,10 +799,8 @@ export default function TrainingDetailPage() {
               {availableStaff.length === 0 ? (
                 <p className="py-8 text-center text-sm text-gray-400">
                   {staffSearch
-                    ? 'No staff match your search.'
-                    : certFilter !== 'all'
-                      ? `No ${certFilter} staff left to add.`
-                      : 'All active staff have been added.'}
+                    ? 'No RBTs match your search.'
+                    : 'All active RBTs have been added.'}
                 </p>
               ) : (
                 availableStaff.map(s => {

@@ -16,6 +16,7 @@ type Comparison = {
   name: string
   year: number
   value: string
+  image_url: string | null
 }
 
 const DOT_COLORS = [
@@ -57,12 +58,12 @@ export function RbtTimelineClient({ staff, comparisons }: { staff: StaffMember[]
   // Unique category names from comparisons table
   const comparisonNames = Array.from(new Set(comparisons.map(c => c.name)))
 
-  // Build lookup for selected comparison: year → value
-  const comparisonByYear = new Map<number, string>()
+  // Build lookup for selected comparison: year → { value, image_url }
+  const comparisonByYear = new Map<number, { value: string; image_url: string | null }>()
   if (selectedComparison !== 'none') {
     for (const c of comparisons) {
       if (c.name === selectedComparison && c.year >= minYear && c.year <= maxYear) {
-        comparisonByYear.set(c.year, c.value)
+        comparisonByYear.set(c.year, { value: c.value, image_url: c.image_url })
       }
     }
   }
@@ -192,12 +193,22 @@ export function RbtTimelineClient({ staff, comparisons }: { staff: StaffMember[]
           {selectedComparison !== 'none' && (
             <div className="flex mt-5 border-t border-gray-100 pt-5">
               {years.map(year => {
-                const value = comparisonByYear.get(year)
+                const entry = comparisonByYear.get(year)
                 return (
                   <div key={year} className="flex-1 px-2 flex flex-col items-center text-center">
-                    {value ? (
-                      <div className="w-full max-w-[160px] rounded-xl border border-gray-100 bg-white shadow-sm px-3 py-2.5">
-                        <p className="text-xs text-gray-700 leading-snug">{value}</p>
+                    {entry ? (
+                      <div className="w-full max-w-[160px] rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                        {entry.image_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={entry.image_url}
+                            alt={entry.value}
+                            className="w-full aspect-square object-cover"
+                          />
+                        )}
+                        <p className="text-xs text-gray-700 leading-snug px-3 py-2">
+                          {entry.value}
+                        </p>
                       </div>
                     ) : (
                       <div className="w-full max-w-[160px] rounded-xl border border-dashed border-gray-100 bg-gray-50 px-3 py-2.5 flex items-center justify-center">

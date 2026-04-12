@@ -18,6 +18,10 @@ export type DetailItem = {
   label: string
   sublabel?: string
   href: string
+  progress?: {
+    pct:    number // 0-1
+    status: 'done' | 'scheduled' | 'behind'
+  }
 }
 
 export type CardColor = 'rose' | 'emerald' | 'violet' | 'blue' | 'amber' | 'teal'
@@ -160,6 +164,18 @@ function DashboardCard({ card }: { card: DashboardCardData }) {
                   </span>
                   {item.sublabel && (
                     <span className="text-xs text-gray-400">{item.sublabel}</span>
+                  )}
+                  {item.progress && (
+                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          item.progress.status === 'done'      ? 'bg-emerald-500' :
+                          item.progress.status === 'scheduled' ? 'bg-emerald-300' :
+                                                                 'bg-rose-500'
+                        }`}
+                        style={{ width: `${Math.max(2, item.progress.pct * 100)}%` }}
+                      />
+                    </div>
                   )}
                 </li>
               ))

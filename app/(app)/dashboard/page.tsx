@@ -81,12 +81,41 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
       return true
     })
 
+  // PDU pacing for each expiring RBT — tally confirmed vs scheduled
+  // training records that fall inside their cycle window.
+  const pacingByStaff = new Map<string, { done: number; scheduled: number }>()
+  if (expiringUnique.length > 0) {
+    const expiringStaffIds = expiringUnique.map(c => c.staff_id as string)
+    const cycleByStaff = new Map<string, { start: string; end: string }>()
+    for (const c of expiringUnique) {
+      cycleByStaff.set(c.staff_id as string, { start: c.start_date as string, end: c.end_date as string })
+    }
+    const { data: recs } = await supabase
+      .from('training_records')
+      .select('staff_id, completed_date, confirmed, courses(units)')
+      .in('staff_id', expiringStaffIds)
+    for (const r of recs ?? []) {
+      const staffId = r.staff_id as string
+      const cycle   = cycleByStaff.get(staffId)
+      if (!cycle) continue
+      const date = r.completed_date as string
+      if (date < cycle.start || date > cycle.end) continue
+      const course = Array.isArray(r.courses) ? r.courses[0] : r.courses
+      const units  = (course?.units as number | null | undefined) ?? 0
+      const entry  = pacingByStaff.get(staffId) ?? { done: 0, scheduled: 0 }
+      if (r.confirmed) entry.done      += units
+      else             entry.scheduled += units
+      pacingByStaff.set(staffId, entry)
+    }
+  }
+
   return {
     rbtList:         rbtList.data         ?? [],
     rbtCount:        rbtList.count        ?? 0,
     trainersList:    trainersList.data    ?? [],
     trainersCount:   trainersList.count   ?? 0,
     expiringUnique,
+    pacingByStaff,
     upcomingCourses: upcomingCourses.data  ?? [],
     upcomingCount:   upcomingCourses.count ?? 0,
     allCourses:      allCourses.data      ?? [],
@@ -120,11 +149,20 @@ export default async function DashboardPage() {
       items: data.expiringUnique.slice(0, 25).map(c => {
         const staff = Array.isArray(c.staff) ? c.staff[0] : c.staff
         const name  = staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown'
+        const pacing = data.pacingByStaff.get(c.staff_id as string) ?? { done: 0, scheduled: 0 }
+        const TOTAL  = 12
+        const committed = pacing.done + pacing.scheduled
+        const pct = Math.min(1, committed / TOTAL)
+        const status: 'done' | 'scheduled' | 'behind' =
+          pacing.done >= TOTAL     ? 'done'      :
+          committed   >= TOTAL     ? 'scheduled' :
+                                     'behind'
         return {
           id:       c.id,
           label:    name,
-          sublabel: `Expires ${formatDate(c.end_date)}`,
+          sublabel: `Expires ${formatDate(c.end_date)} · ${pacing.done}/${TOTAL} PDUs`,
           href:     `/staff/${c.staff_id}`,
+          progress: { pct, status },
         }
       }),
     },

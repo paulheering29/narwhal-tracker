@@ -356,16 +356,16 @@ export function AdminUsersClient({
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-5 py-2.5 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors ${
               tab === key
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            <Icon className="h-4 w-4" />
-            {label}
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="leading-tight text-center">{label}</span>
             {count !== undefined && (
-              <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+              <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 tabular-nums">
                 {count}
               </span>
             )}

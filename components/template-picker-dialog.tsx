@@ -5,6 +5,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { CERT_TEMPLATES } from '@/lib/certificates/generate-cert'
 
 interface TemplatePickerDialogProps {
   open: boolean
@@ -13,13 +14,6 @@ interface TemplatePickerDialogProps {
   onSelect: (template: string) => void | Promise<void>
   isLoading?: boolean
 }
-
-const TEMPLATES = [
-  { value: 'bacb',   label: 'Official BACB Form',     desc: 'The original BACB fillable PDF — required if your company submits directly to the BACB.' },
-  { value: 'formal', label: 'Formal (Diploma Style)', desc: 'Cream background, navy & gold borders, serif fonts — looks like a framed diploma.' },
-  { value: 'fun',    label: 'Fun',                    desc: 'Bright teal & coral, colourful badges, celebratory feel — great for team recognition.' },
-  { value: 'basic',  label: 'Basic',                  desc: 'Clean white with a navy top bar and a simple grid layout — professional and minimal.' },
-]
 
 export function TemplatePickerDialog({
   open,
@@ -46,7 +40,7 @@ export function TemplatePickerDialog({
         </DialogHeader>
 
         <div className="space-y-3 py-4">
-          {TEMPLATES
+          {CERT_TEMPLATES
             .filter(t => enabledTemplates.includes(t.value))
             .map(({ value, label, desc }) => (
               <label

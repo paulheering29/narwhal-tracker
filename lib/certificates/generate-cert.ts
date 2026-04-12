@@ -6,7 +6,19 @@ import { generateFormal } from './formal'
 import { generateFun }    from './fun'
 import { generateBasic }  from './basic'
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+export type CertTemplate = 'bacb' | 'formal' | 'fun' | 'basic'
+
+/** Canonical list of cert templates — value + user-facing label + description. */
+export const CERT_TEMPLATES: readonly {
+  value: CertTemplate
+  label: string
+  desc:  string
+}[] = [
+  { value: 'bacb',   label: 'Official BACB Form',     desc: 'The original BACB fillable PDF — required if your company submits directly to the BACB.' },
+  { value: 'formal', label: 'Formal (Diploma Style)', desc: 'Cream background, navy & gold borders, serif fonts — looks like a framed diploma.' },
+  { value: 'fun',    label: 'Fun',                    desc: 'Bright teal & coral, colourful badges, celebratory feel — great for team recognition.' },
+  { value: 'basic',  label: 'Basic',                  desc: 'Clean white with a navy top bar and a simple grid layout — professional and minimal.' },
+]
 
 export const MODALITY_LABELS: Record<string, string> = {
   'in-person':           'In-person',
@@ -14,13 +26,22 @@ export const MODALITY_LABELS: Record<string, string> = {
   'online-asynchronous': 'Online asynchronous',
 }
 
-// ─── BACB fillable template ──────────────────────────────────────────────────
+// Cache the BACB fillable PDF bytes so a bulk ZIP of N certs only
+// reads the file once. The file lives in the app bundle and never
+// changes at runtime.
+let _bacbTemplateBytes: Buffer | null = null
+function bacbTemplateBytes(): Buffer {
+  if (!_bacbTemplateBytes) {
+    _bacbTemplateBytes = fs.readFileSync(
+      path.join(process.cwd(), 'public', 'templates', 'rbt-inservice-template.pdf'),
+    )
+  }
+  return _bacbTemplateBytes
+}
 
 export async function generateBacb(data: CertData): Promise<Uint8Array> {
-  const templatePath  = path.join(process.cwd(), 'public', 'templates', 'rbt-inservice-template.pdf')
-  const templateBytes = fs.readFileSync(templatePath)
-  const pdfDoc        = await PDFDocument.load(templateBytes)
-  const form          = pdfDoc.getForm()
+  const pdfDoc = await PDFDocument.load(bacbTemplateBytes())
+  const form   = pdfDoc.getForm()
 
   form.getTextField('RBT Name').setText(data.staffName)
   form.getTextField('RBT BACB Certification Number').setText(data.certNumber)
@@ -31,6 +52,7 @@ export async function generateBacb(data: CertData): Promise<Uint8Array> {
   form.getTextField('In-Service Trainer Name').setText(data.trainerName)
   form.getTextField('In-Service Trainer BACB Certification Number').setText(data.trainerCertNumber)
 
+  // Optional fields — older BACB template revisions don't have them.
   if (data.orgContactName) {
     try { form.getTextField('In-Service Organization Contact Name').setText(data.orgContactName) } catch { /* ignore */ }
   }
@@ -38,14 +60,12 @@ export async function generateBacb(data: CertData): Promise<Uint8Array> {
     try { form.getTextField('In-Service Organization Contact BACB Certification Number').setText(data.orgContactCertNumber) } catch { /* ignore */ }
   }
 
-  const modalityValue = Object.entries(MODALITY_LABELS).find(([k]) => k === data.modality)?.[1]
-  if (modalityValue) {
-    try { form.getDropdown('Event Modality').select(modalityValue) } catch { /* ignore */ }
+  if (data.modality) {
+    try { form.getDropdown('Event Modality').select(data.modality) } catch { /* ignore */ }
   }
 
   form.getTextField('Signature Date').setText(data.eventDate)
 
-  // Signature — small to fit the field
   if (data.trainerSignatureUrl) {
     try {
       const sigRes = await fetch(data.trainerSignatureUrl)
@@ -71,14 +91,12 @@ export async function generateBacb(data: CertData): Promise<Uint8Array> {
   return pdfDoc.save()
 }
 
-// ─── Template router ─────────────────────────────────────────────────────────
-
-export async function generateCertPdf(data: CertData, template: string): Promise<Uint8Array> {
+export async function generateCertPdf(data: CertData, template: CertTemplate): Promise<Uint8Array> {
   switch (template) {
     case 'formal': return generateFormal(data)
     case 'fun':    return generateFun(data)
     case 'basic':  return generateBasic(data)
-    default:       return generateBacb(data)
+    case 'bacb':   return generateBacb(data)
   }
 }
 
@@ -91,13 +109,11 @@ export function resolveTemplate(
   requested: string | null | undefined,
   enabled:   string[],
   preferred: string | null | undefined,
-): string {
-  const choice = requested || preferred || 'bacb'
+): CertTemplate {
+  const choice = (requested || preferred || 'bacb') as CertTemplate
   if (enabled.includes(choice)) return choice
-  return enabled[0] ?? 'bacb'
+  return (enabled[0] as CertTemplate) ?? 'bacb'
 }
-
-// ─── Filenames ───────────────────────────────────────────────────────────────
 
 export function certFilename(staffName: string, courseDate: string | null): string {
   const safeStaffName = staffName.replace(/[^a-zA-Z0-9]/g, '-')
@@ -105,9 +121,7 @@ export function certFilename(staffName: string, courseDate: string | null): stri
   return `RBT-InService-${safeStaffName}-${safeDateStr}.pdf`
 }
 
-// ─── Cert data builder ───────────────────────────────────────────────────────
-
-type RecordShape = {
+export type RecordShape = {
   staff: {
     first_name: string
     last_name:  string
@@ -138,15 +152,18 @@ type RecordShape = {
 
 export type OrgContact = { name: string; certNumber: string } | null
 
+/**
+ * Builds the `CertData` used by every template generator, plus the
+ * raw course date (needed by callers to name files).
+ */
 export function buildCertData(
   record:  RecordShape,
   company: { name: string; logoUrl: string | null },
   orgContact: OrgContact,
-): CertData & { staffName: string; courseDate: string | null } {
+): { cert: CertData; courseDate: string | null } {
   const staff  = record.staff
   const course = record.courses
 
-  // Trainer
   let trainerName         = course.trainer_name        ?? ''
   let trainerCertNumber   = course.trainer_cert_number ?? ''
   let trainerSignatureUrl: string | null = null
@@ -160,7 +177,6 @@ export function buildCertData(
     trainerSignatureUrl = ts.signature_url ?? null
   }
 
-  // Staff name
   const staffCreds = staff.credentials?.trim()
   const staffName  = staffCreds
     ? `${staff.first_name} ${staff.last_name}, ${staffCreds}`
@@ -170,7 +186,7 @@ export function buildCertData(
     ? new Date(course.date + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
     : ''
 
-  const certData: CertData = {
+  const cert: CertData = {
     staffName,
     certNumber:           staff.certification_number ?? '',
     trainingName:         course.name ?? '',
@@ -187,5 +203,5 @@ export function buildCertData(
     narwhalLogoPath:      path.join(process.cwd(), 'public', 'narwhal-tracker.jpg'),
   }
 
-  return { ...certData, staffName, courseDate: course.date }
+  return { cert, courseDate: course.date }
 }

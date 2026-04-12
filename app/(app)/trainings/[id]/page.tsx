@@ -146,8 +146,9 @@ export default function TrainingDetailPage() {
   const [enabledCertTemplates, setEnabledCertTemplates] = useState<string[]>(['bacb'])
   const [templatePickerOpen, setTemplatePickerOpen]     = useState(false)
   const [templatePickerLoading, setTemplatePickerLoading] = useState(false)
+  // pendingRecordId === null means the pending action is the bulk "download all"
   const [pendingRecordId, setPendingRecordId]           = useState<string | null>(null)
-  const [pendingAction, setPendingAction]               = useState<'download' | 'email' | 'download-all'>('download')
+  const [pendingAction, setPendingAction]               = useState<'download' | 'email'>('download')
   const [downloadingAll, setDownloadingAll]             = useState(false)
   const [downloadAllError, setDownloadAllError]         = useState<string | null>(null)
 
@@ -234,7 +235,7 @@ export default function TrainingDetailPage() {
   function handleDownloadAll() {
     if (enabledCertTemplates.length > 1) {
       setPendingRecordId(null)
-      setPendingAction('download-all')
+      setPendingAction('download')
       setTemplatePickerOpen(true)
     } else {
       handleDownloadAllCert(enabledCertTemplates[0])
@@ -244,14 +245,12 @@ export default function TrainingDetailPage() {
   async function handleTemplateSelect(template: string) {
     setTemplatePickerLoading(true)
     try {
-      if (pendingAction === 'download-all') {
+      if (pendingRecordId === null) {
         await handleDownloadAllCert(template)
-      } else if (pendingRecordId) {
-        if (pendingAction === 'download') {
-          await handleDownloadCert(pendingRecordId, template)
-        } else {
-          await handleEmailCert(pendingRecordId, template)
-        }
+      } else if (pendingAction === 'download') {
+        await handleDownloadCert(pendingRecordId, template)
+      } else {
+        await handleEmailCert(pendingRecordId, template)
       }
     } finally {
       setTemplatePickerLoading(false)

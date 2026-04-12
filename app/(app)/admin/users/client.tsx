@@ -25,6 +25,8 @@ import {
 import { ALL_ROLES } from '@/lib/permissions'
 import { BillingClient } from '@/app/(app)/billing/client'
 import type { Plan, CompanyBilling } from '@/lib/plans'
+import { resizeImage } from '@/lib/resize-image'
+import { CERT_TEMPLATES } from '@/lib/certificates/generate-cert'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -109,24 +111,6 @@ export function AdminUsersClient({
   const [certTemplateSaving, setCertTemplateSaving] = useState(false)
   const [certTemplateStatus, setCertTemplateStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 
-  async function resizeLogo(file: File, maxPx = 800, quality = 0.85): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      const img = new Image()
-      const url = URL.createObjectURL(file)
-      img.onload = () => {
-        URL.revokeObjectURL(url)
-        const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
-        const canvas = document.createElement('canvas')
-        canvas.width  = Math.round(img.width  * scale)
-        canvas.height = Math.round(img.height * scale)
-        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-        canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas export failed')), 'image/jpeg', quality)
-      }
-      img.onerror = reject
-      img.src = url
-    })
-  }
-
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -138,7 +122,7 @@ export function AdminUsersClient({
     }
     setLogoUploading(true); setLogoStatus(null)
     try {
-      const blob = await resizeLogo(file)
+      const blob = await resizeImage(file, 800, 0.85)
       const path = `${company.id}/logo.jpg`
       const { error: uploadError } = await supabase.storage
         .from('company-logos')
@@ -747,12 +731,7 @@ export function AdminUsersClient({
               <p className="text-xs text-gray-400 mt-0.5">Choose the style used when generating RBT In-Service certificates.</p>
             </div>
             <div className="space-y-3">
-              {[
-                { value: 'bacb',   label: 'Official BACB Form',     desc: 'The original BACB fillable PDF — required if your company submits directly to the BACB.' },
-                { value: 'formal', label: 'Formal (Diploma Style)', desc: 'Cream background, navy & gold borders, serif fonts — looks like a framed diploma.' },
-                { value: 'fun',    label: 'Fun',                    desc: 'Bright teal & coral, colourful badges, celebratory feel — great for team recognition.' },
-                { value: 'basic',  label: 'Basic',                  desc: 'Clean white with a navy top bar and a simple grid layout — professional and minimal.' },
-              ].map(({ value, label, desc }) => {
+              {CERT_TEMPLATES.map(({ value, label, desc }) => {
                 const isChecked = enabledCertTemplates.includes(value)
                 return (
                   <label

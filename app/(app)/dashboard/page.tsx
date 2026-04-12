@@ -6,110 +6,93 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
   const today    = new Date().toISOString().split('T')[0]
   const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
+  // Each query returns both the list (limited to 25) AND the exact
+  // total count in one roundtrip via `{ count: 'exact' }`.
   const [
-    rbtListRes,
-    trainersListRes,
-    cyclesRes,
-    upcomingCoursesRes,
-    allCoursesRes,
-    recentRecordsRes,
+    rbtList,
+    trainersList,
+    expiringCycles,
+    upcomingCourses,
+    allCourses,
+    recentRecords,
   ] = await Promise.all([
-    // Active RBTs
     supabase
       .from('staff')
-      .select('id, first_name, last_name')
+      .select('id, first_name, last_name', { count: 'exact' })
       .eq('active', true)
       .eq('role', 'RBT')
       .order('last_name')
       .limit(25),
-    // Active Trainers / Admins (anyone not an RBT)
     supabase
       .from('staff')
-      .select('id, first_name, last_name, role')
+      .select('id, first_name, last_name, role', { count: 'exact' })
       .eq('active', true)
       .neq('role', 'RBT')
       .order('last_name')
       .limit(25),
-    // All cycles — used for expiry list
+    // Only fetch cycles whose end_date lands in the next 30 days. The
+    // trainings-completed card needs no full cycle table scan anymore.
     supabase
       .from('certification_cycles')
-      .select('id, staff_id, end_date, start_date, staff(id, first_name, last_name)'),
-    // Upcoming trainings (next 30 days)
+      .select('id, staff_id, end_date, start_date, staff(id, first_name, last_name)')
+      .gte('end_date', today)
+      .lte('end_date', in30Days),
     supabase
       .from('courses')
-      .select('id, name, date')
+      .select('id, name, date', { count: 'exact' })
       .gte('date', today)
       .lte('date', in30Days)
       .order('date')
       .limit(25),
-    // All trainings (for the Trainings card list)
     supabase
       .from('courses')
-      .select('id, name, date')
+      .select('id, name, date', { count: 'exact' })
+      .not('name', 'is', null)
       .order('date', { ascending: false })
       .limit(25),
-    // Recent training records (for "Trainings Completed" card list)
     supabase
       .from('training_records')
-      .select('id, completed_date, staff:staff_id(first_name, last_name), courses:course_id(id, name)')
+      .select('id, completed_date, staff:staff_id(first_name, last_name), courses:course_id(id, name)', { count: 'exact' })
       .eq('confirmed', true)
       .order('completed_date', { ascending: false })
       .limit(25),
   ])
 
-  // ── Expiring cycles (next 30 days, dedup by staff, skip if newer cycle already scheduled)
-  const allCycles = cyclesRes.data ?? []
-  const expiringSoon = allCycles.filter(c => c.end_date >= today && c.end_date <= in30Days)
-  const expiringFiltered = expiringSoon.filter(expiring =>
-    !allCycles.some(
-      other => other.staff_id === expiring.staff_id && other.start_date > expiring.end_date,
-    ),
-  )
-  const seenStaff = new Set<string>()
-  const expiringUnique = expiringFiltered.filter(c => {
-    if (seenStaff.has(c.staff_id)) return false
-    seenStaff.add(c.staff_id)
-    return true
-  })
-
-  return {
-    rbtList:         rbtListRes.data         ?? [],
-    trainersList:    trainersListRes.data    ?? [],
-    expiringUnique,
-    upcomingCourses: upcomingCoursesRes.data ?? [],
-    allCourses:      allCoursesRes.data      ?? [],
-    recentRecords:   recentRecordsRes.data   ?? [],
+  // Drop expiring cycles whose owner already has a later cycle — we
+  // need to check any newer start_date, so issue a second scoped query
+  // for just the staff_ids we're about to flag.
+  const staffIdsToCheck = Array.from(new Set((expiringCycles.data ?? []).map(c => c.staff_id as string)))
+  let newerStartsByStaff = new Set<string>()
+  if (staffIdsToCheck.length > 0) {
+    const { data: newer } = await supabase
+      .from('certification_cycles')
+      .select('staff_id, start_date')
+      .in('staff_id', staffIdsToCheck)
+      .gt('start_date', today)
+    newerStartsByStaff = new Set((newer ?? []).map(c => c.staff_id as string))
   }
-}
-
-async function getExactCounts(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const today    = new Date().toISOString().split('T')[0]
-  const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-  const [rbtCount, trainerCount, upcomingCount, allCoursesCount, recordsCount] = await Promise.all([
-    supabase.from('staff')
-      .select('id', { count: 'exact', head: true })
-      .eq('active', true).eq('role', 'RBT'),
-    supabase.from('staff')
-      .select('id', { count: 'exact', head: true })
-      .eq('active', true).neq('role', 'RBT'),
-    supabase.from('courses')
-      .select('id', { count: 'exact', head: true })
-      .gte('date', today).lte('date', in30Days),
-    supabase.from('courses')
-      .select('id', { count: 'exact', head: true })
-      .not('name', 'is', null),
-    supabase.from('training_records')
-      .select('id', { count: 'exact', head: true })
-      .eq('confirmed', true),
-  ])
+  const seenStaff = new Set<string>()
+  const expiringUnique = (expiringCycles.data ?? [])
+    .filter(c => !newerStartsByStaff.has(c.staff_id as string))
+    .filter(c => {
+      const id = c.staff_id as string
+      if (seenStaff.has(id)) return false
+      seenStaff.add(id)
+      return true
+    })
 
   return {
-    rbts:                rbtCount.count         ?? 0,
-    trainersAndAdmin:    trainerCount.count     ?? 0,
-    upcomingTrainings:   upcomingCount.count    ?? 0,
-    allTrainings:        allCoursesCount.count  ?? 0,
-    trainingsCompleted:  recordsCount.count     ?? 0,
+    rbtList:         rbtList.data         ?? [],
+    rbtCount:        rbtList.count        ?? 0,
+    trainersList:    trainersList.data    ?? [],
+    trainersCount:   trainersList.count   ?? 0,
+    expiringUnique,
+    upcomingCourses: upcomingCourses.data  ?? [],
+    upcomingCount:   upcomingCourses.count ?? 0,
+    allCourses:      allCourses.data      ?? [],
+    allCoursesCount: allCourses.count     ?? 0,
+    recentRecords:   recentRecords.data   ?? [],
+    recordsCount:    recentRecords.count  ?? 0,
   }
 }
 
@@ -118,10 +101,7 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [data, counts] = await Promise.all([
-    getDashboardData(supabase),
-    getExactCounts(supabase),
-  ])
+  const data = await getDashboardData(supabase)
 
   function formatDate(dateStr: string | null | undefined) {
     if (!dateStr) return ''
@@ -130,7 +110,6 @@ export default async function DashboardPage() {
   }
 
   const cards: DashboardCardData[] = [
-    // ─── Row 1 ─────────────────────────────────────────────────────────────
     {
       title:          'Expiring Soon',
       value:          data.expiringUnique.length,
@@ -151,7 +130,7 @@ export default async function DashboardPage() {
     },
     {
       title:          'Upcoming Trainings',
-      value:          counts.upcomingTrainings,
+      value:          data.upcomingCount,
       description:    'Trainings scheduled in the next 30 days',
       icon:           'calendar',
       color:          'emerald',
@@ -165,7 +144,7 @@ export default async function DashboardPage() {
     },
     {
       title:       'Trainings',
-      value:       counts.allTrainings,
+      value:       data.allCoursesCount,
       description: 'All trainings in the system',
       icon:        'book',
       color:       'violet',
@@ -176,11 +155,9 @@ export default async function DashboardPage() {
         href:     `/trainings/${c.id}`,
       })),
     },
-
-    // ─── Row 2 ─────────────────────────────────────────────────────────────
     {
       title:       'RBTs',
-      value:       counts.rbts,
+      value:       data.rbtCount,
       description: 'Active RBTs',
       icon:        'users',
       color:       'blue',
@@ -192,7 +169,7 @@ export default async function DashboardPage() {
     },
     {
       title:       'Trainers & Admin',
-      value:       counts.trainersAndAdmin,
+      value:       data.trainersCount,
       description: 'Active trainers and administrators',
       icon:        'shield',
       color:       'amber',
@@ -205,7 +182,7 @@ export default async function DashboardPage() {
     },
     {
       title:       'Trainings Completed',
-      value:       counts.trainingsCompleted,
+      value:       data.recordsCount,
       description: 'Confirmed training records to date',
       icon:        'clipboard',
       color:       'teal',

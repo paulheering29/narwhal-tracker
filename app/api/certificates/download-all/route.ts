@@ -5,11 +5,29 @@ import { createServiceClient } from '@/lib/supabase/service'
 import JSZip from 'jszip'
 import {
   buildCertData,
+  certFilename,
   generateCertPdf,
   resolveTemplate,
-  certFilename,
   type OrgContact,
+  type RecordShape,
 } from '@/lib/certificates/generate-cert'
+
+type CompanyRow = {
+  name: string
+  logo_url: string | null
+  org_contact_staff_id: string | null
+  preferred_cert_template: string | null
+  enabled_cert_templates:  string[] | null
+}
+
+type OrgContactRow = {
+  first_name: string
+  last_name:  string
+  display_first_name: string | null
+  display_last_name:  string | null
+  certification_number: string | null
+  credentials: string | null
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -17,7 +35,6 @@ export async function GET(request: NextRequest) {
   const template = searchParams.get('template')
   if (!courseId) return NextResponse.json({ error: 'courseId is required' }, { status: 400 })
 
-  // ── Auth ─────────────────────────────────────────────────────────────────────
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +46,6 @@ export async function GET(request: NextRequest) {
 
   const service = createServiceClient()
 
-  // ── Resolve caller's company via staff row ──────────────────────────────────
   const { data: me } = await service
     .from('staff')
     .select('company_id')
@@ -37,7 +53,6 @@ export async function GET(request: NextRequest) {
     .single()
   if (!me?.company_id) return NextResponse.json({ error: 'No company' }, { status: 404 })
 
-  // ── Fetch all confirmed training records for this course in the user's company
   const { data: records, error: recordsErr } = await supabase
     .from('training_records')
     .select(`
@@ -63,17 +78,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No confirmed attendees for this training' }, { status: 404 })
   }
 
-  // ── Filter to RBTs only: staff with an RBT cert cycle active TODAY.
-  // This matches the trainings page UI which classifies people as RBT
-  // based on whether they have an active cycle right now, regardless of
-  // when the course happened.
-  const course0 = records[0].courses as unknown as { name: string; date: string | null }
-  const today   = new Date().toISOString().split('T')[0]
-
+  // Match the UI: a person is an "RBT" if they have an RBT cycle active
+  // right now — regardless of the course date. (The course might be in
+  // the past or the cycle may have started after the course.)
+  const today    = new Date().toISOString().split('T')[0]
   const staffIds = Array.from(new Set(records.map(r => r.staff_id as string)))
   const { data: cycles } = await service
     .from('certification_cycles')
-    .select('staff_id, start_date, end_date, certification_type')
+    .select('staff_id, certification_type')
     .in('staff_id', staffIds)
     .lte('start_date', today)
     .gte('end_date',   today)
@@ -89,69 +101,62 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No active RBT attendees for this training' }, { status: 404 })
   }
 
-  // ── Fetch company once ───────────────────────────────────────────────────────
   const { data: company } = await service
     .from('companies')
     .select('name, logo_url, org_contact_staff_id, preferred_cert_template, enabled_cert_templates')
     .eq('id', me.company_id)
-    .single()
+    .single<CompanyRow>()
 
-  const companyName       = company?.name        ?? ''
-  const companyLogoUrl    = (company?.logo_url as string | null) ?? null
-  const orgContactStaffId = (company?.org_contact_staff_id as string | null) ?? null
-  const enabledTemplates  = ((company?.enabled_cert_templates as string[] | null) ?? ['bacb'])
-  const preferredTemplate = (company?.preferred_cert_template as string | null) ?? 'bacb'
-  const selectedTemplate  = resolveTemplate(template, enabledTemplates, preferredTemplate)
+  const enabledTemplates = company?.enabled_cert_templates ?? ['bacb']
+  const selectedTemplate = resolveTemplate(template, enabledTemplates, company?.preferred_cert_template)
 
-  // ── Fetch org contact once ───────────────────────────────────────────────────
   let orgContact: OrgContact = null
-  if (orgContactStaffId) {
+  if (company?.org_contact_staff_id) {
     const { data: oc } = await service
       .from('staff')
       .select('first_name, last_name, display_first_name, display_last_name, certification_number, credentials')
-      .eq('id', orgContactStaffId)
-      .single()
+      .eq('id', company.org_contact_staff_id)
+      .single<OrgContactRow>()
     if (oc) {
-      const fn = (oc.display_first_name as string | null)?.trim() || (oc.first_name as string)
-      const ln = (oc.display_last_name  as string | null)?.trim() || (oc.last_name  as string)
-      const cr = (oc.credentials as string | null)?.trim()
+      const fn = oc.display_first_name?.trim() || oc.first_name
+      const ln = oc.display_last_name?.trim()  || oc.last_name
+      const cr = oc.credentials?.trim()
       orgContact = {
         name:       cr ? `${fn} ${ln}, ${cr}` : `${fn} ${ln}`,
-        certNumber: (oc.certification_number as string | null) ?? '',
+        certNumber: oc.certification_number ?? '',
       }
     }
   }
 
-  // ── Generate each PDF and add to the ZIP ────────────────────────────────────
-  const zip = new JSZip()
-  // Folder inside the ZIP is the training name (keep spaces/unicode for
-  // readability — only strip characters illegal on common filesystems).
-  const rawName    = course0.name?.trim() || 'Training'
-  const folderName = rawName.replace(/[\/\\:*?"<>|]/g, '-')
-  const folder     = zip.folder(folderName)!
+  // Generate all PDFs in parallel. pdf-lib is pure JS and creates a
+  // fresh PDFDocument per call, so there's no shared mutable state.
+  const companyInfo = { name: company?.name ?? '', logoUrl: company?.logo_url ?? null }
+  const pdfEntries = await Promise.all(
+    rbtRecords.map(async record => {
+      const { cert, courseDate } = buildCertData(record as unknown as RecordShape, companyInfo, orgContact)
+      const pdfBytes = await generateCertPdf(cert, selectedTemplate)
+      return { filename: certFilename(cert.staffName, courseDate), pdfBytes }
+    }),
+  )
 
-  for (const record of rbtRecords) {
-    const built = buildCertData(
-      record as unknown as Parameters<typeof buildCertData>[0],
-      { name: companyName, logoUrl: companyLogoUrl },
-      orgContact,
-    )
-    const pdfBytes = await generateCertPdf(built, selectedTemplate)
-    folder.file(certFilename(built.staffName, built.courseDate), pdfBytes)
+  const courseRow  = records[0].courses as unknown as { name: string; date: string | null }
+  const folderName = (courseRow.name?.trim() || 'Training').replace(/[\/\\:*?"<>|]/g, '-')
+
+  const zip    = new JSZip()
+  const folder = zip.folder(folderName)!
+  for (const { filename, pdfBytes } of pdfEntries) {
+    folder.file(filename, pdfBytes)
   }
 
-  // ── Build ZIP and respond ───────────────────────────────────────────────────
   const zipBytes = await zip.generateAsync({
     type: 'uint8array',
     compression: 'DEFLATE',
     compressionOptions: { level: 6 },
   })
 
-  // Training-level filename
-  const courseRow = records[0].courses as unknown as { name: string; date: string | null }
-  const safeName  = (courseRow.name ?? 'training').replace(/[^a-zA-Z0-9]/g, '-')
-  const safeDate  = (courseRow.date ?? 'undated').replace(/-/g, '')
-  const zipName   = `certificates-${safeName}-${safeDate}.zip`
+  const safeName = (courseRow.name ?? 'training').replace(/[^a-zA-Z0-9]/g, '-')
+  const safeDate = (courseRow.date ?? 'undated').replace(/-/g, '')
+  const zipName  = `certificates-${safeName}-${safeDate}.zip`
 
   return new Response(Buffer.from(zipBytes), {
     headers: {

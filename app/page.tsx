@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -35,6 +36,11 @@ const features = [
 ]
 
 export default function HomePage() {
+  // Hide the landing page in production — only show when explicitly enabled
+  if (process.env.NEXT_PUBLIC_SHOW_LANDING !== 'true') {
+    redirect('/login')
+  }
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
 

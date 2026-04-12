@@ -6,7 +6,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { BookOpen, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -39,10 +40,15 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0A253D]">
-            <BookOpen className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-semibold text-gray-900">PDU Tracker</span>
+          <Image
+            src="/narwhal-tracker.jpg"
+            alt="Narwhal Tracker"
+            width={40}
+            height={40}
+            className="h-10 w-10 rounded-lg"
+            priority
+          />
+          <span className="text-xl font-semibold text-gray-900">Narwhal Tracker</span>
         </div>
 
         <Card>

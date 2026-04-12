@@ -1127,7 +1127,62 @@ export function StaffPageClient({
             <div className="mb-4 rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMsg}</div>
           )}
 
-          <div className="rounded-lg border bg-white shadow-sm overflow-hidden overflow-x-auto">
+          {/* ── Mobile cards (hidden on md+) ─────────────────────────────── */}
+          <div className="md:hidden space-y-3">
+            {filteredAdminStaff.length === 0 ? (
+              <div className="py-12 text-center text-sm text-gray-400">
+                {trainerSearch ? 'No staff match your search.' : 'No trainers or admins yet.'}
+              </div>
+            ) : filteredAdminStaff.map(s => (
+              <div key={s.id} className={`rounded-xl border bg-white shadow-sm p-4 ${!s.active ? 'opacity-50' : ''}`}>
+                {/* Name + actions row */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 text-base leading-tight truncate">
+                      {getDisplayName(s) || <span className="text-gray-400 italic">No name set</span>}
+                      {s.auth_id === currentAuthId && <span className="ml-1.5 text-xs text-gray-400 font-normal">(you)</span>}
+                    </p>
+                    {s.email && <p className="text-xs text-gray-400 mt-0.5 truncate">{s.email}</p>}
+                    <p className="text-sm text-gray-500 mt-1">{s.role ?? '—'}</p>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button size="sm" variant="ghost" onClick={e => toggleActive(s, e)}
+                        title={s.active ? 'Deactivate' : 'Activate'}>
+                        {s.active
+                          ? <UserX className="h-4 w-4 text-red-500" />
+                          : <UserCheck className="h-4 w-4 text-emerald-500" />}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => openEditBasics(s)} title="Edit basics">
+                        <Pencil className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      {s.auth_id && (
+                        <Button size="sm" variant="ghost" onClick={() => openEditPermissions(s)} title="Edit permissions">
+                          <ShieldCheck className="h-4 w-4 text-violet-600" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Login + permission badges */}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {s.auth_id
+                    ? <span className="inline-flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 rounded-full px-2 py-0.5"><CheckCircle2 className="h-3 w-3" />Login enabled</span>
+                    : <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">No login</span>
+                  }
+                  {s.auth_id && (s.roles?.length ?? 0) > 0 && s.roles!.map(r => (
+                    <span key={r} className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[r] ?? 'bg-gray-100 text-gray-700'}`}>
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Desktop table (hidden below md) ──────────────────────────── */}
+          <div className="hidden md:block rounded-lg border bg-white shadow-sm overflow-hidden overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

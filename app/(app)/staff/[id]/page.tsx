@@ -23,6 +23,10 @@ import {
   SheetTitle,
   SheetFooter,
 } from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog'
 import { getCompanyId } from '@/lib/get-company-id'
 import { getDisplayName, getLegalName, hasPreferredName } from '@/lib/display-name'
 import { getCycleStatus, isActiveCycle, cycleStatusStyles } from '@/lib/cycle-status'
@@ -190,6 +194,7 @@ export default function StaffDetailPage() {
   const [uploadingCycleId, setUploadingCycleId] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<Record<string, string>>({})
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
+  const [previewDoc, setPreviewDoc]     = useState<CycleDocument | null>(null)
 
   // Edit staff dialog
   const [editStaffOpen, setEditStaffOpen] = useState(false)
@@ -837,22 +842,18 @@ export default function StaffDetailPage() {
                                         {formatBytes(doc.file_size)} · {formatDate(doc.created_at.split('T')[0])}
                                       </p>
                                     </div>
-                                    {doc.signed_url ? (
-                                      <a
-                                        href={doc.signed_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        title="View"
-                                        className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 shrink-0"
-                                        onClick={e => e.stopPropagation()}
-                                      >
-                                        <Eye className="h-3.5 w-3.5 text-gray-500" />
-                                      </a>
-                                    ) : (
-                                      <span className="inline-flex h-6 w-6 items-center justify-center shrink-0">
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300" />
-                                      </span>
-                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0 shrink-0"
+                                      title="Preview"
+                                      disabled={!doc.signed_url}
+                                      onClick={e => { e.stopPropagation(); setPreviewDoc(doc) }}
+                                    >
+                                      {doc.signed_url
+                                        ? <Eye className="h-3.5 w-3.5 text-gray-500" />
+                                        : <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300" />}
+                                    </Button>
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -1192,21 +1193,18 @@ export default function StaffDetailPage() {
                           <p className="text-xs font-medium text-gray-800 truncate">{doc.name}</p>
                           <p className="text-[10px] text-gray-400">{formatBytes(doc.file_size)}</p>
                         </div>
-                        {doc.signed_url ? (
-                          <a
-                            href={doc.signed_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="View"
-                            className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-gray-100 shrink-0"
-                          >
-                            <Eye className="h-3.5 w-3.5 text-gray-500" />
-                          </a>
-                        ) : (
-                          <span className="inline-flex h-6 w-6 items-center justify-center shrink-0">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300" />
-                          </span>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 shrink-0"
+                          title="Preview"
+                          disabled={!doc.signed_url}
+                          onClick={() => setPreviewDoc(doc)}
+                        >
+                          {doc.signed_url
+                            ? <Eye className="h-3.5 w-3.5 text-gray-500" />
+                            : <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300" />}
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -1302,6 +1300,45 @@ export default function StaffDetailPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* ── Document preview modal ──────────────────────────────────── */}
+      <Dialog open={!!previewDoc} onOpenChange={open => { if (!open) setPreviewDoc(null) }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] p-0 overflow-hidden">
+          {previewDoc && (
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between px-5 py-3 border-b bg-gray-50">
+                <p className="text-sm font-medium text-gray-800 truncate">{previewDoc.name}</p>
+                {previewDoc.signed_url && (
+                  <a
+                    href={previewDoc.signed_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline shrink-0 ml-4"
+                  >
+                    Open in new tab ↗
+                  </a>
+                )}
+              </div>
+              <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-100 min-h-[400px]">
+                {previewDoc.mime_type?.startsWith('image/') ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewDoc.signed_url ?? ''}
+                    alt={previewDoc.name}
+                    className="max-w-full max-h-[75vh] object-contain"
+                  />
+                ) : (
+                  <iframe
+                    src={previewDoc.signed_url ?? ''}
+                    title={previewDoc.name}
+                    className="w-full h-[75vh] border-0"
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

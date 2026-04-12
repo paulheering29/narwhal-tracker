@@ -575,7 +575,7 @@ export default function TrainingsPage() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Page header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -633,7 +633,7 @@ export default function TrainingsPage() {
               onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
 
-          <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+          <div className="rounded-lg border bg-white shadow-sm overflow-hidden overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -935,7 +935,7 @@ export default function TrainingsPage() {
             </p>
           )}
 
-          <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+          <div className="rounded-lg border bg-white shadow-sm overflow-hidden overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

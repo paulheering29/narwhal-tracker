@@ -336,7 +336,7 @@ export function AdminUsersClient({
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
       <div className="mb-6 flex items-center gap-2">
         <ShieldCheck className="h-6 w-6 text-violet-600" />
@@ -387,7 +387,7 @@ export function AdminUsersClient({
             <div className="mb-4 rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMsg}</div>
           )}
 
-          <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+          <div className="rounded-lg border bg-white shadow-sm overflow-hidden overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

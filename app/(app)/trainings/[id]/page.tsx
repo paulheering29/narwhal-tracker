@@ -517,7 +517,7 @@ export default function TrainingDetailPage() {
   }
 
   if (!training) {
-    return <div className="p-8">
+    return <div className="p-4 md:p-8">
       <p className="text-gray-500">Training not found.</p>
       <Button variant="link" onClick={() => router.push('/trainings')}>← Back</Button>
     </div>
@@ -534,7 +534,7 @@ export default function TrainingDetailPage() {
   })()
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
 
       {/* ── Header ───────────────────────────────────────────────────────────── */}
       <button onClick={() => router.push('/trainings')}
@@ -616,7 +616,7 @@ export default function TrainingDetailPage() {
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
 
         {/* Left: current attendees */}
-        <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+        <div className="rounded-lg border bg-white shadow-sm overflow-hidden overflow-x-auto">
           <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between gap-3">
             <p className="text-sm font-medium text-gray-700">
               {attendees.length} added
@@ -878,7 +878,7 @@ export default function TrainingDetailPage() {
           No documents attached. Upload a PDF or link an existing one.
         </div>
       ) : (
-        <div className="rounded-lg border bg-white shadow-sm overflow-hidden">
+        <div className="rounded-lg border bg-white shadow-sm overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

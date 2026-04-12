@@ -128,7 +128,7 @@ function DashboardCard({ card }: { card: DashboardCardData }) {
 
       <div className="p-5 flex-1 flex flex-col">
         {/* Giant centered number */}
-        <p className={`text-center font-extrabold leading-none tabular-nums ${c.number} text-[10rem]`}>
+        <p className={`text-center font-extrabold leading-none tabular-nums ${c.number} text-7xl sm:text-[10rem]`}>
           {card.value}
         </p>
         <p className="mt-3 text-xs text-gray-500 text-center">{card.description}</p>

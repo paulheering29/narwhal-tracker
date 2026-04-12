@@ -635,7 +635,7 @@ export default function StaffDetailPage() {
   ]
 
   return (
-    <div className="p-8 max-w-[1400px]">
+    <div className="p-4 md:p-8 max-w-[1400px]">
 
       {/* Header */}
       <div className="mb-6">

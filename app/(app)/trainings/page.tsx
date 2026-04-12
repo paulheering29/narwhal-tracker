@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table'
 import {
   BookPlus, Loader2, Search, ChevronRight, Clock, Paperclip,
-  ChevronLeft, CheckCircle2, Circle, ExternalLink, CalendarDays, List, ClipboardList, Copy,
+  ChevronLeft, CheckCircle2, Circle, ExternalLink, CalendarDays, List, ClipboardList, Copy, Users,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -633,7 +633,89 @@ export default function TrainingsPage() {
               onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
 
-          <div className="rounded-lg border bg-white shadow-sm overflow-hidden overflow-x-auto">
+          {/* ── Mobile cards (hidden on md+) ─────────────────────────────── */}
+          <div className="md:hidden space-y-3">
+            {loading ? (
+              <div className="py-12 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+            ) : loadError ? (
+              <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{loadError}</p>
+            ) : filtered.length === 0 ? (
+              <div className="py-12 text-center text-sm text-gray-400">
+                {search ? 'No trainings match your search.' : 'No trainings yet. Add your first one.'}
+              </div>
+            ) : filtered.map(t => {
+              const trainerDisplay = t.staff
+                ? getDisplayName(t.staff)
+                : t.trainer_name ? `${t.trainer_name} (Ext.)` : null
+              const rbtCount = (t.training_records ?? []).filter(r => r.staff?.role === 'RBT').length
+              const docCount = t.training_document_links?.length ?? 0
+              const topic = t.topic_id ? topicList.find(tp => tp.id === t.topic_id) : null
+
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => router.push(`/trainings/${t.id}`)}
+                  className="rounded-xl border bg-white shadow-sm p-4 cursor-pointer active:bg-gray-50 transition-colors"
+                >
+                  {/* Name + action buttons */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="font-semibold text-blue-600 text-base leading-tight">{t.name}</p>
+                    <div className="flex items-center shrink-0" onClick={e => e.stopPropagation()}>
+                      <Button size="sm" variant="ghost" onClick={e => openCopy(t, e)} title="Copy">
+                        <Copy className="h-3.5 w-3.5 text-gray-400" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={e => openEdit(t, e)}>
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Date + time */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500 mb-3">
+                    {t.date && <span>{fmtDate(t.date)}</span>}
+                    {t.start_time && t.end_time && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" />{fmtTime(t.start_time)}–{fmtTime(t.end_time)}
+                      </span>
+                    )}
+                    {t.units != null && <span className="font-medium text-gray-700">{t.units} PDU{t.units !== 1 ? 's' : ''}</span>}
+                  </div>
+
+                  {/* Badges row */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {t.modality && (
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${MODALITY_STYLES[t.modality] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {MODALITY_LABELS[t.modality] ?? t.modality}
+                      </span>
+                    )}
+                    {topic && (
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${topicColorClass(topic.id)}`}>
+                        {topic.name}
+                      </span>
+                    )}
+                    {trainerDisplay && (
+                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600">
+                        {trainerDisplay}
+                      </span>
+                    )}
+                    {rbtCount > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-600">
+                        <Users className="h-3 w-3" />{rbtCount} RBT{rbtCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {docCount > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-500">
+                        <Paperclip className="h-3 w-3" />{docCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── Desktop table (hidden below md) ──────────────────────────── */}
+          <div className="hidden md:block rounded-lg border bg-white shadow-sm overflow-hidden overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

@@ -5,7 +5,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { CERT_TEMPLATES } from '@/lib/certificates/generate-cert'
+import { CERT_TEMPLATES } from '@/lib/certificates/templates'
 
 interface TemplatePickerDialogProps {
   open: boolean

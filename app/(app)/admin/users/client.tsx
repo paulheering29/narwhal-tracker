@@ -26,7 +26,7 @@ import { ALL_ROLES } from '@/lib/permissions'
 import { BillingClient } from '@/app/(app)/billing/client'
 import type { Plan, CompanyBilling } from '@/lib/plans'
 import { resizeImage } from '@/lib/resize-image'
-import { CERT_TEMPLATES } from '@/lib/certificates/generate-cert'
+import { CERT_TEMPLATES } from '@/lib/certificates/templates'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

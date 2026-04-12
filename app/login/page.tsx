@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
-import Image from 'next/image'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -38,19 +37,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
-        {/* Brand */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Image
-            src="/narwhal-tracker.jpg"
-            alt="Narwhal Tracker"
-            width={40}
-            height={40}
-            className="h-10 w-10 rounded-lg"
-            priority
-          />
-          <span className="text-xl font-semibold text-gray-900">Narwhal Tracker</span>
-        </div>
-
         <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Sign in</CardTitle>

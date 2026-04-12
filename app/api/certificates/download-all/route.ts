@@ -63,18 +63,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No confirmed attendees for this training' }, { status: 404 })
   }
 
-  // ── Filter to RBTs only (staff_id has an active cert cycle covering the course date)
-  // For simplicity: use the course date as the reference point. If no date, fall back to today.
-  const course0 = records[0].courses as unknown as { date: string | null }
-  const refDate = course0.date ?? new Date().toISOString().split('T')[0]
+  // ── Filter to RBTs only: staff with an RBT cert cycle active TODAY.
+  // This matches the trainings page UI which classifies people as RBT
+  // based on whether they have an active cycle right now, regardless of
+  // when the course happened.
+  const course0 = records[0].courses as unknown as { name: string; date: string | null }
+  const today   = new Date().toISOString().split('T')[0]
 
   const staffIds = Array.from(new Set(records.map(r => r.staff_id as string)))
   const { data: cycles } = await service
     .from('certification_cycles')
     .select('staff_id, start_date, end_date, certification_type')
     .in('staff_id', staffIds)
-    .lte('start_date', refDate)
-    .gte('end_date',   refDate)
+    .lte('start_date', today)
+    .gte('end_date',   today)
 
   const rbtStaffIds = new Set(
     (cycles ?? [])
@@ -122,8 +124,11 @@ export async function GET(request: NextRequest) {
 
   // ── Generate each PDF and add to the ZIP ────────────────────────────────────
   const zip = new JSZip()
-  const folderName = (course0.date ? `certs-${course0.date}` : 'certs')
-  const folder = zip.folder(folderName)!
+  // Folder inside the ZIP is the training name (keep spaces/unicode for
+  // readability — only strip characters illegal on common filesystems).
+  const rawName    = course0.name?.trim() || 'Training'
+  const folderName = rawName.replace(/[\/\\:*?"<>|]/g, '-')
+  const folder     = zip.folder(folderName)!
 
   for (const record of rbtRecords) {
     const built = buildCertData(

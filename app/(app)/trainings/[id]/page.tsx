@@ -535,7 +535,7 @@ export default function TrainingDetailPage() {
   })()
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-8">
 
       {/* ── Header ───────────────────────────────────────────────────────────── */}
       <button onClick={() => router.push('/trainings')}

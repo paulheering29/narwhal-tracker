@@ -147,7 +147,9 @@ export default function TrainingDetailPage() {
   const [templatePickerOpen, setTemplatePickerOpen]     = useState(false)
   const [templatePickerLoading, setTemplatePickerLoading] = useState(false)
   const [pendingRecordId, setPendingRecordId]           = useState<string | null>(null)
-  const [pendingAction, setPendingAction]               = useState<'download' | 'email'>('download')
+  const [pendingAction, setPendingAction]               = useState<'download' | 'email' | 'download-all'>('download')
+  const [downloadingAll, setDownloadingAll]             = useState(false)
+  const [downloadAllError, setDownloadAllError]         = useState<string | null>(null)
 
   async function handleEmailCert(recordId: string, template?: string) {
     setEmailingIds(prev => new Set(prev).add(recordId))
@@ -196,14 +198,60 @@ export default function TrainingDetailPage() {
     }
   }
 
+  async function handleDownloadAllCert(template?: string) {
+    setDownloadingAll(true)
+    setDownloadAllError(null)
+    try {
+      const url = new URL('/api/certificates/download-all', window.location.origin)
+      url.searchParams.set('courseId', trainingId)
+      if (template) url.searchParams.set('template', template)
+      const res = await fetch(url.toString())
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: 'Failed' }))
+        throw new Error(json.error ?? 'Failed to build ZIP')
+      }
+      const blob = await res.blob()
+      // Extract filename from Content-Disposition
+      const cd   = res.headers.get('Content-Disposition') ?? ''
+      const m    = cd.match(/filename="?([^"]+)"?/)
+      const name = m?.[1] ?? 'certificates.zip'
+      // Trigger download via a transient anchor
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(blobUrl)
+    } catch (err: unknown) {
+      setDownloadAllError(err instanceof Error ? err.message : 'Download failed')
+    } finally {
+      setDownloadingAll(false)
+    }
+  }
+
+  function handleDownloadAll() {
+    if (enabledCertTemplates.length > 1) {
+      setPendingRecordId(null)
+      setPendingAction('download-all')
+      setTemplatePickerOpen(true)
+    } else {
+      handleDownloadAllCert(enabledCertTemplates[0])
+    }
+  }
+
   async function handleTemplateSelect(template: string) {
-    if (!pendingRecordId) return
     setTemplatePickerLoading(true)
     try {
-      if (pendingAction === 'download') {
-        await handleDownloadCert(pendingRecordId, template)
-      } else {
-        await handleEmailCert(pendingRecordId, template)
+      if (pendingAction === 'download-all') {
+        await handleDownloadAllCert(template)
+      } else if (pendingRecordId) {
+        if (pendingAction === 'download') {
+          await handleDownloadCert(pendingRecordId, template)
+        } else {
+          await handleEmailCert(pendingRecordId, template)
+        }
       }
     } finally {
       setTemplatePickerLoading(false)
@@ -590,24 +638,41 @@ export default function TrainingDetailPage() {
                 for (const a of rbtConfirmed) await handleEmailCert(a.id, template)
               }
               return (
-                <button
-                  onClick={emailAll}
-                  disabled={anyEmailing}
-                  title={enabledCertTemplates.length > 1 ? 'Emails all with the preferred template' : 'Email all RBTs'}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                    allEmailed
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {anyEmailing ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
-                  ) : allEmailed ? (
-                    <><CheckCircle2 className="h-3.5 w-3.5" /> All Sent</>
-                  ) : (
-                    <><Mail className="h-3.5 w-3.5" /> Email All RBTs</>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleDownloadAll}
+                    disabled={downloadingAll}
+                    title="Download a ZIP containing every RBT's certificate"
+                    className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors bg-violet-100 text-violet-700 hover:bg-violet-200 disabled:opacity-60"
+                  >
+                    {downloadingAll ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Zipping…</>
+                    ) : (
+                      <><Download className="h-3.5 w-3.5" /> Download All RBTs</>
+                    )}
+                  </button>
+                  <button
+                    onClick={emailAll}
+                    disabled={anyEmailing}
+                    title={enabledCertTemplates.length > 1 ? 'Emails all with the preferred template' : 'Email all RBTs'}
+                    className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      allEmailed
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {anyEmailing ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Sending…</>
+                    ) : allEmailed ? (
+                      <><CheckCircle2 className="h-3.5 w-3.5" /> All Sent</>
+                    ) : (
+                      <><Mail className="h-3.5 w-3.5" /> Email All RBTs</>
+                    )}
+                  </button>
+                  {downloadAllError && (
+                    <span className="text-xs text-red-600">{downloadAllError}</span>
                   )}
-                </button>
+                </div>
               )
             })()}
           </div>

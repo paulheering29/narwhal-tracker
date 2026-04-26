@@ -33,7 +33,7 @@ type StaffOption = {
 type TopicOption = { id: string; name: string }
 
 type Training = {
-  id: string; name: string; description: string | null
+  id: string; name: string; description: string | null; objectives: string | null
   date: string | null; start_time: string | null; end_time: string | null
   units: number | null; modality: string | null; validity_months: number | null
   trainer_staff_id: string | null; trainer_name: string | null; trainer_cert_number: string | null
@@ -78,7 +78,7 @@ const CERT_STYLES: Record<string, string> = {
 }
 
 const emptyForm = {
-  name: '', description: '', date: '', start_time: '', end_time: '',
+  name: '', description: '', objectives: '', date: '', start_time: '', end_time: '',
   units: '', validity_months: '', modality: '',
   trainer_staff_id: '', trainer_name: '', trainer_cert_number: '',
   topic_id: '',
@@ -346,6 +346,7 @@ export default function TrainingDetailPage() {
     setForm({
       name:               training.name,
       description:        training.description ?? '',
+      objectives:         training.objectives ?? '',
       date:               training.date ?? '',
       start_time:         training.start_time?.slice(0, 5) ?? '',
       end_time:           training.end_time?.slice(0, 5) ?? '',
@@ -372,6 +373,7 @@ export default function TrainingDetailPage() {
     const { error } = await supabase.from('courses').update({
       name:                form.name.trim(),
       description:         form.description || null,
+      objectives:          form.objectives || null,
       date:                form.date,
       start_time:          form.start_time,
       end_time:            form.end_time,
@@ -601,6 +603,12 @@ export default function TrainingDetailPage() {
               <div className="col-span-4">
                 <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Description</dt>
                 <dd className="mt-1 text-sm text-gray-700">{training.description}</dd>
+              </div>
+            )}
+            {training.objectives && (
+              <div className="col-span-4">
+                <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">Objectives</dt>
+                <dd className="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{training.objectives}</dd>
               </div>
             )}
           </dl>
@@ -947,6 +955,11 @@ export default function TrainingDetailPage() {
               <Label>Description</Label>
               <Textarea rows={2} value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Objectives</Label>
+              <Textarea rows={3} placeholder="List the learning objectives for this training…" value={form.objectives}
+                onChange={e => setForm(f => ({ ...f, objectives: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

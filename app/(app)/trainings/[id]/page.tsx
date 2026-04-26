@@ -780,8 +780,21 @@ export default function TrainingDetailPage() {
 
         {/* Right: add staff */}
         <div className="rounded-lg border bg-white shadow-sm flex flex-col">
-          <div className="px-4 py-3 border-b bg-gray-50">
+          <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between gap-2">
             <p className="text-sm font-medium text-gray-700">Add Staff</p>
+            {availableStaff.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const allIds = new Set(availableStaff.map(s => s.id))
+                  const allSelected = availableStaff.every(s => selectedStaffIds.has(s.id))
+                  setSelectedStaffIds(allSelected ? new Set() : allIds)
+                }}
+                className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                {availableStaff.every(s => selectedStaffIds.has(s.id)) ? 'Deselect All' : 'Select All'}
+              </button>
+            )}
           </div>
           <div className="p-4 space-y-3 flex flex-col flex-1">
             <div className="relative">

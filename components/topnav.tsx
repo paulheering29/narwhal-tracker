@@ -21,6 +21,7 @@ import {
   X,
   PlayCircle,
   GraduationCap,
+  Gauge,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { showAdminNav, rolesDisplay } from '@/lib/permissions'
@@ -29,6 +30,7 @@ interface TopNavProps {
   userTier:   'rbt' | 'staff'
   userRoles:  string[]
   userName:   string
+  showMyProgress: boolean
 }
 
 const BG = '#ffffff'
@@ -52,7 +54,7 @@ const analyticsItems = [
   { href: '/analytics/rbt-timeline',  label: 'RBT Timeline',   icon: GitCommitHorizontal },
 ]
 
-export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
+export function TopNav({ userTier, userRoles, userName, showMyProgress }: TopNavProps) {
   const pathname   = usePathname()
   const supabase   = createClient()
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
@@ -85,7 +87,11 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
     return pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
   }
 
-  const navItems = userTier === 'rbt' ? rbtNavItems : staffNavItems
+  const navItems = userTier === 'rbt'
+    ? rbtNavItems
+    : showMyProgress
+      ? [...staffNavItems, { href: '/my-progress', label: 'My Progress', icon: Gauge }]
+      : staffNavItems
 
   return (
     <>

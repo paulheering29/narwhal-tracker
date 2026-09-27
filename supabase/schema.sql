@@ -1,5 +1,5 @@
 -- ============================================================
--- Narwhal PDU Tracker – Database Schema
+-- Training Loop – Database Schema
 -- Run this in the Supabase SQL editor for a fresh project.
 -- ============================================================
 

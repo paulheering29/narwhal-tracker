@@ -223,7 +223,7 @@ function MonthGrid({
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       {/* Month header */}
-      <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#457595' }}>
+      <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: '#025CA8' }}>
         <span className="text-sm font-bold text-white tracking-wide uppercase">
           {MONTH_NAMES[month]}
         </span>
@@ -272,7 +272,7 @@ function MonthGrid({
                     ${hasTraining ? `cursor-pointer ${cellBg}` : 'cursor-default'}
                     ${!hasTraining && isFuture ? 'text-gray-400' : ''}
                     ${!hasTraining && !isFuture ? 'text-gray-700' : ''}
-                    ${isToday ? 'ring-2 ring-inset ring-[#457595] font-bold' : ''}
+                    ${isToday ? 'ring-2 ring-inset ring-[#025CA8] font-bold' : ''}
                   `}
                 >
                   {day}
@@ -582,7 +582,7 @@ export default function TrainingsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Trainings</h1>
           <p className="mt-1 text-sm text-gray-500">{trainings.length} total trainings</p>
         </div>
-        <Button onClick={openAdd} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+        <Button onClick={openAdd} className="bg-[#025CA8] hover:bg-[#024A87]">
           <BookPlus className="mr-2 h-4 w-4" /> Add Training
         </Button>
       </div>
@@ -593,7 +593,7 @@ export default function TrainingsPage() {
           onClick={() => setActiveTab('list')}
           className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
             activeTab === 'list'
-              ? 'border-[#457595] text-[#457595]'
+              ? 'border-[#025CA8] text-[#025CA8]'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -604,7 +604,7 @@ export default function TrainingsPage() {
           onClick={() => setActiveTab('calendar')}
           className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
             activeTab === 'calendar'
-              ? 'border-[#457595] text-[#457595]'
+              ? 'border-[#025CA8] text-[#025CA8]'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -615,7 +615,7 @@ export default function TrainingsPage() {
           onClick={() => { setActiveTab('records'); loadTrainingRecords() }}
           className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
             activeTab === 'records'
-              ? 'border-[#457595] text-[#457595]'
+              ? 'border-[#025CA8] text-[#025CA8]'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -907,7 +907,7 @@ export default function TrainingsPage() {
                           </div>
                           <Link
                             href={`/trainings/${c.id}`}
-                            className="shrink-0 flex items-center gap-1 text-xs font-medium text-[#457595] hover:underline"
+                            className="shrink-0 flex items-center gap-1 text-xs font-medium text-[#025CA8] hover:underline"
                           >
                             Open <ExternalLink className="h-3 w-3" />
                           </Link>
@@ -1161,7 +1161,7 @@ export default function TrainingsPage() {
                         onClick={() => setTrainerType(type)}
                         className={`px-4 py-1.5 text-sm font-medium transition-colors ${
                           trainerType === type
-                            ? 'bg-[#0A253D] text-white'
+                            ? 'bg-[#025CA8] text-white'
                             : 'bg-white text-gray-600 hover:bg-gray-50'
                         }`}>
                         {type === 'staff' ? 'Staff Member' : 'External'}
@@ -1257,7 +1257,7 @@ export default function TrainingsPage() {
                         onClick={() => setTrainerType(type)}
                         className={`px-4 py-1.5 text-sm font-medium transition-colors ${
                           trainerType === type
-                            ? 'bg-[#0A253D] text-white'
+                            ? 'bg-[#025CA8] text-white'
                             : 'bg-white text-gray-600 hover:bg-gray-50'
                         }`}>
                         {type === 'staff' ? 'Staff Member' : 'External'}
@@ -1319,7 +1319,7 @@ export default function TrainingsPage() {
 
           <SheetFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={handleSave} disabled={saving} className="bg-[#025CA8] hover:bg-[#024A87]">
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Training'}
             </Button>
           </SheetFooter>

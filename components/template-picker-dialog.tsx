@@ -46,7 +46,7 @@ export function TemplatePickerDialog({
               <label
                 key={value}
                 className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                  selected === value ? 'border-[#0A253D] bg-[#0A253D]/5' : 'border-gray-200 hover:border-gray-300'
+                  selected === value ? 'border-[#025CA8] bg-[#025CA8]/5' : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <input
@@ -55,7 +55,7 @@ export function TemplatePickerDialog({
                   value={value}
                   checked={selected === value}
                   onChange={() => setSelected(value)}
-                  className="mt-0.5 accent-[#0A253D]"
+                  className="mt-0.5 accent-[#025CA8]"
                 />
                 <div>
                   <p className="text-sm font-medium text-gray-800">{label}</p>
@@ -76,7 +76,7 @@ export function TemplatePickerDialog({
           <Button
             onClick={handleSelect}
             disabled={isLoading}
-            className="bg-[#0A253D] hover:bg-[#0d2f4f]"
+            className="bg-[#025CA8] hover:bg-[#024A87]"
           >
             {isLoading ? 'Loading…' : 'Download'}
           </Button>

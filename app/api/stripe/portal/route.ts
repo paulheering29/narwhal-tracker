@@ -36,7 +36,7 @@ export async function POST() {
     return NextResponse.json({ error: 'No billing account found' }, { status: 400 })
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://narwhal-tracker-eight.vercel.app'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trainingloop.tech'
   const portalSession = await stripe.billingPortal.sessions.create({
     customer:   company.stripe_customer_id,
     return_url: `${baseUrl}/admin/users?tab=billing`,

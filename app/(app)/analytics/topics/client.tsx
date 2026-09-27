@@ -258,14 +258,14 @@ export function TopicAnalysisClient({ topics, staff, matrix, availableTrainings 
           <thead>
             <tr>
               {/* Name header */}
-              <th onClick={() => handleSort('name')} style={{ backgroundColor: '#457595' }}
+              <th onClick={() => handleSort('name')} style={{ backgroundColor: '#025CA8' }}
                 className="sticky left-0 top-0 z-30 cursor-pointer select-none px-5 py-3.5 text-center text-sm font-semibold text-white border-r border-white/20">
                 <div className="flex items-center justify-center gap-1.5">
                   Staff Member <SortIcon id="name" sort={sort} />
                 </div>
               </th>
               {/* Expiration Date header */}
-              <th onClick={() => handleSort('cycle')} style={{ backgroundColor: '#457595' }}
+              <th onClick={() => handleSort('cycle')} style={{ backgroundColor: '#025CA8' }}
                 className="sticky top-0 z-20 cursor-pointer select-none px-5 py-3.5 text-center text-sm font-semibold text-white border-r border-white/20">
                 <div className="flex items-center justify-center gap-1.5">
                   Expiration Date <SortIcon id="cycle" sort={sort} />
@@ -273,7 +273,7 @@ export function TopicAnalysisClient({ topics, staff, matrix, availableTrainings 
               </th>
               {/* Topic headers */}
               {topics.map(topic => (
-                <th key={topic.id} onClick={() => handleSort(topic.id)} style={{ backgroundColor: '#457595' }}
+                <th key={topic.id} onClick={() => handleSort(topic.id)} style={{ backgroundColor: '#025CA8' }}
                   className="sticky top-0 z-20 cursor-pointer select-none px-5 py-3.5 text-center text-sm font-semibold text-white border-r border-white/20 last:border-r-0">
                   <div className="flex items-center justify-center gap-1.5">
                     {topic.name} <SortIcon id={topic.id} sort={sort} />
@@ -439,7 +439,7 @@ export function TopicAnalysisClient({ topics, staff, matrix, availableTrainings 
             <Button variant="outline" onClick={() => setSignupTarget(null)} disabled={signing}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmSignup} disabled={signing} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={handleConfirmSignup} disabled={signing} className="bg-[#025CA8] hover:bg-[#024A87]">
               {signing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Adding…</> : 'Yes, Enrol'}
             </Button>
           </DialogFooter>

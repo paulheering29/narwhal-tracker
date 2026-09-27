@@ -736,7 +736,7 @@ export default function CourseDetailPage() {
           <h2 className="text-lg font-semibold text-gray-900">Sections</h2>
           <p className="text-sm text-gray-500">{videos.length} video{videos.length !== 1 ? 's' : ''} in this course</p>
         </div>
-        <Button size="sm" className="bg-[#0A253D] hover:bg-[#0d2f4f]" onClick={openAddPart}>
+        <Button size="sm" className="bg-[#025CA8] hover:bg-[#024A87]" onClick={openAddPart}>
           <Plus className="mr-2 h-4 w-4" /> Add Section
         </Button>
       </div>
@@ -826,7 +826,7 @@ export default function CourseDetailPage() {
           </p>
         </div>
         {quiz && (
-          <Button size="sm" className="bg-[#0A253D] hover:bg-[#0d2f4f]" onClick={openAddQuestion}>
+          <Button size="sm" className="bg-[#025CA8] hover:bg-[#024A87]" onClick={openAddQuestion}>
             <Plus className="mr-2 h-4 w-4" /> Add Question
           </Button>
         )}
@@ -836,7 +836,7 @@ export default function CourseDetailPage() {
         <div className="rounded-lg border border-dashed bg-white p-10 text-center text-sm text-gray-400 shadow-sm">
           <HelpCircle className="mx-auto mb-2 h-6 w-6 text-gray-300" />
           <p className="mb-3">Staff can&apos;t earn a certificate for this course until it has a quiz.</p>
-          <Button size="sm" onClick={handleCreateQuiz} disabled={creatingQuiz} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+          <Button size="sm" onClick={handleCreateQuiz} disabled={creatingQuiz} className="bg-[#025CA8] hover:bg-[#024A87]">
             {creatingQuiz ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</> : 'Create Quiz'}
           </Button>
         </div>
@@ -1131,7 +1131,7 @@ export default function CourseDetailPage() {
               <div className="flex rounded-md border overflow-hidden w-fit">
                 {(['none', 'staff', 'external'] as const).map(type => (
                   <button key={type} type="button" onClick={() => setTrainerType(type)}
-                    className={`px-4 py-1.5 text-sm font-medium transition-colors ${trainerType === type ? 'bg-[#0A253D] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                    className={`px-4 py-1.5 text-sm font-medium transition-colors ${trainerType === type ? 'bg-[#025CA8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
                     {type === 'none' ? 'None' : type === 'staff' ? 'Staff Member' : 'External'}
                   </button>
                 ))}
@@ -1166,7 +1166,7 @@ export default function CourseDetailPage() {
           </div>
           <SheetFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={handleSave} disabled={saving} className="bg-[#025CA8] hover:bg-[#024A87]">
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save'}
             </Button>
           </SheetFooter>
@@ -1198,7 +1198,7 @@ export default function CourseDetailPage() {
             {uploading ? (
               <div className="space-y-2">
                 <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full bg-[#0A253D] transition-all" style={{ width: `${uploadProgress}%` }} />
+                  <div className="h-full bg-[#025CA8] transition-all" style={{ width: `${uploadProgress}%` }} />
                 </div>
                 <p className="text-sm text-gray-500 text-center">Uploading… {uploadProgress}%</p>
               </div>
@@ -1242,7 +1242,7 @@ export default function CourseDetailPage() {
           </div>
           <SheetFooter>
             <Button variant="outline" onClick={() => setEditPart(null)}>Cancel</Button>
-            <Button onClick={handleSavePart} disabled={savingPart} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={handleSavePart} disabled={savingPart} className="bg-[#025CA8] hover:bg-[#024A87]">
               {savingPart ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Section'}
             </Button>
           </SheetFooter>
@@ -1291,7 +1291,7 @@ export default function CourseDetailPage() {
           </div>
           <SheetFooter>
             <Button variant="outline" onClick={() => setQuestionOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveQuestion} disabled={savingQuestion} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={handleSaveQuestion} disabled={savingQuestion} className="bg-[#025CA8] hover:bg-[#024A87]">
               {savingQuestion ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Question'}
             </Button>
           </SheetFooter>

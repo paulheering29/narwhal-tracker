@@ -12,5 +12,5 @@ export type CertData = {
   orgContactCertNumber: string
   trainerSignatureUrl:  string | null
   companyLogoUrl:       string | null
-  narwhalLogoPath:      string   // absolute fs path to narwhal-tracker.jpg
+  brandLogoPath:        string   // absolute fs path to training-loop-logo.png
 }

@@ -202,7 +202,7 @@ export function RbtInsightsClient({ staff, today }: Props) {
                 </span>
                 <div className="flex-1 h-5 rounded-full bg-gray-100 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#457595] to-[#6fa8c4] transition-all"
+                    className="h-full rounded-full bg-gradient-to-r from-[#025CA8] to-[#6fa8c4] transition-all"
                     style={{ width: `${pct}%` }}
                   />
                 </div>

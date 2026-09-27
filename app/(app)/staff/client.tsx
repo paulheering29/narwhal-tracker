@@ -715,7 +715,7 @@ export function StaffPageClient({
                   key={opt}
                   onClick={() => setFilterActive(opt)}
                   className={`px-3 py-1.5 text-sm font-medium transition-colors capitalize ${
-                    filterActive === opt ? 'bg-[#0A253D] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                    filterActive === opt ? 'bg-[#025CA8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   {opt === 'all' ? 'All' : opt.charAt(0).toUpperCase() + opt.slice(1)}
@@ -725,7 +725,7 @@ export function StaffPageClient({
             <Button variant="outline" onClick={openImport} className="shrink-0">
               <Upload className="mr-2 h-4 w-4" /> Import CSV
             </Button>
-            <Button onClick={openAddRbt} className="bg-[#0A253D] hover:bg-[#0d2f4f] shrink-0">
+            <Button onClick={openAddRbt} className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
               <UserPlus className="mr-2 h-4 w-4" /> Add RBT
             </Button>
           </div>
@@ -1032,7 +1032,7 @@ export function StaffPageClient({
               <SheetFooter className="mt-4">
                 <Button variant="outline" onClick={() => setImportOpen(false)}>{importResult ? 'Close' : 'Cancel'}</Button>
                 {!importResult && (
-                  <Button onClick={handleImport} disabled={csvRows.filter(r => !r.error).length === 0 || importing} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                  <Button onClick={handleImport} disabled={csvRows.filter(r => !r.error).length === 0 || importing} className="bg-[#025CA8] hover:bg-[#024A87]">
                     {importing
                       ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing…</>
                       : `Import ${csvRows.filter(r => !r.error).length} Staff Member${csvRows.filter(r => !r.error).length !== 1 ? 's' : ''}`}
@@ -1094,7 +1094,7 @@ export function StaffPageClient({
               </div>
               <SheetFooter>
                 <Button variant="outline" onClick={() => setAddRbtOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddStaff} disabled={staffSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                <Button onClick={handleAddStaff} disabled={staffSaving} className="bg-[#025CA8] hover:bg-[#024A87]">
                   {staffSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Add & Continue'}
                 </Button>
               </SheetFooter>
@@ -1117,7 +1117,7 @@ export function StaffPageClient({
               />
             </div>
             {isAdmin && (
-              <Button onClick={() => { setUserError(null); setInviteOpen(true) }} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+              <Button onClick={() => { setUserError(null); setInviteOpen(true) }} className="bg-[#025CA8] hover:bg-[#024A87]">
                 <UserPlus className="mr-2 h-4 w-4" /> Add User
               </Button>
             )}
@@ -1309,7 +1309,7 @@ export function StaffPageClient({
               </div>
               <SheetFooter>
                 <Button variant="outline" onClick={() => setBasicsEditOpen(false)}>Cancel</Button>
-                <Button onClick={handleEditBasics} disabled={basicsSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                <Button onClick={handleEditBasics} disabled={basicsSaving} className="bg-[#025CA8] hover:bg-[#024A87]">
                   {basicsSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Basics'}
                 </Button>
               </SheetFooter>
@@ -1373,7 +1373,7 @@ export function StaffPageClient({
               </div>
               <SheetFooter>
                 <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-                <Button onClick={handleInvite} disabled={userSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                <Button onClick={handleInvite} disabled={userSaving} className="bg-[#025CA8] hover:bg-[#024A87]">
                   {userSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</> : 'Create User'}
                 </Button>
               </SheetFooter>
@@ -1444,7 +1444,7 @@ export function StaffPageClient({
               </div>
               <SheetFooter>
                 <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-                <Button onClick={handleEditPermissions} disabled={userSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                <Button onClick={handleEditPermissions} disabled={userSaving} className="bg-[#025CA8] hover:bg-[#024A87]">
                   {userSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Permissions'}
                 </Button>
               </SheetFooter>

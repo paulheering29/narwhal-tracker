@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { BookOpen, Loader2, ArrowLeft, MailCheck } from 'lucide-react'
+import { Loader2, ArrowLeft, MailCheck } from 'lucide-react'
 
 export default function ForgotPasswordPage() {
   const supabase = createClient()
@@ -38,11 +39,8 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         {/* Brand */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0A253D]">
-            <BookOpen className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-semibold text-gray-900">PDU Tracker</span>
+        <div className="flex justify-center mb-8">
+          <Image src="/training-loop-logo.png" alt="Training Loop" width={1296} height={613} className="h-20 w-auto" priority />
         </div>
 
         <Card>
@@ -65,7 +63,7 @@ export default function ForgotPasswordPage() {
                 </p>
                 <Link
                   href="/login"
-                  className="text-sm font-medium text-[#457595] hover:underline flex items-center gap-1"
+                  className="text-sm font-medium text-[#025CA8] hover:underline flex items-center gap-1"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" /> Back to sign in
                 </Link>
@@ -92,7 +90,7 @@ export default function ForgotPasswordPage() {
                   <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">{error}</p>
                 )}
 
-                <Button type="submit" className="w-full bg-[#0A253D] hover:bg-[#0d2f4f]" disabled={loading}>
+                <Button type="submit" className="w-full bg-[#025CA8] hover:bg-[#024A87]" disabled={loading}>
                   {loading ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending…</>
                   ) : (

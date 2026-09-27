@@ -19,9 +19,9 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header style={{ backgroundColor: '#457595' }} className="shadow-sm">
+      <header style={{ backgroundColor: '#025CA8' }} className="shadow-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 h-14">
-          <span className="text-white font-semibold">🦭 Narwhal Owner Panel</span>
+          <span className="text-white font-semibold">Training Loop Owner Panel</span>
           <a href="/dashboard" className="text-sm text-white/70 hover:text-white transition-colors">
             ← Back to app
           </a>

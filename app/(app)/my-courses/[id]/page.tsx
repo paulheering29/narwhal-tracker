@@ -442,7 +442,7 @@ function QuizPanel({ courseId }: { courseId: string }) {
             <p className="text-sm text-gray-500 mb-4">
               Scored {result.scorePercentage}% ({result.correctCount}/{result.totalQuestions} correct) — needed {quiz.passPercentage}%.
             </p>
-            <Button onClick={loadQuiz} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={loadQuiz} className="bg-[#025CA8] hover:bg-[#024A87]">
               <RotateCcw className="mr-2 h-4 w-4" /> Try Again
             </Button>
           </>
@@ -485,7 +485,7 @@ function QuizPanel({ courseId }: { courseId: string }) {
           </div>
         </div>
       ))}
-      <Button onClick={handleSubmit} disabled={!allAnswered || submitting} className="w-full bg-[#0A253D] hover:bg-[#0d2f4f]">
+      <Button onClick={handleSubmit} disabled={!allAnswered || submitting} className="w-full bg-[#025CA8] hover:bg-[#024A87]">
         {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting…</> : 'Submit Quiz'}
       </Button>
     </div>
@@ -570,7 +570,7 @@ function FeedbackPanel({ courseId }: { courseId: string }) {
         />
       </div>
       {error && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{error}</p>}
-      <Button onClick={handleSubmit} disabled={saving} className="w-full bg-[#0A253D] hover:bg-[#0d2f4f]">
+      <Button onClick={handleSubmit} disabled={saving} className="w-full bg-[#025CA8] hover:bg-[#024A87]">
         {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : saved ? <><CheckCircle2 className="mr-2 h-4 w-4" />Saved</> : 'Submit Feedback'}
       </Button>
     </div>

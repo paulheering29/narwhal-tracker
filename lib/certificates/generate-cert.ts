@@ -193,7 +193,7 @@ export function buildCertData(
     orgContactCertNumber: orgContact?.certNumber ?? '',
     trainerSignatureUrl,
     companyLogoUrl:       company.logoUrl,
-    narwhalLogoPath:      path.join(process.cwd(), 'public', 'narwhal-tracker.jpg'),
+    brandLogoPath:      path.join(process.cwd(), 'public', 'training-loop-logo.png'),
   }
 
   return { cert, courseDate: effectiveDate }

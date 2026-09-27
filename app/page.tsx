@@ -45,25 +45,22 @@ export default function HomePage() {
     <div className="min-h-screen bg-white text-gray-900">
 
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 shadow-sm" style={{ backgroundColor: '#457595' }}>
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-8 h-16">
           <div className="flex items-center gap-3">
             <Image
-              src="/narwhal-tracker.jpg"
-              alt="Narwhal Learning"
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-lg"
+              src="/training-loop-wordmark.png"
+              alt="Training Loop"
+              width={2195}
+              height={340}
+              className="h-7 w-auto"
               priority
             />
-            <span className="font-semibold text-white tracking-tight">
-              Narwhal Learning
-            </span>
           </div>
           <Link
             href="/login"
-            className="text-sm font-semibold px-4 py-2 rounded-lg bg-white transition-opacity hover:opacity-90"
-            style={{ color: '#457595' }}
+            className="text-sm font-semibold px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#025CA8' }}
           >
             Sign in
           </Link>
@@ -75,7 +72,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-2xl">
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-[1.1] text-gray-900 mb-6">
             RBT training records,<br />
-            <span style={{ color: '#457595' }}>finally under control.</span>
+            <span style={{ color: '#025CA8' }}>finally under control.</span>
           </h1>
           <p className="text-xl text-gray-400 leading-relaxed mb-12 max-w-lg mx-auto">
             One place for PDU hours, certification cycles, and upcoming trainings —
@@ -84,7 +81,7 @@ export default function HomePage() {
           <Link
             href="/login"
             className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#457595', color: '#fff' }}
+            style={{ backgroundColor: '#025CA8', color: '#fff' }}
           >
             Get started →
           </Link>
@@ -128,11 +125,11 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold tracking-tight mb-4">
             Your team&apos;s certifications<br />won&apos;t track themselves.
           </h2>
-          <p className="text-gray-400 mb-10">But Narwhal Learning will.</p>
+          <p className="text-gray-400 mb-10">But Training Loop will.</p>
           <Link
             href="/login"
             className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#457595', color: '#fff' }}
+            style={{ backgroundColor: '#025CA8', color: '#fff' }}
           >
             Sign in to your account →
           </Link>
@@ -141,7 +138,7 @@ export default function HomePage() {
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
       <footer className="border-t border-gray-100 py-10 px-8 text-center text-xs text-gray-300">
-        © {new Date().getFullYear()} Narwhal Learning
+        © {new Date().getFullYear()} Training Loop
       </footer>
 
     </div>

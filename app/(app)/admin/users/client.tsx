@@ -378,7 +378,7 @@ export function AdminUsersClient({
         <>
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-gray-500">{adminStaff.length} trainer{adminStaff.length !== 1 ? 's' : ''} / admin{adminStaff.length !== 1 ? 's' : ''} in your organisation</p>
-            <Button onClick={() => { setUserError(null); setInviteOpen(true) }} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={() => { setUserError(null); setInviteOpen(true) }} className="bg-[#025CA8] hover:bg-[#024A87]">
               <UserPlus className="mr-2 h-4 w-4" /> Add User
             </Button>
           </div>
@@ -503,7 +503,7 @@ export function AdminUsersClient({
               </div>
               <SheetFooter>
                 <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-                <Button onClick={handleInvite} disabled={userSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                <Button onClick={handleInvite} disabled={userSaving} className="bg-[#025CA8] hover:bg-[#024A87]">
                   {userSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</> : 'Create User'}
                 </Button>
               </SheetFooter>
@@ -554,7 +554,7 @@ export function AdminUsersClient({
               </div>
               <SheetFooter>
                 <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-                <Button onClick={handleEditPermissions} disabled={userSaving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+                <Button onClick={handleEditPermissions} disabled={userSaving} className="bg-[#025CA8] hover:bg-[#024A87]">
                   {userSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Permissions'}
                 </Button>
               </SheetFooter>
@@ -583,7 +583,7 @@ export function AdminUsersClient({
             <Button
               onClick={handleAddTopic}
               disabled={topicSaving || !newTopicName.trim()}
-              className="bg-[#0A253D] hover:bg-[#0d2f4f] gap-1.5"
+              className="bg-[#025CA8] hover:bg-[#024A87] gap-1.5"
             >
               {topicSaving
                 ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -672,7 +672,7 @@ export function AdminUsersClient({
               <Button
                 onClick={handleSaveCompany}
                 disabled={companySaving || !companyName.trim()}
-                className="bg-[#0A253D] hover:bg-[#0d2f4f]"
+                className="bg-[#025CA8] hover:bg-[#024A87]"
               >
                 {companySaving
                   ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
@@ -737,7 +737,7 @@ export function AdminUsersClient({
                   <label
                     key={value}
                     className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                      isChecked ? 'border-[#0A253D] bg-[#0A253D]/5' : 'border-gray-200 hover:border-gray-300'
+                      isChecked ? 'border-[#025CA8] bg-[#025CA8]/5' : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <input
@@ -753,7 +753,7 @@ export function AdminUsersClient({
                         }
                         setCertTemplateStatus(null)
                       }}
-                      className="mt-0.5 accent-[#0A253D]"
+                      className="mt-0.5 accent-[#025CA8]"
                     />
                     <div>
                       <p className="text-sm font-medium text-gray-800">{label}</p>
@@ -774,7 +774,7 @@ export function AdminUsersClient({
               <Button
                 onClick={handleSaveCertTemplate}
                 disabled={certTemplateSaving}
-                className="bg-[#0A253D] hover:bg-[#0d2f4f]"
+                className="bg-[#025CA8] hover:bg-[#024A87]"
               >
                 {certTemplateSaving
                   ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
@@ -832,7 +832,7 @@ export function AdminUsersClient({
               <Button
                 onClick={handleSaveOrgContact}
                 disabled={orgContactSaving}
-                className="bg-[#0A253D] hover:bg-[#0d2f4f]"
+                className="bg-[#025CA8] hover:bg-[#024A87]"
               >
                 {orgContactSaving
                   ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>

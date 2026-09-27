@@ -93,7 +93,7 @@ export default function MyCoursesPage() {
             return (
               <button key={c.id} onClick={() => router.push(`/my-courses/${c.id}`)}
                 className="text-left rounded-xl border bg-white shadow-sm p-5 hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-2 text-[#457595]">
+                <div className="flex items-center gap-2 mb-2 text-[#025CA8]">
                   <GraduationCap className="h-5 w-5" />
                   <span className="text-xs font-semibold uppercase tracking-wide">
                     {c.units != null ? `${c.units} PDU${c.units !== 1 ? 's' : ''}` : 'Streamed course'}

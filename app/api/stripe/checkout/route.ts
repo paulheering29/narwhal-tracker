@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Create Checkout Session ───────────────────────────────────────────────
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://narwhal-tracker-eight.vercel.app'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trainingloop.tech'
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',

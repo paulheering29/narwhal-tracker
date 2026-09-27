@@ -165,19 +165,19 @@ export async function generateFormal(data: CertData): Promise<Uint8Array> {
 
   // ── Footer logos — sit inside the gold inner border (B2=24 from edge) ────────
   const FOOT_Y    = B2 + 28   // clear the gold border with a little breathing room
-  const narwhalSz = 5.5
+  const brandSz = 5.5
 
-  // Narwhal logo bottom-right
+  // Training Loop logo bottom-right
   try {
-    const nBytes = fs.readFileSync(data.narwhalLogoPath)
-    const nImg   = await pdfDoc.embedJpg(nBytes)
+    const nBytes = fs.readFileSync(data.brandLogoPath)
+    const nImg   = await pdfDoc.embedPng(nBytes)
     const nDims  = nImg.scaleToFit(54, 42)
     const nx     = W - B2 - 10 - nDims.width
     page.drawImage(nImg, { x: nx, y: FOOT_Y + 14, width: nDims.width, height: nDims.height })
-    const nt1 = 'Generated Using', nt2 = 'NarwhalTracker.com'
+    const nt1 = 'Generated Using', nt2 = 'TrainingLoop.tech'
     const ncx = nx + nDims.width / 2
-    page.drawText(nt1, { x: ncx - sans.widthOfTextAtSize(nt1, narwhalSz)/2, y: FOOT_Y + 8, font: sans, size: narwhalSz, color: GRAY })
-    page.drawText(nt2, { x: ncx - sans.widthOfTextAtSize(nt2, narwhalSz)/2, y: FOOT_Y + 2, font: sans, size: narwhalSz, color: GRAY })
+    page.drawText(nt1, { x: ncx - sans.widthOfTextAtSize(nt1, brandSz)/2, y: FOOT_Y + 8, font: sans, size: brandSz, color: GRAY })
+    page.drawText(nt2, { x: ncx - sans.widthOfTextAtSize(nt2, brandSz)/2, y: FOOT_Y + 2, font: sans, size: brandSz, color: GRAY })
   } catch { /* best-effort */ }
 
   // Company logo bottom-left

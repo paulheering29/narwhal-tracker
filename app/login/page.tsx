@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,6 +38,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
+        {/* Brand */}
+        <div className="flex justify-center mb-8">
+          <Image src="/training-loop-logo.png" alt="Training Loop" width={1296} height={613} className="h-20 w-auto" priority />
+        </div>
         <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Sign in</CardTitle>
@@ -65,7 +70,7 @@ export default function LoginPage() {
                   <label htmlFor="password" className="text-sm font-medium text-gray-700">
                     Password
                   </label>
-                  <Link href="/forgot-password" className="text-xs text-[#457595] hover:underline">
+                  <Link href="/forgot-password" className="text-xs text-[#025CA8] hover:underline">
                     Forgot password?
                   </Link>
                 </div>
@@ -85,7 +90,7 @@ export default function LoginPage() {
                 <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">{error}</p>
               )}
 
-              <Button type="submit" className="w-full bg-[#0A253D] hover:bg-[#0d2f4f]" disabled={loading}>
+              <Button type="submit" className="w-full bg-[#025CA8] hover:bg-[#024A87]" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

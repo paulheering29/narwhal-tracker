@@ -31,7 +31,7 @@ interface TopNavProps {
   userName:   string
 }
 
-const BG = '#457595'
+const BG = '#ffffff'
 
 const staffNavItems = [
   { href: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard },
@@ -89,22 +89,19 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
 
   return (
     <>
-      <header style={{ backgroundColor: BG }} className="w-full shrink-0 shadow-md relative z-40">
+      <header style={{ backgroundColor: BG }} className="w-full shrink-0 border-b border-gray-200 shadow-sm relative z-40">
         <div className="flex h-14 items-center px-4 md:px-6 gap-4">
 
           {/* Brand */}
-          <Link href="/dashboard" className="shrink-0 flex items-center gap-2.5">
+          <Link href="/dashboard" className="shrink-0 flex items-center">
             <Image
-              src="/narwhal-tracker.jpg"
-              alt="Narwhal Learning"
-              width={120}
-              height={36}
-              className="h-9 w-auto rounded"
+              src="/training-loop-wordmark.png"
+              alt="Training Loop"
+              width={2195}
+              height={340}
+              className="h-6 w-auto"
               priority
             />
-            <span className="text-white font-semibold text-lg leading-none tracking-tight whitespace-nowrap hidden sm:inline">
-              Narwhal Learning
-            </span>
           </Link>
 
           {/* Desktop nav links */}
@@ -116,8 +113,8 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
                 className={cn(
                   'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   isActive(href)
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                    ? 'bg-[#025CA8]/10 text-[#025CA8]'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
@@ -133,8 +130,8 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
                   className={cn(
                     'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                     isActive('/analytics')
-                      ? 'bg-white/20 text-white'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      ? 'bg-[#025CA8]/10 text-[#025CA8]'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   )}
                 >
                   <BarChart2 className="h-4 w-4 shrink-0" />
@@ -165,8 +162,8 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
                 className={cn(
                   'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   isActive('/admin')
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                    ? 'bg-[#025CA8]/10 text-[#025CA8]'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 )}
               >
                 <ShieldCheck className="h-4 w-4 shrink-0" />
@@ -178,8 +175,8 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
           {/* Desktop: user info + profile + sign out */}
           <div className="hidden md:flex items-center gap-3 shrink-0 ml-auto">
             <div className="text-right">
-              <p className="text-xs text-white/60 leading-none">{userName}</p>
-              <p className="text-xs text-white/80 font-medium leading-none mt-0.5">
+              <p className="text-xs text-gray-500 leading-none">{userName}</p>
+              <p className="text-xs text-gray-700 font-medium leading-none mt-0.5">
                 {rolesDisplay(userTier, userRoles)}
               </p>
             </div>
@@ -189,8 +186,8 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors',
                 isActive('/settings')
-                  ? 'bg-white/20 text-white'
-                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  ? 'bg-[#025CA8]/10 text-[#025CA8]'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               )}
             >
               <UserCircle className="h-4 w-4" />
@@ -199,7 +196,7 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
             <button
               onClick={handleSignOut}
               title="Sign out"
-              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
             >
               <LogOut className="h-4 w-4" />
               Sign out
@@ -209,7 +206,7 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
           {/* Mobile: hamburger button */}
           <button
             onClick={() => setMobileOpen(o => !o)}
-            className="md:hidden ml-auto flex items-center justify-center h-9 w-9 rounded-md text-white/80 hover:bg-white/10 transition-colors"
+            className="md:hidden ml-auto flex items-center justify-center h-9 w-9 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -237,8 +234,8 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
                   className={cn(
                     'flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors',
                     isActive(href)
-                      ? 'bg-white/20 text-white'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      ? 'bg-[#025CA8]/10 text-[#025CA8]'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   )}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
@@ -249,7 +246,7 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
               {/* Analytics — staff only */}
               {userTier === 'staff' && (
                 <>
-                  <div className="flex items-center gap-3 px-5 py-3 text-xs font-semibold text-white/40 uppercase tracking-wider">
+                  <div className="flex items-center gap-3 px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                     <BarChart2 className="h-4 w-4 shrink-0" />
                     Analytics
                   </div>
@@ -260,8 +257,8 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
                       className={cn(
                         'flex items-center gap-3 pl-12 pr-5 py-3 text-sm font-medium transition-colors',
                         isActive(href)
-                          ? 'bg-white/20 text-white'
-                          : 'text-white/70 hover:bg-white/10 hover:text-white'
+                          ? 'bg-[#025CA8]/10 text-[#025CA8]'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                       )}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
@@ -277,8 +274,8 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
                   className={cn(
                     'flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors',
                     isActive('/admin')
-                      ? 'bg-white/20 text-white'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      ? 'bg-[#025CA8]/10 text-[#025CA8]'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   )}
                 >
                   <ShieldCheck className="h-5 w-5 shrink-0" />
@@ -287,15 +284,15 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
               )}
 
               {/* Divider */}
-              <div className="mx-5 my-2 border-t border-white/20" />
+              <div className="mx-5 my-2 border-t border-gray-200" />
 
               <Link
                 href="/settings"
                 className={cn(
                   'flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors',
                   isActive('/settings')
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
+                    ? 'bg-[#025CA8]/10 text-[#025CA8]'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 )}
               >
                 <UserCircle className="h-5 w-5 shrink-0" />
@@ -304,16 +301,16 @@ export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
 
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-3 px-5 py-3 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
+                className="flex items-center gap-3 px-5 py-3 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors w-full text-left"
               >
                 <LogOut className="h-5 w-5 shrink-0" />
                 Sign out
               </button>
 
               {/* User info at bottom */}
-              <div className="px-5 py-3 border-t border-white/20 mt-1">
-                <p className="text-xs text-white/50">{userName}</p>
-                <p className="text-xs text-white/70 font-medium mt-0.5">{rolesDisplay(userTier, userRoles)}</p>
+              <div className="px-5 py-3 border-t border-gray-200 mt-1">
+                <p className="text-xs text-gray-500">{userName}</p>
+                <p className="text-xs text-gray-700 font-medium mt-0.5">{rolesDisplay(userTier, userRoles)}</p>
               </div>
             </nav>
           </div>

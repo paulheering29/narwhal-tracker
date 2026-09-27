@@ -835,7 +835,7 @@ export default function TrainingDetailPage() {
                       }`}>
                       {/* Checkbox */}
                       <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        selected ? 'border-[#0A253D] bg-[#0A253D]' : 'border-gray-300'
+                        selected ? 'border-[#025CA8] bg-[#025CA8]' : 'border-gray-300'
                       }`}>
                         {selected && (
                           <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 12 12">
@@ -859,7 +859,7 @@ export default function TrainingDetailPage() {
             <Button
               onClick={handleAddAttendees}
               disabled={selectedStaffIds.size === 0 || addingAttendees}
-              className="w-full bg-[#0A253D] hover:bg-[#0d2f4f]">
+              className="w-full bg-[#025CA8] hover:bg-[#024A87]">
               {addingAttendees
                 ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Adding…</>
                 : selectedStaffIds.size > 0
@@ -881,7 +881,7 @@ export default function TrainingDetailPage() {
           <Button size="sm" variant="outline" onClick={openLinkDialog}>
             <Link2 className="mr-2 h-4 w-4" /> Link Existing
           </Button>
-          <Button size="sm" className="bg-[#0A253D] hover:bg-[#0d2f4f]"
+          <Button size="sm" className="bg-[#025CA8] hover:bg-[#024A87]"
             onClick={() => fileInputRef.current?.click()} disabled={uploading}>
             {uploading
               ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading…</>
@@ -1020,7 +1020,7 @@ export default function TrainingDetailPage() {
               <div className="flex rounded-md border overflow-hidden w-fit">
                 {(['staff', 'external'] as const).map(type => (
                   <button key={type} type="button" onClick={() => setTrainerType(type)}
-                    className={`px-4 py-1.5 text-sm font-medium transition-colors ${trainerType === type ? 'bg-[#0A253D] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                    className={`px-4 py-1.5 text-sm font-medium transition-colors ${trainerType === type ? 'bg-[#025CA8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
                     {type === 'staff' ? 'Staff Member' : 'External'}
                   </button>
                 ))}
@@ -1063,7 +1063,7 @@ export default function TrainingDetailPage() {
           </div>
           <SheetFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={handleSave} disabled={saving} className="bg-[#025CA8] hover:bg-[#024A87]">
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save'}
             </Button>
           </SheetFooter>

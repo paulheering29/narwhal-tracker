@@ -102,7 +102,7 @@ export function BillingClient({ billing, allPlans, rbtCount }: Props) {
               className="h-full rounded-full transition-all"
               style={{
                 width: `${Math.min(100, (rbtCount / (currentPlan?.max_rbts ?? 5)) * 100)}%`,
-                backgroundColor: rbtCount >= (currentPlan?.max_rbts ?? 5) ? '#ef4444' : '#457595',
+                backgroundColor: rbtCount >= (currentPlan?.max_rbts ?? 5) ? '#ef4444' : '#025CA8',
               }}
             />
           </div>
@@ -123,16 +123,16 @@ export function BillingClient({ billing, allPlans, rbtCount }: Props) {
             <div
               key={plan.id}
               className={`rounded-2xl border-2 p-6 flex flex-col ${
-                isCurrent ? 'border-[#457595] bg-blue-50/30' : 'border-gray-200 bg-white'
+                isCurrent ? 'border-[#025CA8] bg-blue-50/30' : 'border-gray-200 bg-white'
               }`}
             >
               {isCurrent && (
-                <div className="mb-3 self-start inline-flex items-center rounded-full bg-[#457595] px-2.5 py-0.5 text-xs font-medium text-white">
+                <div className="mb-3 self-start inline-flex items-center rounded-full bg-[#025CA8] px-2.5 py-0.5 text-xs font-medium text-white">
                   Current plan
                 </div>
               )}
               <div className="text-lg font-bold text-gray-900 mb-1">{plan.display_name}</div>
-              <div className="text-3xl font-extrabold mb-5" style={{ color: '#457595' }}>
+              <div className="text-3xl font-extrabold mb-5" style={{ color: '#025CA8' }}>
                 {formatPrice(plan.price_monthly)}
               </div>
               <ul className="space-y-2 flex-1 mb-6">
@@ -150,7 +150,7 @@ export function BillingClient({ billing, allPlans, rbtCount }: Props) {
               ) : (
                 <Button
                   className="w-full"
-                  style={{ backgroundColor: '#457595' }}
+                  style={{ backgroundColor: '#025CA8' }}
                   onClick={() => handleUpgrade(plan.name)}
                   disabled={!!loadingPlan}
                 >

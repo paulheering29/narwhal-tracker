@@ -83,7 +83,7 @@ export function IdleTimeout() {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
-      <div className="rounded-xl bg-[#0A253D] text-white shadow-xl px-5 py-4 flex flex-col gap-3">
+      <div className="rounded-xl bg-[#025CA8] text-white shadow-xl px-5 py-4 flex flex-col gap-3">
         <div>
           <p className="font-semibold text-sm">Session expiring soon</p>
           <p className="text-xs text-white/70 mt-0.5">
@@ -93,7 +93,7 @@ export function IdleTimeout() {
         <div className="flex gap-2">
           <button
             onClick={() => { resetTimers() }}
-            className="flex-1 rounded-lg bg-white text-[#0A253D] text-sm font-semibold py-2 hover:bg-white/90 transition-colors"
+            className="flex-1 rounded-lg bg-white text-[#025CA8] text-sm font-semibold py-2 hover:bg-white/90 transition-colors"
           >
             Stay logged in
           </button>

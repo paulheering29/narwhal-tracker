@@ -75,15 +75,15 @@ export function UpgradeDialog({ open, onOpenChange, currentPlan, currentRbts, ma
             {availablePlans.map(plan => (
               <div
                 key={plan.name}
-                className={`rounded-xl border-2 p-5 ${plan.name === 'pro' ? 'border-[#457595]' : 'border-gray-200'}`}
+                className={`rounded-xl border-2 p-5 ${plan.name === 'pro' ? 'border-[#025CA8]' : 'border-gray-200'}`}
               >
                 {plan.name === 'pro' && (
-                  <div className="mb-3 inline-flex items-center rounded-full bg-[#457595] px-2.5 py-0.5 text-xs font-medium text-white">
+                  <div className="mb-3 inline-flex items-center rounded-full bg-[#025CA8] px-2.5 py-0.5 text-xs font-medium text-white">
                     Most popular
                   </div>
                 )}
                 <div className="mb-1 text-lg font-bold text-gray-900">{plan.label}</div>
-                <div className="mb-4 text-2xl font-extrabold" style={{ color: '#457595' }}>{plan.price}</div>
+                <div className="mb-4 text-2xl font-extrabold" style={{ color: '#025CA8' }}>{plan.price}</div>
                 <ul className="mb-5 space-y-2">
                   {plan.features.map(f => (
                     <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
@@ -94,7 +94,7 @@ export function UpgradeDialog({ open, onOpenChange, currentPlan, currentRbts, ma
                 </ul>
                 <Button
                   className="w-full"
-                  style={{ backgroundColor: '#457595' }}
+                  style={{ backgroundColor: '#025CA8' }}
                   onClick={() => handleUpgrade(plan.name)}
                   disabled={!!loading}
                 >

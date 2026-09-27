@@ -152,7 +152,7 @@ export default function CoursesPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Courses</h1>
           <p className="mt-1 text-sm text-gray-500">{courses.length} self-paced streamed courses</p>
         </div>
-        <Button onClick={openAdd} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+        <Button onClick={openAdd} className="bg-[#025CA8] hover:bg-[#024A87]">
           <FilePlus2 className="mr-2 h-4 w-4" /> Add Course
         </Button>
       </div>
@@ -262,7 +262,7 @@ export default function CoursesPage() {
               <div className="flex rounded-md border overflow-hidden w-fit">
                 {(['none', 'staff', 'external'] as const).map(type => (
                   <button key={type} type="button" onClick={() => setTrainerType(type)}
-                    className={`px-4 py-1.5 text-sm font-medium transition-colors ${trainerType === type ? 'bg-[#0A253D] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                    className={`px-4 py-1.5 text-sm font-medium transition-colors ${trainerType === type ? 'bg-[#025CA8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
                     {type === 'none' ? 'None' : type === 'staff' ? 'Staff Member' : 'External'}
                   </button>
                 ))}
@@ -299,7 +299,7 @@ export default function CoursesPage() {
           </div>
           <SheetFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={handleSave} disabled={saving} className="bg-[#025CA8] hover:bg-[#024A87]">
               {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</> : 'Create Course'}
             </Button>
           </SheetFooter>

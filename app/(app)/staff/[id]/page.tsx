@@ -704,7 +704,7 @@ export default function StaffDetailPage() {
               <h2 className="text-lg font-semibold text-gray-900">Certification Cycles</h2>
               <p className="text-sm text-gray-500">{cycles.length} cycle{cycles.length !== 1 ? 's' : ''} on record</p>
             </div>
-            <Button onClick={openAddCycle} size="sm" className="bg-[#0A253D] hover:bg-[#0d2f4f] shrink-0">
+            <Button onClick={openAddCycle} size="sm" className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
               <Plus className="mr-1.5 h-4 w-4" /> Add
             </Button>
           </div>
@@ -791,7 +791,7 @@ export default function StaffDetailPage() {
                               className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${
                                 uploadingCycleId === cycle.id
                                   ? 'bg-gray-100 text-gray-400 cursor-wait'
-                                  : 'bg-[#0A253D] text-white hover:bg-[#0d2f4f]'
+                                  : 'bg-[#025CA8] text-white hover:bg-[#024A87]'
                               }`}
                               onClick={e => e.stopPropagation()}
                             >
@@ -905,7 +905,7 @@ export default function StaffDetailPage() {
                 {allRecords.length} record{allRecords.length !== 1 ? 's' : ''} on file
               </p>
             </div>
-            <Button onClick={openAddToTraining} size="sm" className="bg-[#0A253D] hover:bg-[#0d2f4f] shrink-0">
+            <Button onClick={openAddToTraining} size="sm" className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
               <Plus className="mr-1.5 h-4 w-4" /> Add
             </Button>
           </div>
@@ -999,7 +999,7 @@ export default function StaffDetailPage() {
                       <Button
                         size="sm"
                         variant={alreadyAdded ? 'outline' : 'default'}
-                        className={alreadyAdded ? 'shrink-0' : 'shrink-0 bg-[#0A253D] hover:bg-[#0d2f4f]'}
+                        className={alreadyAdded ? 'shrink-0' : 'shrink-0 bg-[#025CA8] hover:bg-[#024A87]'}
                         disabled={alreadyAdded || isAdding}
                         onClick={() => handleAddToTraining(t)}
                       >
@@ -1088,7 +1088,7 @@ export default function StaffDetailPage() {
           </div>
           <SheetFooter>
             <Button variant="outline" onClick={() => setEditStaffOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveStaff} disabled={savingStaff} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+            <Button onClick={handleSaveStaff} disabled={savingStaff} className="bg-[#025CA8] hover:bg-[#024A87]">
               {savingStaff ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save'}
             </Button>
           </SheetFooter>
@@ -1141,7 +1141,7 @@ export default function StaffDetailPage() {
                   className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium cursor-pointer transition-colors ${
                     (editingCycle && uploadingCycleId === editingCycle.id)
                       ? 'bg-gray-100 text-gray-400 cursor-wait'
-                      : 'bg-[#0A253D] text-white hover:bg-[#0d2f4f]'
+                      : 'bg-[#025CA8] text-white hover:bg-[#024A87]'
                   }`}
                 >
                   {editingCycle && uploadingCycleId === editingCycle.id ? (
@@ -1293,7 +1293,7 @@ export default function StaffDetailPage() {
           {!overlapWarning && (
             <SheetFooter>
               <Button variant="outline" onClick={() => setCycleDialogOpen(false)}>Cancel</Button>
-              <Button onClick={() => handleSaveCycle(false)} disabled={savingCycle} className="bg-[#0A253D] hover:bg-[#0d2f4f]">
+              <Button onClick={() => handleSaveCycle(false)} disabled={savingCycle} className="bg-[#025CA8] hover:bg-[#024A87]">
                 {savingCycle ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Cycle'}
               </Button>
             </SheetFooter>

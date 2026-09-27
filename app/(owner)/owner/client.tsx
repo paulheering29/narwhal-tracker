@@ -151,7 +151,7 @@ export function OwnerClient({ initialPlans, initialCompanies }: Props) {
             key={t}
             onClick={() => setTab(t)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors capitalize ${
-              tab === t ? 'border-[#457595] text-[#457595]' : 'border-transparent text-gray-500 hover:text-gray-700'
+              tab === t ? 'border-[#025CA8] text-[#025CA8]' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             {t === 'plans' ? <Tag className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
@@ -275,7 +275,7 @@ export function OwnerClient({ initialPlans, initialCompanies }: Props) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditPlan(null)}>Cancel</Button>
-            <Button onClick={handleSavePlan} disabled={savingPlan} style={{ backgroundColor: '#457595' }}>
+            <Button onClick={handleSavePlan} disabled={savingPlan} style={{ backgroundColor: '#025CA8' }}>
               {savingPlan ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Plan'}
             </Button>
           </DialogFooter>
@@ -303,7 +303,7 @@ export function OwnerClient({ initialPlans, initialCompanies }: Props) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditCompany(null)}>Cancel</Button>
-            <Button onClick={handleSaveOverride} disabled={savingOverride} style={{ backgroundColor: '#457595' }}>
+            <Button onClick={handleSaveOverride} disabled={savingOverride} style={{ backgroundColor: '#025CA8' }}>
               {savingOverride ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save Override'}
             </Button>
           </DialogFooter>

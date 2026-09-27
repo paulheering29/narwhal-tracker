@@ -185,17 +185,17 @@ export async function generateBasic(data: CertData): Promise<Uint8Array> {
 
   // ── Footer logos ─────────────────────────────────────────────────────────────
   const FOOT_Y = 10
-  const narwhalSz = 5.5
+  const brandSz = 5.5
 
   try {
-    const nBytes = fs.readFileSync(data.narwhalLogoPath)
-    const nImg   = await pdfDoc.embedJpg(nBytes)
+    const nBytes = fs.readFileSync(data.brandLogoPath)
+    const nImg   = await pdfDoc.embedPng(nBytes)
     const nDims  = nImg.scaleToFit(54, 40)
     const nx     = W - 36 - nDims.width
     page.drawImage(nImg, { x: nx, y: FOOT_Y + 14, width: nDims.width, height: nDims.height })
     const ncx = nx + nDims.width / 2
-    for (const [txt, dy] of [['Generated Using', 9], ['NarwhalTracker.com', 3]] as [string, number][]) {
-      page.drawText(txt, { x: ncx - regular.widthOfTextAtSize(txt, narwhalSz)/2, y: FOOT_Y + dy, font: regular, size: narwhalSz, color: GRAY })
+    for (const [txt, dy] of [['Generated Using', 9], ['TrainingLoop.tech', 3]] as [string, number][]) {
+      page.drawText(txt, { x: ncx - regular.widthOfTextAtSize(txt, brandSz)/2, y: FOOT_Y + dy, font: regular, size: brandSz, color: GRAY })
     }
   } catch { /* best-effort */ }
 

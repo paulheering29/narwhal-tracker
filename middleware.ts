@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // The bare domain and www serve only the marketing page; the app itself lives
-// on the host in NEXT_PUBLIC_APP_URL (login.trainingloop.tech) so everyone
+// on the host in NEXT_PUBLIC_APP_URL (app.trainingloop.tech) so everyone
 // signs in on one origin and gets one session cookie.
 const MARKETING_HOSTS = ['trainingloop.tech', 'www.trainingloop.tech']
 

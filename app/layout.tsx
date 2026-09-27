@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
 export const metadata: Metadata = {
   title: 'Training Loop',
-  description: 'Multi-tenant training records management',
+  description: 'Where RBTs earn PDUs, BCBAs earn CEUs, and everyone tracks their certification.',
   icons: {
     icon: '/icon.png',
     apple: '/apple-icon.png',

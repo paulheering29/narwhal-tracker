@@ -37,7 +37,7 @@ const steps = [
   {
     icon: 'users',
     title: 'Add your team',
-    body: 'Import your RBTs from a spreadsheet — certification numbers, cycle dates, preferred names and all.',
+    body: 'Import your RBTs and BCBAs from a spreadsheet — certification numbers, cycle dates, preferred names and all.',
   },
   {
     icon: 'presentation',
@@ -47,12 +47,12 @@ const steps = [
   {
     icon: 'certificate',
     title: 'Certify automatically',
-    body: 'Certificates are generated with your trainer’s signature and logo. Download, email, or grab the whole class as a ZIP.',
+    body: 'PDU and CEU certificates are generated with your trainer’s signature and logo. Download, email, or grab the whole class as a ZIP.',
   },
   {
     icon: 'chart',
     title: 'Track every cycle',
-    body: 'Each RBT’s PDUs roll up against their two-year cycle, so you can see who’s on pace and who needs a nudge.',
+    body: 'PDUs and CEUs roll up against each person’s certification cycle, so everyone can see who’s on pace and who needs a nudge.',
   },
 ] as const
 
@@ -124,17 +124,17 @@ export default function HomePage() {
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-800 mb-6">
               <Icon name="refresh" className="h-3.5 w-3.5" />
-              Built for ABA organizations
+              For RBTs, BCBAs, and the teams that train them
             </p>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08] mb-6">
-              Train your RBTs.<br />
-              <span style={{ color: BLUE }}>Keep every PDU</span><br />
-              <span style={{ color: GREEN }}>in the loop.</span>
+              Earn PDUs & CEUs.<br />
+              <span style={{ color: BLUE }}>Track your certification.</span><br />
+              <span style={{ color: GREEN }}>Stay in the loop.</span>
             </h1>
             <p className="text-lg text-gray-600 leading-relaxed mb-10 max-w-xl">
-              Training Loop brings live in-services, self-paced video courses, certificates,
-              and certification cycles into one place — so your team stays current and
-              renewal time is never a scramble.
+              Training Loop is where RBTs earn their PDUs and BCBAs earn their CEUs — through
+              live trainings and self-paced video courses — and where everyone can see exactly
+              where they stand before their certification comes up for renewal.
             </p>
             <div className="flex flex-wrap gap-3">
               <a
@@ -212,7 +212,7 @@ export default function HomePage() {
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">One loop, every cycle.</h2>
             <p className="text-gray-600 text-lg">
               Set your team up once. From then on, every training feeds straight into
-              certificates and progress — and the loop starts again each cycle.
+              certificates and PDU or CEU progress — and the loop starts again each cycle.
             </p>
           </div>
 
@@ -236,30 +236,14 @@ export default function HomePage() {
 
           <p className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-gray-500">
             <Icon name="refresh" className="h-4 w-4" />
-            Then it repeats — every RBT, every cycle.
+            Then it repeats — every RBT and BCBA, every cycle.
           </p>
         </div>
       </section>
 
       {/* ── Two audiences ─────────────────────────────────────────────────── */}
       <section className="px-4 sm:px-8 py-20 sm:py-24">
-        <div className="max-w-6xl mx-auto grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-gray-200 p-8">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 mb-5" style={{ color: BLUE }}>
-              <Icon name="school" />
-            </div>
-            <h3 className="text-xl font-semibold mb-3">For training coordinators & BCBAs</h3>
-            <ul className="space-y-3 text-gray-600">
-              {[
-                'Schedule trainings, take attendance, and issue certificates in a few clicks',
-                'Upload video courses once and assign them to anyone who needs them',
-                'See every RBT’s PDU progress and upcoming expirations at a glance',
-                'Keep certification cycle documents together, ready for an audit',
-              ].map(t => (
-                <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>
-              ))}
-            </ul>
-          </div>
+        <div className="max-w-6xl mx-auto grid gap-6 lg:grid-cols-3">
           <div className="rounded-2xl border border-gray-200 p-8">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50 text-green-700 mb-5">
               <Icon name="userCheck" />
@@ -271,6 +255,38 @@ export default function HomePage() {
                 'Watch assigned courses on your own schedule, on any device',
                 'Download your certificates any time, without chasing anyone',
                 'Know how many days until your certification expires',
+              ].map(t => (
+                <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-gray-200 p-8">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 mb-5" style={{ color: BLUE }}>
+              <Icon name="certificate" />
+            </div>
+            <h3 className="text-xl font-semibold mb-3">For BCBAs</h3>
+            <ul className="space-y-3 text-gray-600">
+              {[
+                'Earn CEUs through live trainings and self-paced courses',
+                'See the CEUs you’ve earned against what your recertification requires',
+                'Keep every CEU certificate in one place, ready when you recertify',
+                'Know how many days until your certification renews',
+              ].map(t => (
+                <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-gray-200 p-8">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 mb-5" style={{ color: BLUE }}>
+              <Icon name="school" />
+            </div>
+            <h3 className="text-xl font-semibold mb-3">For training coordinators</h3>
+            <ul className="space-y-3 text-gray-600">
+              {[
+                'Schedule trainings, take attendance, and issue certificates in a few clicks',
+                'Upload video courses once and assign them to anyone who needs them',
+                'See every RBT’s PDUs and every BCBA’s CEUs, plus upcoming expirations, at a glance',
+                'Keep certification cycle documents together, ready for an audit',
               ].map(t => (
                 <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>
               ))}
@@ -304,7 +320,7 @@ export default function HomePage() {
       <section className="px-4 sm:px-8 pb-24">
         <div className="max-w-6xl mx-auto rounded-3xl px-6 sm:px-12 py-14 text-center text-white" style={{ backgroundColor: BLUE }}>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
-            Your team’s training, finally in one place.
+            PDUs, CEUs, and certificates — finally in one place.
           </h2>
           <p className="text-blue-100 text-lg mb-8 max-w-xl mx-auto">
             Sign in to pick up where you left off.

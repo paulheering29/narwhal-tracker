@@ -72,18 +72,18 @@ export async function POST(request: NextRequest) {
     const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://narwhal-tracker.vercel.app'
 
     await resend.emails.send({
-      from:    'Narwhal Tracker <noreply@narwhaltracker.com>',
+      from:    'Narwhal Learning <noreply@narwhaltracker.com>',
       to:      email,
-      subject: 'Your Narwhal Tracker account is ready',
+      subject: 'Your Narwhal Learning account is ready',
       html: `
         <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; color: #1a1a1a;">
           <div style="background: #0A253D; padding: 24px 32px; border-radius: 8px 8px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">Narwhal Tracker</h1>
+            <h1 style="color: white; margin: 0; font-size: 20px;">Narwhal Learning</h1>
           </div>
           <div style="background: #f9fafb; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
             <p style="margin: 0 0 16px;">Hi ${name},</p>
             <p style="margin: 0 0 16px;">
-              An account has been created for you on <strong>Narwhal Tracker</strong>.
+              An account has been created for you on <strong>Narwhal Learning</strong>.
               Here are your login details:
             </p>
             <div style="background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 16px; margin: 0 0 20px;">
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
             <a href="${appUrl}/login"
                style="display: inline-block; background: #0A253D; color: white; padding: 12px 24px;
                       border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">
-              Sign in to Narwhal Tracker
+              Sign in to Narwhal Learning
             </a>
             <p style="margin: 20px 0 0; color: #6b7280; font-size: 13px;">
               Please change your password after your first sign-in.

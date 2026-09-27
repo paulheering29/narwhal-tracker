@@ -110,6 +110,7 @@ export function certFilename(staffName: string, courseDate: string | null): stri
 }
 
 export type RecordShape = {
+  completed_date: string | null
   staff: {
     first_name: string
     last_name:  string
@@ -141,8 +142,8 @@ export type RecordShape = {
 export type OrgContact = { name: string; certNumber: string } | null
 
 /**
- * Builds the `CertData` used by every template generator, plus the
- * raw course date (needed by callers to name files).
+ * Builds the `CertData` used by every template generator, plus the raw
+ * effective date (needed by callers to name files).
  */
 export function buildCertData(
   record:  RecordShape,
@@ -170,8 +171,12 @@ export function buildCertData(
     ? `${staff.first_name} ${staff.last_name}, ${staffCreds}`
     : `${staff.first_name} ${staff.last_name}`
 
-  const eventDate = course.date
-    ? new Date(course.date + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+  // Live trainings happen on a scheduled date shared by every attendee.
+  // Self-paced courses have no such date — the meaningful "event date" is
+  // the day this particular person completed it, which differs per learner.
+  const effectiveDate = course.date ?? record.completed_date
+  const eventDate = effectiveDate
+    ? new Date(effectiveDate + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
     : ''
 
   const cert: CertData = {
@@ -191,5 +196,5 @@ export function buildCertData(
     narwhalLogoPath:      path.join(process.cwd(), 'public', 'narwhal-tracker.jpg'),
   }
 
-  return { cert, courseDate: course.date }
+  return { cert, courseDate: effectiveDate }
 }

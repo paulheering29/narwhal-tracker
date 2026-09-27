@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   const { data: record, error: recordErr } = await supabase
     .from('training_records')
     .select(`
-      id, confirmed, company_id,
+      id, confirmed, company_id, completed_date,
       staff:staff_id (
         id, first_name, last_name, display_first_name, display_last_name,
         certification_number, email, credentials
@@ -114,13 +114,13 @@ export async function POST(request: NextRequest) {
 
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error: sendError } = await resend.emails.send({
-    from: 'Narwhal Tracker <noreply@narwhaltracker.com>',
+    from: 'Narwhal Learning <noreply@narwhaltracker.com>',
     to:   staff.email,
     subject: `Your RBT In-Service Certificate — ${cert.trainingName}`,
     html: `
       <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; color: #1a1a1a;">
         <div style="background: #0A253D; padding: 24px 32px; border-radius: 8px 8px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 20px;">Narwhal Tracker</h1>
+          <h1 style="color: white; margin: 0; font-size: 20px;">Narwhal Learning</h1>
         </div>
         <div style="background: #f9fafb; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
           <p style="margin: 0 0 16px;">Hi ${staffDisplayName},</p>

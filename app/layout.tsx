@@ -6,7 +6,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
 export const metadata: Metadata = {
-  title: 'Narwhal Tracker',
+  title: 'Narwhal Learning',
   description: 'Multi-tenant training records management',
   icons: {
     icon: '/narwhal-tracker.jpg',

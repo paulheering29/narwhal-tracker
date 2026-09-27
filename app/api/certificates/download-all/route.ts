@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
   const { data: records, error: recordsErr } = await supabase
     .from('training_records')
     .select(`
-      id, confirmed, company_id, staff_id,
+      id, confirmed, company_id, staff_id, completed_date,
       staff:staff_id (
         id, first_name, last_name, display_first_name, display_last_name,
         certification_number, credentials

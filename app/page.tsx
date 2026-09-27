@@ -50,14 +50,14 @@ export default function HomePage() {
           <div className="flex items-center gap-3">
             <Image
               src="/narwhal-tracker.jpg"
-              alt="Narwhal Tracker"
+              alt="Narwhal Learning"
               width={32}
               height={32}
               className="h-8 w-8 rounded-lg"
               priority
             />
             <span className="font-semibold text-white tracking-tight">
-              Narwhal Tracker
+              Narwhal Learning
             </span>
           </div>
           <Link
@@ -128,7 +128,7 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold tracking-tight mb-4">
             Your team&apos;s certifications<br />won&apos;t track themselves.
           </h2>
-          <p className="text-gray-400 mb-10">But Narwhal Tracker will.</p>
+          <p className="text-gray-400 mb-10">But Narwhal Learning will.</p>
           <Link
             href="/login"
             className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
@@ -141,7 +141,7 @@ export default function HomePage() {
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
       <footer className="border-t border-gray-100 py-10 px-8 text-center text-xs text-gray-300">
-        © {new Date().getFullYear()} Narwhal Tracker
+        © {new Date().getFullYear()} Narwhal Learning
       </footer>
 
     </div>

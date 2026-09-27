@@ -19,6 +19,8 @@ import {
   GitCommitHorizontal,
   Menu,
   X,
+  PlayCircle,
+  GraduationCap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { showAdminNav, rolesDisplay } from '@/lib/permissions'
@@ -26,19 +28,22 @@ import { showAdminNav, rolesDisplay } from '@/lib/permissions'
 interface TopNavProps {
   userTier:   'rbt' | 'staff'
   userRoles:  string[]
-  userEmail:  string
+  userName:   string
 }
 
 const BG = '#457595'
 
 const staffNavItems = [
-  { href: '/dashboard',  label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/staff',      label: 'Staff',     icon: Users           },
-  { href: '/trainings',  label: 'Trainings', icon: BookOpen        },
+  { href: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard },
+  { href: '/staff',        label: 'Staff',       icon: Users           },
+  { href: '/trainings',    label: 'Trainings',   icon: BookOpen        },
+  { href: '/courses',      label: 'Courses',     icon: PlayCircle      },
+  { href: '/my-courses',   label: 'My Courses',  icon: GraduationCap   },
 ]
 
 const rbtNavItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
+  { href: '/my-courses',  label: 'My Courses',  icon: GraduationCap   },
 ]
 
 const analyticsItems = [
@@ -47,7 +52,7 @@ const analyticsItems = [
   { href: '/analytics/rbt-timeline',  label: 'RBT Timeline',   icon: GitCommitHorizontal },
 ]
 
-export function TopNav({ userTier, userRoles, userEmail }: TopNavProps) {
+export function TopNav({ userTier, userRoles, userName }: TopNavProps) {
   const pathname   = usePathname()
   const supabase   = createClient()
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
@@ -91,14 +96,14 @@ export function TopNav({ userTier, userRoles, userEmail }: TopNavProps) {
           <Link href="/dashboard" className="shrink-0 flex items-center gap-2.5">
             <Image
               src="/narwhal-tracker.jpg"
-              alt="Narwhal Tracker"
+              alt="Narwhal Learning"
               width={120}
               height={36}
               className="h-9 w-auto rounded"
               priority
             />
             <span className="text-white font-semibold text-lg leading-none tracking-tight whitespace-nowrap hidden sm:inline">
-              Narwhal Tracker
+              Narwhal Learning
             </span>
           </Link>
 
@@ -173,7 +178,7 @@ export function TopNav({ userTier, userRoles, userEmail }: TopNavProps) {
           {/* Desktop: user info + profile + sign out */}
           <div className="hidden md:flex items-center gap-3 shrink-0 ml-auto">
             <div className="text-right">
-              <p className="text-xs text-white/60 leading-none">{userEmail}</p>
+              <p className="text-xs text-white/60 leading-none">{userName}</p>
               <p className="text-xs text-white/80 font-medium leading-none mt-0.5">
                 {rolesDisplay(userTier, userRoles)}
               </p>
@@ -307,7 +312,7 @@ export function TopNav({ userTier, userRoles, userEmail }: TopNavProps) {
 
               {/* User info at bottom */}
               <div className="px-5 py-3 border-t border-white/20 mt-1">
-                <p className="text-xs text-white/50">{userEmail}</p>
+                <p className="text-xs text-white/50">{userName}</p>
                 <p className="text-xs text-white/70 font-medium mt-0.5">{rolesDisplay(userTier, userRoles)}</p>
               </div>
             </nav>

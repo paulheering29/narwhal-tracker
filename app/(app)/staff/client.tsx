@@ -294,7 +294,6 @@ export function StaffPageClient({
   const [tab, setTab] = useState<StaffTab>(credentialTypes[0]?.code ?? 'trainers')
   // The credential whose tab is open; null on the Trainers & Admin tab.
   const credential = credentialTypes.find(c => c.code === tab) ?? null
-  const unitsLabel = `${credential?.unit_label ?? 'Unit'}s`
 
   // ── All staff (live, refreshable) ────────────────────────────────────────────
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff)

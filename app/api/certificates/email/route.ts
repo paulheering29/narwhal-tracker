@@ -7,6 +7,7 @@ import {
   buildCertData,
   certFilename,
   generateCertPdf,
+  loadCredentialLookup,
   resolveTemplate,
   type OrgContact,
   type RecordShape,
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     .select(`
       id, confirmed, company_id, completed_date,
       staff:staff_id (
-        id, first_name, last_name, display_first_name, display_last_name,
+        id, role, first_name, last_name, display_first_name, display_last_name,
         certification_number, email, credentials
       ),
       courses:course_id (
@@ -86,7 +87,9 @@ export async function POST(request: NextRequest) {
     .single<CompanyRow>()
 
   const enabledTemplates = company?.enabled_cert_templates ?? ['bacb']
-  const selectedTemplate = resolveTemplate(template, enabledTemplates, company?.preferred_cert_template)
+  const credentialFor    = await loadCredentialLookup(service)
+  const credential       = credentialFor((record.staff as unknown as { role: string | null }).role)
+  const selectedTemplate = resolveTemplate(template, enabledTemplates, company?.preferred_cert_template, credential.code)
 
   let orgContact: OrgContact = null
   if (company?.org_contact_staff_id) {
@@ -107,16 +110,18 @@ export async function POST(request: NextRequest) {
   }
 
   const companyInfo = { name: company?.name ?? '', logoUrl: company?.logo_url ?? null }
-  const { cert, courseDate } = buildCertData(record as unknown as RecordShape, companyInfo, orgContact)
+  const { cert, courseDate } = buildCertData(record as unknown as RecordShape, companyInfo, orgContact, credential)
   const pdfBytes = await generateCertPdf(cert, selectedTemplate)
 
-  const filename = certFilename(cert.staffName, courseDate)
+  const filename = certFilename(cert.staffName, courseDate, credential.code)
+
+  const certTitle = credential.code === 'RBT' ? 'RBT In-Service Certificate' : `${credential.code} Continuing Education Certificate`
 
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error: sendError } = await resend.emails.send({
     from: 'Training Loop <noreply@narwhaltracker.com>',
     to:   staff.email,
-    subject: `Your RBT In-Service Certificate — ${cert.trainingName}`,
+    subject: `Your ${certTitle} — ${cert.trainingName}`,
     html: `
       <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; color: #1a1a1a;">
         <div style="background: #025CA8; padding: 24px 32px; border-radius: 8px 8px 0 0;">
@@ -125,11 +130,11 @@ export async function POST(request: NextRequest) {
         <div style="background: #f9fafb; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
           <p style="margin: 0 0 16px;">Hi ${staffDisplayName},</p>
           <p style="margin: 0 0 16px;">
-            Your RBT In-Service certificate for <strong>${cert.trainingName}</strong>
+            Your ${certTitle} for <strong>${cert.trainingName}</strong>
             ${courseDate ? ` on <strong>${cert.eventDate}</strong>` : ''} is attached to this email.
           </p>
           <p style="margin: 0 0 16px;">
-            You earned <strong>${cert.pduCount || '0'} PDU${cert.pduCount === '1' ? '' : 's'}</strong>
+            You earned <strong>${cert.unitCount || '0'} ${cert.unitLabel}${cert.unitCount === '1' ? '' : 's'}</strong>
             for this training${cert.companyName ? ` with ${cert.companyName}` : ''}.
           </p>
           <p style="margin: 0; color: #6b7280; font-size: 14px;">

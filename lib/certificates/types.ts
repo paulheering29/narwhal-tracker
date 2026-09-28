@@ -3,7 +3,9 @@ export type CertData = {
   certNumber:           string
   trainingName:         string
   eventDate:            string
-  pduCount:             string
+  unitCount:            string
+  unitLabel:            string   // 'PDU' / 'CEU', from the learner's credential
+  credentialCode:       string   // 'RBT' / 'BCBA' — labels the learner's cert number
   modality:             string
   trainerName:          string
   trainerCertNumber:    string

@@ -100,10 +100,10 @@ export async function generateFun(data: CertData): Promise<Uint8Array> {
   }
   curY += 12
 
-  // ── Colourful badge pills: Date | PDUs | Modality ────────────────────────────
+  // ── Colourful badge pills: Date | PDUs/CEUs | Modality ────────────────────────────
   const badges = [
     { label: 'DATE', value: data.eventDate || '—', color: TEAL },
-    { label: 'PDUs', value: `${data.pduCount}`, color: CORAL },
+    { label: `${data.unitLabel}s`, value: `${data.unitCount}`, color: CORAL },
     { label: 'FORMAT', value: data.modality || '—', color: PURPLE },
   ]
   const pillW = 158, pillH = 46, pillGap = 12
@@ -140,7 +140,7 @@ export async function generateFun(data: CertData): Promise<Uint8Array> {
     ['Organization', data.companyName],
   ]
   if (data.orgContactName) infoLines.push(['Org Contact', `${data.orgContactName}${data.orgContactCertNumber ? ` · BACB #${data.orgContactCertNumber}` : ''}`])
-  if (data.certNumber)     infoLines.push(['RBT BACB #', data.certNumber])
+  if (data.certNumber)     infoLines.push([`${data.credentialCode} BACB #`, data.certNumber])
 
   const infoRowH = 18
   const cardH    = cardPad + infoLines.length * infoRowH + cardPad

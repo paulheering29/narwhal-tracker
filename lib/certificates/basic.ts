@@ -73,10 +73,10 @@ export async function generateBasic(data: CertData): Promise<Uint8Array> {
     curY += nameSz + 4
   }
 
-  // ── RBT cert # under name ────────────────────────────────────────────────────
+  // ── Learner cert # under name───────────────────────────────────────────────────
   if (data.certNumber) {
     const rbtSz   = 9
-    const rbtText = `RBT BACB Certification #${data.certNumber}`
+    const rbtText = `${data.credentialCode} BACB Certification #${data.certNumber}`
     page.drawText(rbtText, { x: centerX(rbtText, regular, rbtSz, W), y: T(curY + rbtSz), font: regular, size: rbtSz, color: GRAY })
     curY += rbtSz + 4
   }
@@ -104,7 +104,7 @@ export async function generateBasic(data: CertData): Promise<Uint8Array> {
   const COL_W  = (W - 72) / 3
   const COLS   = [
     { label: 'DATE', value: data.eventDate || '—' },
-    { label: 'PDUs', value: `${data.pduCount}` },
+    { label: `${data.unitLabel}s`, value: `${data.unitCount}` },
     { label: 'FORMAT', value: data.modality || '—' },
   ]
   const cellH  = 48

@@ -90,7 +90,10 @@ export async function generateFormal(data: CertData): Promise<Uint8Array> {
   curY += 18
 
   // ── "has successfully completed" ─────────────────────────────────────────────
-  const mid = 'has successfully completed the in-service training'
+  // 'In-service' is RBT terminology; BCBAs earn continuing education.
+  const mid = data.credentialCode === 'RBT'
+    ? 'has successfully completed the in-service training'
+    : 'has successfully completed the continuing education training'
   page.drawText(mid, { x: centerX(mid, serifItal, 13, W), y: T(curY + 13), font: serifItal, size: 13, color: BLACK })
   curY += 26
 
@@ -107,12 +110,12 @@ export async function generateFormal(data: CertData): Promise<Uint8Array> {
   page.drawLine({ start: { x: 72, y: T(curY) }, end: { x: W - 72, y: T(curY) }, color: GOLD, thickness: 0.75 })
   curY += 20
 
-  // ── Detail row: Date | PDUs | Modality ───────────────────────────────────────
+  // ── Detail row: Date | PDUs/CEUs | Modality ───────────────────────────────────────
   const labelSz = 7.5
   const valSz   = 12
   const cols = [
     { label: 'DATE OF COMPLETION', value: data.eventDate || '—', x: 130 },
-    { label: 'CONTINUING EDUCATION UNITS', value: `${data.pduCount} PDUs`, x: W / 2 },
+    { label: 'CONTINUING EDUCATION UNITS', value: `${data.unitCount} ${data.unitLabel}s`, x: W / 2 },
     { label: 'FORMAT', value: data.modality || '—', x: W - 130 },
   ]
   for (const { label, value, x } of cols) {
@@ -127,7 +130,7 @@ export async function generateFormal(data: CertData): Promise<Uint8Array> {
   infoLines.push(`Trainer: ${data.trainerName}${data.trainerCertNumber ? `  ·  BACB #${data.trainerCertNumber}` : ''}`)
   infoLines.push(`Organization: ${data.companyName}`)
   if (data.orgContactName) infoLines.push(`Organization Contact: ${data.orgContactName}${data.orgContactCertNumber ? `  ·  BACB #${data.orgContactCertNumber}` : ''}`)
-  if (data.certNumber)     infoLines.push(`RBT BACB Certification #: ${data.certNumber}`)
+  if (data.certNumber)     infoLines.push(`${data.credentialCode} BACB Certification #: ${data.certNumber}`)
 
   for (const line of infoLines) {
     const shortened = serif.widthOfTextAtSize(line, infoSz) > W - 100

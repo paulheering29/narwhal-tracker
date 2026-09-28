@@ -6,6 +6,7 @@ import {
   buildCertData,
   certFilename,
   generateCertPdf,
+  loadCredentialLookup,
   resolveTemplate,
   type OrgContact,
   type RecordShape,
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     .select(`
       id, confirmed, company_id, completed_date,
       staff:staff_id (
-        id, first_name, last_name, display_first_name, display_last_name,
+        id, role, first_name, last_name, display_first_name, display_last_name,
         certification_number, credentials
       ),
       courses:course_id (
@@ -75,7 +76,9 @@ export async function GET(request: NextRequest) {
     .single<CompanyRow>()
 
   const enabledTemplates = company?.enabled_cert_templates ?? ['bacb']
-  const selectedTemplate = resolveTemplate(template, enabledTemplates, company?.preferred_cert_template)
+  const credentialFor    = await loadCredentialLookup(service)
+  const credential       = credentialFor((record.staff as unknown as { role: string | null }).role)
+  const selectedTemplate = resolveTemplate(template, enabledTemplates, company?.preferred_cert_template, credential.code)
 
   let orgContact: OrgContact = null
   if (company?.org_contact_staff_id) {
@@ -96,10 +99,10 @@ export async function GET(request: NextRequest) {
   }
 
   const companyInfo = { name: company?.name ?? '', logoUrl: company?.logo_url ?? null }
-  const { cert, courseDate } = buildCertData(record as unknown as RecordShape, companyInfo, orgContact)
+  const { cert, courseDate } = buildCertData(record as unknown as RecordShape, companyInfo, orgContact, credential)
   const pdfBytes = await generateCertPdf(cert, selectedTemplate)
 
-  const filename = certFilename(cert.staffName, courseDate)
+  const filename = certFilename(cert.staffName, courseDate, credential.code)
 
   return new Response(Buffer.from(pdfBytes), {
     headers: {

@@ -636,32 +636,32 @@ export default function TrainingDetailPage() {
               )}
             </p>
             {(() => {
-              const rbtConfirmed = attendees.filter(a => a.confirmed && activeCycleMap[a.staff_id] === 'RBT')
-              if (rbtConfirmed.length === 0) return null
-              const allEmailed  = rbtConfirmed.every(a => emailedIds.has(a.id))
-              const anyEmailing = rbtConfirmed.some(a => emailingIds.has(a.id))
+              const certifiedConfirmed = attendees.filter(a => a.confirmed && activeCycleMap[a.staff_id])
+              if (certifiedConfirmed.length === 0) return null
+              const allEmailed  = certifiedConfirmed.every(a => emailedIds.has(a.id))
+              const anyEmailing = certifiedConfirmed.some(a => emailingIds.has(a.id))
               async function emailAll() {
                 const template = enabledCertTemplates.length > 0 ? enabledCertTemplates[0] : undefined
-                for (const a of rbtConfirmed) await handleEmailCert(a.id, template)
+                for (const a of certifiedConfirmed) await handleEmailCert(a.id, template)
               }
               return (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleDownloadAll}
                     disabled={downloadingAll}
-                    title="Download a ZIP containing every RBT's certificate"
+                    title="Download a ZIP containing every attendee's certificate"
                     className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors bg-violet-100 text-violet-700 hover:bg-violet-200 disabled:opacity-60"
                   >
                     {downloadingAll ? (
                       <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Zipping…</>
                     ) : (
-                      <><Download className="h-3.5 w-3.5" /> Download All RBTs</>
+                      <><Download className="h-3.5 w-3.5" /> Download All</>
                     )}
                   </button>
                   <button
                     onClick={emailAll}
                     disabled={anyEmailing}
-                    title={enabledCertTemplates.length > 1 ? 'Emails all with the preferred template' : 'Email all RBTs'}
+                    title={enabledCertTemplates.length > 1 ? 'Emails all with the preferred template' : 'Email all attendees'}
                     className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                       allEmailed
                         ? 'bg-emerald-100 text-emerald-700'
@@ -673,7 +673,7 @@ export default function TrainingDetailPage() {
                     ) : allEmailed ? (
                       <><CheckCircle2 className="h-3.5 w-3.5" /> All Sent</>
                     ) : (
-                      <><Mail className="h-3.5 w-3.5" /> Email All RBTs</>
+                      <><Mail className="h-3.5 w-3.5" /> Email All</>
                     )}
                   </button>
                   {downloadAllError && (
@@ -734,7 +734,7 @@ export default function TrainingDetailPage() {
                           </button>
                         </TableCell>
                         <TableCell className="text-right">
-                          {attendee.confirmed && certType === 'RBT' ? (
+                          {attendee.confirmed && certType ? (
                             <div className="flex items-center justify-end gap-1.5 flex-wrap">
                               {!trainingEnded ? (
                                 <span className="text-xs text-gray-400 italic">Available after training ends</span>
@@ -745,7 +745,7 @@ export default function TrainingDetailPage() {
                                     title="Download certificate"
                                     className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
                                   >
-                                    <Award className="h-3.5 w-3.5" /> RBT Form
+                                    <Award className="h-3.5 w-3.5" /> Certificate
                                   </button>
                                   <button
                                     onClick={() => handleDownloadOrEmail(attendee.id, 'email')}

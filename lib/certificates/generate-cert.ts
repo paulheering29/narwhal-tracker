@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { PDFDocument } from 'pdf-lib'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CertData } from './types'
 import { generateFormal } from './formal'
 import { generateFun }    from './fun'
@@ -35,7 +36,7 @@ export async function generateBacb(data: CertData): Promise<Uint8Array> {
   form.getTextField('RBT BACB Certification Number').setText(data.certNumber)
   form.getTextField('Event Name').setText(data.trainingName)
   form.getTextField('Event Date').setText(data.eventDate)
-  form.getTextField('Total Number of PDUs').setText(data.pduCount)
+  form.getTextField('Total Number of PDUs').setText(data.unitCount)
   form.getTextField('Organization Name').setText(data.companyName)
   form.getTextField('In-Service Trainer Name').setText(data.trainerName)
   form.getTextField('In-Service Trainer BACB Certification Number').setText(data.trainerCertNumber)
@@ -92,26 +93,53 @@ export async function generateCertPdf(data: CertData, template: CertTemplate): P
  * Pick a template honoring the caller's request, the company's preferred
  * default, and the company's enabled whitelist. Always returns a valid
  * entry from `enabled` (or 'bacb' if the list is empty).
+ *
+ * The BACB form is the RBT in-service form, so anyone else (e.g. a BCBA)
+ * gets the company's first other enabled template, or Basic.
  */
 export function resolveTemplate(
   requested: string | null | undefined,
   enabled:   string[],
   preferred: string | null | undefined,
+  credentialCode: string,
 ): CertTemplate {
   const choice = (requested || preferred || 'bacb') as CertTemplate
-  if (enabled.includes(choice)) return choice
-  return (enabled[0] as CertTemplate) ?? 'bacb'
+  const picked = enabled.includes(choice) ? choice : ((enabled[0] as CertTemplate) ?? 'bacb')
+  if (picked !== 'bacb' || credentialCode === 'RBT') return picked
+  return (enabled.find(t => t !== 'bacb') as CertTemplate | undefined) ?? 'basic'
 }
 
-export function certFilename(staffName: string, courseDate: string | null): string {
+export function certFilename(staffName: string, courseDate: string | null, credentialCode: string): string {
   const safeStaffName = staffName.replace(/[^a-zA-Z0-9]/g, '-')
   const safeDateStr   = (courseDate ?? 'undated').replace(/-/g, '')
-  return `RBT-InService-${safeStaffName}-${safeDateStr}.pdf`
+  const prefix        = credentialCode === 'RBT' ? 'RBT-InService' : `${credentialCode}-CE`
+  return `${prefix}-${safeStaffName}-${safeDateStr}.pdf`
+}
+
+export type CertCredential = { code: string; unitLabel: string }
+
+/**
+ * Loads credential_types once so a caller generating many certificates can
+ * resolve each learner's credential without a query per record.
+ */
+export async function loadCredentialLookup(
+  service: SupabaseClient,
+): Promise<(role: string | null | undefined) => CertCredential> {
+  const { data } = await service.from('credential_types').select('code, unit_label')
+  const byCode = new Map((data ?? []).map(c => [c.code.toUpperCase(), c.unit_label as string]))
+  // People with no credential (e.g. a trainer who attended) get RBT/PDU
+  // wording, which is what every certificate said before BCBAs existed.
+  return role => {
+    const code = role?.toUpperCase() ?? ''
+    const unitLabel = byCode.get(code)
+    return unitLabel ? { code, unitLabel } : { code: 'RBT', unitLabel: 'PDU' }
+  }
 }
 
 export type RecordShape = {
   completed_date: string | null
   staff: {
+    role: string | null
     first_name: string
     last_name:  string
     display_first_name: string | null
@@ -149,6 +177,7 @@ export function buildCertData(
   record:  RecordShape,
   company: { name: string; logoUrl: string | null },
   orgContact: OrgContact,
+  credential: CertCredential,
 ): { cert: CertData; courseDate: string | null } {
   const staff  = record.staff
   const course = record.courses
@@ -184,7 +213,9 @@ export function buildCertData(
     certNumber:           staff.certification_number ?? '',
     trainingName:         course.name ?? '',
     eventDate,
-    pduCount:             course.units != null ? String(course.units) : '',
+    unitCount:            course.units != null ? String(course.units) : '',
+    unitLabel:            credential.unitLabel,
+    credentialCode:       credential.code,
     modality:             MODALITY_LABELS[course.modality ?? ''] ?? course.modality ?? '',
     trainerName,
     trainerCertNumber,

@@ -7,6 +7,7 @@ import {
   buildCertData,
   certFilename,
   generateCertPdf,
+  loadCredentialLookup,
   resolveTemplate,
   type OrgContact,
   type RecordShape,
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
     .select(`
       id, confirmed, company_id, staff_id, completed_date,
       staff:staff_id (
-        id, first_name, last_name, display_first_name, display_last_name,
+        id, role, first_name, last_name, display_first_name, display_last_name,
         certification_number, credentials
       ),
       courses:course_id (
@@ -78,9 +79,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No confirmed attendees for this training' }, { status: 404 })
   }
 
-  // Match the UI: a person is an "RBT" if they have an RBT cycle active
-  // right now — regardless of the course date. (The course might be in
-  // the past or the cycle may have started after the course.)
+  // Match the UI: include anyone with a certification cycle (RBT or BCBA)
+  // active right now — regardless of the course date. (The course might be
+  // in the past or the cycle may have started after the course.)
   const today    = new Date().toISOString().split('T')[0]
   const staffIds = Array.from(new Set(records.map(r => r.staff_id as string)))
   const { data: cycles } = await service
@@ -90,15 +91,11 @@ export async function GET(request: NextRequest) {
     .lte('start_date', today)
     .gte('end_date',   today)
 
-  const rbtStaffIds = new Set(
-    (cycles ?? [])
-      .filter(c => c.certification_type === 'RBT')
-      .map(c => c.staff_id),
-  )
-  const rbtRecords = records.filter(r => rbtStaffIds.has(r.staff_id as string))
+  const certifiedStaffIds = new Set((cycles ?? []).map(c => c.staff_id))
+  const certifiedRecords  = records.filter(r => certifiedStaffIds.has(r.staff_id as string))
 
-  if (rbtRecords.length === 0) {
-    return NextResponse.json({ error: 'No active RBT attendees for this training' }, { status: 404 })
+  if (certifiedRecords.length === 0) {
+    return NextResponse.json({ error: 'No attendees with an active RBT or BCBA cycle for this training' }, { status: 404 })
   }
 
   const { data: company } = await service
@@ -108,7 +105,7 @@ export async function GET(request: NextRequest) {
     .single<CompanyRow>()
 
   const enabledTemplates = company?.enabled_cert_templates ?? ['bacb']
-  const selectedTemplate = resolveTemplate(template, enabledTemplates, company?.preferred_cert_template)
+  const credentialFor    = await loadCredentialLookup(service)
 
   let orgContact: OrgContact = null
   if (company?.org_contact_staff_id) {
@@ -132,10 +129,13 @@ export async function GET(request: NextRequest) {
   // fresh PDFDocument per call, so there's no shared mutable state.
   const companyInfo = { name: company?.name ?? '', logoUrl: company?.logo_url ?? null }
   const pdfEntries = await Promise.all(
-    rbtRecords.map(async record => {
-      const { cert, courseDate } = buildCertData(record as unknown as RecordShape, companyInfo, orgContact)
+    certifiedRecords.map(async record => {
+      // Per record: a BCBA in the same class can't get the RBT-only BACB form.
+      const credential = credentialFor((record.staff as unknown as { role: string | null }).role)
+      const selectedTemplate = resolveTemplate(template, enabledTemplates, company?.preferred_cert_template, credential.code)
+      const { cert, courseDate } = buildCertData(record as unknown as RecordShape, companyInfo, orgContact, credential)
       const pdfBytes = await generateCertPdf(cert, selectedTemplate)
-      return { filename: certFilename(cert.staffName, courseDate), pdfBytes }
+      return { filename: certFilename(cert.staffName, courseDate, credential.code), pdfBytes }
     }),
   )
 

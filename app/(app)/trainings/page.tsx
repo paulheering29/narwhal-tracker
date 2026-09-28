@@ -647,7 +647,7 @@ export default function TrainingsPage() {
               const trainerDisplay = t.staff
                 ? getDisplayName(t.staff)
                 : t.trainer_name ? `${t.trainer_name} (Ext.)` : null
-              const rbtCount = (t.training_records ?? []).filter(r => r.staff?.role === 'RBT').length
+              const learnerCount = (t.training_records ?? []).filter(r => ['RBT', 'BCBA'].includes(r.staff?.role?.toUpperCase() ?? '')).length
               const docCount = t.training_document_links?.length ?? 0
               const topic = t.topic_id ? topicList.find(tp => tp.id === t.topic_id) : null
 
@@ -698,9 +698,9 @@ export default function TrainingsPage() {
                         {trainerDisplay}
                       </span>
                     )}
-                    {rbtCount > 0 && (
+                    {learnerCount > 0 && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-600">
-                        <Users className="h-3 w-3" />{rbtCount} RBT{rbtCount !== 1 ? 's' : ''}
+                        <Users className="h-3 w-3" />{learnerCount} attendee{learnerCount !== 1 ? 's' : ''}
                       </span>
                     )}
                     {docCount > 0 && (
@@ -726,7 +726,7 @@ export default function TrainingsPage() {
                   <TableHead>Modality</TableHead>
                   <TableHead>Topic</TableHead>
                   <TableHead>Trainer</TableHead>
-                  <TableHead>RBTs</TableHead>
+                  <TableHead>Attendees</TableHead>
                   <TableHead>Docs</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -750,7 +750,7 @@ export default function TrainingsPage() {
                     : t.trainer_name
                       ? `${t.trainer_name} (Ext.)`
                       : '—'
-                  const rbtCount = (t.training_records ?? []).filter(r => r.staff?.role === 'RBT').length
+                  const learnerCount = (t.training_records ?? []).filter(r => ['RBT', 'BCBA'].includes(r.staff?.role?.toUpperCase() ?? '')).length
                   const docCount = t.training_document_links?.length ?? 0
 
                   return (
@@ -783,7 +783,7 @@ export default function TrainingsPage() {
                       </TableCell>
                       <TableCell className="text-gray-500 text-sm">{trainerDisplay}</TableCell>
                       <TableCell className="text-gray-600 tabular-nums text-sm">
-                        {rbtCount > 0 ? rbtCount : <span className="text-gray-300">—</span>}
+                        {learnerCount > 0 ? learnerCount : <span className="text-gray-300">—</span>}
                       </TableCell>
                       <TableCell>
                         {docCount > 0 ? (

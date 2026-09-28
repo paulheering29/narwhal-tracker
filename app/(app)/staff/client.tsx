@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getCompanyId } from '@/lib/get-company-id'
+import type { Credential } from '@/lib/credentials'
 import { getDisplayName } from '@/lib/display-name'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,8 +56,6 @@ type StaffRow = StaffMember & {
   variance:     number
 }
 
-const RBT_TOTAL_PDUS = 12
-
 // ─── Role badge colours ───────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, string> = {
@@ -67,14 +66,14 @@ const ROLE_COLORS: Record<string, string> = {
 
 // ─── Pacing helpers ───────────────────────────────────────────────────────────
 
-function computePacingTarget(startDate: string, endDate: string): number {
+function computePacingTarget(startDate: string, endDate: string, target: number): number {
   const todayMs = new Date(new Date().toDateString()).getTime()
   const startMs = new Date(startDate + 'T00:00:00').getTime()
   const endMs   = new Date(endDate   + 'T00:00:00').getTime()
   const total   = endMs - startMs
-  if (total <= 0) return RBT_TOTAL_PDUS
+  if (total <= 0) return target
   const elapsed = Math.max(0, Math.min(total, todayMs - startMs))
-  return Math.round((elapsed / total) * RBT_TOTAL_PDUS * 2) / 2
+  return Math.round((elapsed / total) * target * 2) / 2
 }
 
 function fmtPdu(n: number) { return n % 1 === 0 ? String(n) : n.toFixed(1) }
@@ -253,15 +252,15 @@ function parseStaffCsv(text: string): CsvRow[] {
   }).filter(Boolean) as CsvRow[]
 }
 
-function downloadCsvTemplate() {
+function downloadCsvTemplate(code: string) {
   const csv = [
-    'first_name,last_name,preferred_first_name,preferred_last_name,email,ehr_id,credentials,rbt_number,original_certification_date,current_cycle_start_date,current_cycle_end_date',
+    'first_name,last_name,preferred_first_name,preferred_last_name,email,ehr_id,credentials,certification_number,original_certification_date,current_cycle_start_date,current_cycle_end_date',
     'Jane,Doe,Janie,,jane.doe@example.com,EHR001,"M.A., RBT",RBT12345,2023-08-15,2025-08-15,2027-08-14',
     'John,Smith,,,john.smith@example.com,EHR002,"B.S., RBT",RBT67890,2024-02-01,2026-02-01,2028-01-31',
   ].join('\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
   const a = document.createElement('a')
-  a.href = url; a.download = 'rbt_import_template.csv'; a.click()
+  a.href = url; a.download = `${code.toLowerCase()}_import_template.csv`; a.click()
   URL.revokeObjectURL(url)
 }
 
@@ -273,29 +272,38 @@ const emptyStaffForm = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type StaffTab = 'rbt' | 'trainers'
+// One tab per credential type (RBT, BCBA, … from credential_types) plus 'trainers'.
+type StaffTab = string
 
 export function StaffPageClient({
   currentAuthId,
   currentRoles,
   initialStaff,
   planLimits,
+  credentialTypes,
 }: {
   currentAuthId: string
   currentRoles: string[]
   initialStaff: StaffMember[]
   planLimits: { maxRbts: number; currentRbts: number; planName: string }
+  credentialTypes: Credential[]
 }) {
   const supabase = createClient()
   const router   = useRouter()
 
-  const [tab, setTab] = useState<StaffTab>('rbt')
+  const [tab, setTab] = useState<StaffTab>(credentialTypes[0]?.code ?? 'trainers')
+  // The credential whose tab is open; null on the Trainers & Admin tab.
+  const credential = credentialTypes.find(c => c.code === tab) ?? null
+  const unitsLabel = `${credential?.unit_label ?? 'Unit'}s`
 
   // ── All staff (live, refreshable) ────────────────────────────────────────────
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff)
 
-  const rbtStaff   = staff.filter(s => s.role === 'RBT')
-  const adminStaff = staff.filter(s => s.role !== 'RBT')
+  const credentialCodes = credentialTypes.map(c => c.code)
+  const staffWithRole = (code: string) => staff.filter(s => s.role?.toUpperCase() === code)
+  // Anyone with app permissions, plus non-credentialed staff. A BCBA who
+  // trains shows up here (for permissions) and on the BCBA tab (for CEUs).
+  const adminStaff = staff.filter(s => s.tier === 'staff' || !credentialCodes.includes(s.role?.toUpperCase() ?? ''))
 
   const isAdmin = currentRoles.includes('Admin') || currentRoles.includes('Account Owner')
 
@@ -307,7 +315,7 @@ export function StaffPageClient({
     setStaff(data ?? [])
   }
 
-  // ── RBT pacing state ─────────────────────────────────────────────────────────
+  // ── Credential tab pacing state ──────────────────────────────────────────────
   const [rows, setRows]             = useState<StaffRow[]>([])
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
@@ -327,13 +335,16 @@ export function StaffPageClient({
       : <ArrowDown className="inline ml-1 h-3 w-3 text-blue-500" />
   }
 
-  async function loadRbtPacing() {
+  async function loadPacing() {
+    if (!credential) { setRows([]); setLoading(false); return }
     setLoading(true)
     const today = new Date().toISOString().split('T')[0]
+    const target = credential.units_required
 
     const [cyclesRes, recordsRes] = await Promise.all([
       supabase.from('certification_cycles')
         .select('staff_id, start_date, end_date')
+        .eq('certification_type', credential.code)
         .lte('start_date', today)
         .gte('end_date', today),
       supabase.from('training_records')
@@ -351,9 +362,7 @@ export function StaffPageClient({
       recMap.get(r.staff_id)!.push({ completed_date: r.completed_date, confirmed: r.confirmed, units })
     }
 
-    // Use current rbtStaff from staff state
-    const currentRbts = staff.filter(s => s.role === 'RBT')
-    const computed: StaffRow[] = currentRbts.map(s => {
+    const computed: StaffRow[] = staffWithRole(credential.code).map(s => {
       const cycle = cycleMap.get(s.id) ?? null
       let pduDone = 0, pduScheduled = 0
       if (cycle) {
@@ -364,14 +373,14 @@ export function StaffPageClient({
           }
         }
       }
-      const pacingTarget = cycle ? computePacingTarget(cycle.start_date, cycle.end_date) : 0
+      const pacingTarget = cycle ? computePacingTarget(cycle.start_date, cycle.end_date, target) : 0
       return {
         ...s,
         cycleStart:   cycle?.start_date ?? null,
         cycleEnd:     cycle?.end_date   ?? null,
         pduDone, pduScheduled,
-        pctDone:      pduDone / RBT_TOTAL_PDUS,
-        pctScheduled: (pduDone + pduScheduled) / RBT_TOTAL_PDUS,
+        pctDone:      pduDone / target,
+        pctScheduled: (pduDone + pduScheduled) / target,
         pacingTarget,
         variance:     pduDone - pacingTarget,
       }
@@ -381,10 +390,10 @@ export function StaffPageClient({
     setLoading(false)
   }
 
-  // Reload pacing whenever staff list changes (e.g. after add/activate)
-  useEffect(() => { loadRbtPacing() }, [staff])  // eslint-disable-line react-hooks/exhaustive-deps
+  // Reload pacing whenever the staff list changes (e.g. after add/activate) or the tab does
+  useEffect(() => { loadPacing() }, [staff, tab])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── RBT add / import state ───────────────────────────────────────────────────
+  // ── Add / import state (for the open credential tab) ─────────────────────────
   const [addRbtOpen, setAddRbtOpen]   = useState(false)
   const [staffForm, setStaffForm]     = useState(emptyStaffForm)
   const [staffSaving, setStaffSaving] = useState(false)
@@ -399,7 +408,7 @@ export function StaffPageClient({
   const csvInputRef = useRef<HTMLInputElement>(null)
 
   function openAddRbt() {
-    setStaffForm({ ...emptyStaffForm, role: 'RBT' })
+    setStaffForm({ ...emptyStaffForm, role: credential?.code ?? 'RBT' })
     setStaffError(null)
     setAddRbtOpen(true)
   }
@@ -408,7 +417,9 @@ export function StaffPageClient({
     if (!staffForm.first_name.trim() || !staffForm.last_name.trim()) {
       setStaffError('First name and last name are required.'); return
     }
-    if (localRbtCount >= planLimits.maxRbts) {
+    // Plans cap RBTs only; other credentials don't count toward the limit.
+    const addingRbt = staffForm.role === 'RBT'
+    if (addingRbt && localRbtCount >= planLimits.maxRbts) {
       setAddRbtOpen(false); setUpgradeOpen(true); return
     }
     setStaffSaving(true); setStaffError(null)
@@ -420,14 +431,14 @@ export function StaffPageClient({
       display_first_name: staffForm.display_first_name || null,
       display_last_name: staffForm.display_last_name || null,
       email:  staffForm.email  || null,
-      role:   'RBT',
+      role:   staffForm.role,
       ehr_id: staffForm.ehr_id || null,
       certification_number: staffForm.certification_number || null,
       original_certification_date: staffForm.original_certification_date || null,
       credentials: staffForm.credentials || null,
     }).select('id').single()
     if (insertErr) { setStaffError(insertErr.message); setStaffSaving(false); return }
-    setLocalRbtCount(c => c + 1)
+    if (addingRbt) setLocalRbtCount(c => c + 1)
     setStaffSaving(false); setAddRbtOpen(false); setStaffForm(emptyStaffForm)
     router.push(`/staff/${newStaff.id}`)
   }
@@ -446,7 +457,7 @@ export function StaffPageClient({
     if (valid.length === 0) return
     setImporting(true)
     const companyId = await getCompanyId()
-    if (!companyId) { setImporting(false); return }
+    if (!companyId || !credential) { setImporting(false); return }
 
     const inserts = valid.map(r => ({
       company_id: companyId,
@@ -456,7 +467,7 @@ export function StaffPageClient({
       display_last_name:  r.preferred_last_name  || null,
       email:  r.email  || null,
       ehr_id: r.ehr_id || null,
-      role:   'RBT',
+      role:   credential.code,
       credentials: r.credentials || null,
       certification_number:        r.rbt_number || null,
       original_certification_date: r.original_certification_date,
@@ -482,7 +493,7 @@ export function StaffPageClient({
         return {
           company_id: companyId,
           staff_id:   s.id,
-          certification_type: 'RBT',
+          certification_type: credential.code,
           start_date: r.current_cycle_start_date,
           end_date:   r.current_cycle_end_date,
         }
@@ -521,7 +532,7 @@ export function StaffPageClient({
   const [basicsError, setBasicsError] = useState<string | null>(null)
   const [inviteForm, setInviteForm]   = useState({
     email: '', password: '', first_name: '', last_name: '',
-    tier: 'staff' as 'rbt' | 'staff', roles: [] as string[],
+    tier: 'staff' as 'rbt' | 'staff', roles: [] as string[], credential: '',
   })
   const [editTier, setEditTier]           = useState<'rbt' | 'staff'>('staff')
   const [editRoles, setEditRoles]         = useState<string[]>([])
@@ -552,14 +563,14 @@ export function StaffPageClient({
         email: inviteForm.email, password: inviteForm.password,
         first_name: inviteForm.first_name || null, last_name: inviteForm.last_name || null,
         tier: inviteForm.tier, roles: inviteForm.roles,
-        job_role: inviteForm.tier === 'rbt' ? 'RBT' : (inviteForm.roles.includes('Admin') ? 'Admin' : 'Trainer'),
+        job_role: inviteForm.credential || 'Trainer',
       }),
     })
     const json = await res.json()
     if (!res.ok) { setUserError(json.error ?? 'Failed to create user.'); setUserSaving(false); return }
     setUserSaving(false); setInviteOpen(false)
     setSuccessMsg(`User ${inviteForm.email} created. A welcome email with their login details has been sent.`)
-    setInviteForm({ email: '', password: '', first_name: '', last_name: '', tier: 'staff', roles: [] })
+    setInviteForm({ email: '', password: '', first_name: '', last_name: '', tier: 'staff', roles: [], credential: '' })
     reloadStaff(); router.refresh()
   }
 
@@ -670,15 +681,15 @@ export function StaffPageClient({
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
         <p className="mt-1 text-sm text-gray-500">
-          {rbtStaff.filter(s => s.active).length} active RBTs · {adminStaff.length} trainer{adminStaff.length !== 1 ? 's' : ''} / admin{adminStaff.length !== 1 ? 's' : ''}
+          {credentialTypes.map(c => `${staffWithRole(c.code).filter(s => s.active).length} active ${c.code}s`).join(' · ')} · {adminStaff.length} trainer{adminStaff.length !== 1 ? 's' : ''} / admin{adminStaff.length !== 1 ? 's' : ''}
         </p>
       </div>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         {([
-          { key: 'rbt'      as const, label: 'RBT',              icon: Users,       count: rbtStaff.length },
-          { key: 'trainers' as const, label: 'Trainers & Admin', icon: ShieldCheck, count: adminStaff.length },
+          ...credentialTypes.map(c => ({ key: c.code, label: c.code, icon: Users, count: staffWithRole(c.code).length })),
+          { key: 'trainers', label: 'Trainers & Admin', icon: ShieldCheck, count: adminStaff.length },
         ]).map(({ key, label, icon: Icon, count }) => (
           <button
             key={key}
@@ -696,8 +707,8 @@ export function StaffPageClient({
         ))}
       </div>
 
-      {/* ── RBT Tab ─────────────────────────────────────────────────────────── */}
-      {tab === 'rbt' && (
+      {/* ── Credential tab (RBT, BCBA, …) ───────────────────────────────────── */}
+      {credential && (
         <>
           <div className="mb-4 flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[180px]">
@@ -726,7 +737,7 @@ export function StaffPageClient({
               <Upload className="mr-2 h-4 w-4" /> Import CSV
             </Button>
             <Button onClick={openAddRbt} className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
-              <UserPlus className="mr-2 h-4 w-4" /> Add RBT
+              <UserPlus className="mr-2 h-4 w-4" /> Add {credential.code}
             </Button>
           </div>
 
@@ -736,7 +747,7 @@ export function StaffPageClient({
               <div className="py-12 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
             ) : filtered.length === 0 ? (
               <div className="py-12 text-center text-sm text-gray-400">
-                {search ? 'No staff match your search.' : 'No RBTs yet. Add your first team member.'}
+                {search ? 'No staff match your search.' : `No ${credential.code}s yet. Add your first team member.`}
               </div>
             ) : filtered.map(s => {
               const hasCycle = !!s.cycleStart
@@ -881,7 +892,7 @@ export function StaffPageClient({
                   </td></tr>
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={11} className="text-center py-12 text-gray-400">
-                    {search ? 'No staff match your search.' : 'No RBTs yet. Add your first team member.'}
+                    {search ? 'No staff match your search.' : `No ${credential.code}s yet. Add your first team member.`}
                   </td></tr>
                 ) : filtered.map(s => {
                   const hasCycle = !!s.cycleStart
@@ -951,14 +962,14 @@ export function StaffPageClient({
           {/* Import CSV Sheet */}
           <Sheet open={importOpen} onOpenChange={open => { setImportOpen(open); if (!open) { setCsvRows([]); setImportResult(null) } }}>
             <SheetContent>
-              <SheetHeader><SheetTitle>Import RBTs from CSV</SheetTitle></SheetHeader>
+              <SheetHeader><SheetTitle>Import {credential.code}s from CSV</SheetTitle></SheetHeader>
               <div className="flex flex-col gap-4 flex-1 px-6 py-5 overflow-hidden">
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  Imports only RBTs. Include cycle start &amp; end dates to create each RBT&rsquo;s current certification cycle in the same step.
+                  Everyone in the file is imported as a {credential.code}. Include cycle start &amp; end dates to create each person&rsquo;s current {credential.code} certification cycle in the same step.
                   Dates accept <code className="px-1 bg-gray-100 rounded">YYYY-MM-DD</code> or <code className="px-1 bg-gray-100 rounded">MM/DD/YYYY</code>.
                 </p>
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm" onClick={downloadCsvTemplate}>
+                  <Button variant="outline" size="sm" onClick={() => downloadCsvTemplate(credential.code)}>
                     <Download className="mr-2 h-4 w-4" /> Download Template
                   </Button>
                   <span className="text-sm text-gray-400">fill it out and upload below</span>
@@ -990,7 +1001,7 @@ export function StaffPageClient({
                     <table className="w-max min-w-full text-sm">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
-                          {['#','First','Last','Preferred','Email','EHR ID','Creds','RBT #','Orig Cert','Cycle Start','Cycle End','Status'].map(h => (
+                          {['#','First','Last','Preferred','Email','EHR ID','Creds','Cert #','Orig Cert','Cycle Start','Cycle End','Status'].map(h => (
                             <th key={h} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
@@ -1042,10 +1053,10 @@ export function StaffPageClient({
             </SheetContent>
           </Sheet>
 
-          {/* Add RBT Sheet */}
+          {/* Add person sheet (for the open credential tab) */}
           <Sheet open={addRbtOpen} onOpenChange={setAddRbtOpen}>
             <SheetContent>
-              <SheetHeader><SheetTitle>Add RBT</SheetTitle></SheetHeader>
+              <SheetHeader><SheetTitle>Add {credential.code}</SheetTitle></SheetHeader>
               <div className="space-y-5 px-6 py-5">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Legal Name</p>
                 <div className="grid grid-cols-2 gap-4">
@@ -1063,9 +1074,9 @@ export function StaffPageClient({
                   <Input id="rbt_email" type="email" value={staffForm.email} onChange={e => setStaffForm(f => ({ ...f, email: e.target.value }))} />
                 </div>
                 <div className="pt-3 border-t">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">RBT Details</p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">{credential.code} Details</p>
                   <div className="space-y-2">
-                    <Label htmlFor="rbt_cert_num">RBT Number</Label>
+                    <Label htmlFor="rbt_cert_num">{credential.code} Certification Number</Label>
                     <Input id="rbt_cert_num" placeholder="e.g. 12345" value={staffForm.certification_number} onChange={e => setStaffForm(f => ({ ...f, certification_number: e.target.value }))} />
                   </div>
                   <div className="space-y-2 mt-4">
@@ -1074,7 +1085,7 @@ export function StaffPageClient({
                   </div>
                   <div className="space-y-2 mt-4">
                     <Label htmlFor="rbt_creds">Credentials</Label>
-                    <Input id="rbt_creds" placeholder="e.g. RBT" value={staffForm.credentials} onChange={e => setStaffForm(f => ({ ...f, credentials: e.target.value }))} />
+                    <Input id="rbt_creds" placeholder={`e.g. ${credential.code}`} value={staffForm.credentials} onChange={e => setStaffForm(f => ({ ...f, credentials: e.target.value }))} />
                   </div>
                 </div>
                 <div className="pt-3 border-t">
@@ -1302,7 +1313,7 @@ export function StaffPageClient({
                 <div className="space-y-2">
                   <Label htmlFor="basics_bacb">BACB Number</Label>
                   <Input id="basics_bacb" value={basicsForm.certification_number} onChange={e => setBasicsForm(f => ({ ...f, certification_number: e.target.value }))} placeholder="e.g. 1-23-45678" />
-                  <p className="text-xs text-gray-400">Appears on certificates where this person is the trainer or the RBT.</p>
+                  <p className="text-xs text-gray-400">Appears on certificates where this person is the trainer or the learner.</p>
                 </div>
 
                 {basicsError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{basicsError}</p>}
@@ -1340,13 +1351,23 @@ export function StaffPageClient({
                   <Input id="inv_pw" type="password" value={inviteForm.password} onChange={e => setInviteForm(f => ({ ...f, password: e.target.value }))} />
                 </div>
                 <div className="space-y-2">
+                  <Label>Credential</Label>
+                  <Select value={inviteForm.credential || 'none'} onValueChange={v => setInviteForm(f => ({ ...f, credential: !v || v === 'none' ? '' : v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {credentialTypes.map(c => <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>)}
+                      <SelectItem value="none">None (trainer / admin only)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Tier</Label>
                   <Select value={inviteForm.tier} onValueChange={v => setInviteForm(f => ({
                     ...f, tier: (v as 'rbt' | 'staff'), roles: v === 'rbt' ? [] : f.roles,
                   }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="rbt">RBT — own data only</SelectItem>
+                      <SelectItem value="rbt">Learner (RBT or BCBA) — own data only</SelectItem>
                       <SelectItem value="staff">Staff — full app access</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1397,7 +1418,7 @@ export function StaffPageClient({
                   }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="rbt">RBT — own data only</SelectItem>
+                      <SelectItem value="rbt">Learner (RBT or BCBA) — own data only</SelectItem>
                       <SelectItem value="staff">Staff — full app access</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1431,14 +1452,14 @@ export function StaffPageClient({
                   <p className="text-xs text-gray-400">Letters that appear after the name (not a cert number).</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit_cert">BACB Cert / RBT Number</Label>
+                  <Label htmlFor="edit_cert">BACB Certification Number</Label>
                   <Input
                     id="edit_cert"
                     value={editCertNumber}
                     onChange={e => setEditCertNumber(e.target.value)}
                     placeholder="e.g. 1-23-45678"
                   />
-                  <p className="text-xs text-gray-400">Appears on certificates where this person is the trainer or the RBT.</p>
+                  <p className="text-xs text-gray-400">Appears on certificates where this person is the trainer or the learner.</p>
                 </div>
                 {userError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{userError}</p>}
               </div>

@@ -443,11 +443,12 @@ export default function TrainingDetailPage() {
     loadAttendees()
   }
 
-  // Only active RBTs (not yet added) can be added to trainings.
+  // Anyone with an active certification cycle (RBT or BCBA), not yet added,
+  // can be added — the cycle is what their PDUs/CEUs count toward.
   const attendeeStaffIds = new Set(attendees.map(a => a.staff_id))
   const availableStaff = staffList
     .filter(s => !attendeeStaffIds.has(s.id))
-    .filter(s => activeCycleMap[s.id] === 'RBT')
+    .filter(s => activeCycleMap[s.id] !== undefined)
     .filter(s => staffSearch === '' ||
       getDisplayName(s).toLowerCase().includes(staffSearch.toLowerCase()))
 
@@ -808,7 +809,7 @@ export default function TrainingDetailPage() {
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
               <Input
-                placeholder="Search RBTs…"
+                placeholder="Search RBTs and BCBAs…"
                 value={staffSearch}
                 onChange={e => setStaffSearch(e.target.value)}
                 className="pl-8 h-8 text-sm"
@@ -820,8 +821,8 @@ export default function TrainingDetailPage() {
               {availableStaff.length === 0 ? (
                 <p className="py-8 text-center text-sm text-gray-400">
                   {staffSearch
-                    ? 'No RBTs match your search.'
-                    : 'All active RBTs have been added.'}
+                    ? 'No one matches your search.'
+                    : 'Everyone with an active RBT or BCBA cycle has been added.'}
                 </p>
               ) : (
                 availableStaff.map(s => {

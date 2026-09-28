@@ -16,7 +16,7 @@ export default async function StaffPage() {
 
   if (!me) redirect('/login')
 
-  const [{ data: staff }, billing, rbtCount] = await Promise.all([
+  const [{ data: staff }, billing, rbtCount, { data: credentialTypes }] = await Promise.all([
     supabase
       .from('staff')
       .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number, credentials')
@@ -24,6 +24,7 @@ export default async function StaffPage() {
       .order('last_name'),
     getCompanyBilling(me.company_id),
     getRBTCount(me.company_id),
+    supabase.from('credential_types').select('code, unit_label, units_required').order('sort_order'),
   ])
 
   const planLimits = {
@@ -38,6 +39,7 @@ export default async function StaffPage() {
       currentRoles={me.roles ?? []}
       initialStaff={staff ?? []}
       planLimits={planLimits}
+      credentialTypes={(credentialTypes ?? []).map(c => ({ ...c, units_required: Number(c.units_required) }))}
     />
   )
 }

@@ -180,6 +180,7 @@ export default function StaffDetailPage() {
 
   // Data
   const [staff, setStaff] = useState<StaffMember | null>(null)
+  const [credentialCodes, setCredentialCodes] = useState<string[]>(['RBT', 'BCBA'])
   const [cycles, setCycles] = useState<Cycle[]>([])
   const [allRecords, setAllRecords] = useState<AllTrainingRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -270,8 +271,12 @@ export default function StaffDetailPage() {
   // ─── Data loading ───────────────────────────────────────────────────────────
 
   const loadStaff = useCallback(async () => {
-    const { data } = await supabase.from('staff').select('*').eq('id', staffId).single()
+    const [{ data }, { data: types }] = await Promise.all([
+      supabase.from('staff').select('*').eq('id', staffId).single(),
+      supabase.from('credential_types').select('code').order('sort_order'),
+    ])
     if (data) setStaff(data)
+    if (types?.length) setCredentialCodes(types.map(t => t.code))
   }, [staffId])
 
   const loadCycles = useCallback(async () => {
@@ -556,7 +561,6 @@ export default function StaffDetailPage() {
 
       if (editingCycle) {
         const { error } = await supabase.from('certification_cycles').update({
-          certification_type: 'RBT',
           start_date: cycleForm.start_date,
           end_date: cycleForm.end_date,
           notes: cycleForm.notes || null,
@@ -574,7 +578,9 @@ export default function StaffDetailPage() {
         const { data: newCycle, error } = await supabase.from('certification_cycles').insert({
           company_id: companyId,
           staff_id: staffId,
-          certification_type: 'RBT',
+          // A cycle is for the person's own credential; staff with no
+          // credential (plain trainers) fall back to RBT as before.
+          certification_type: credentialCodes.find(c => c === staff?.role?.toUpperCase()) ?? 'RBT',
           start_date: cycleForm.start_date,
           end_date: cycleForm.end_date,
           notes: cycleForm.notes || null,
@@ -630,7 +636,7 @@ export default function StaffDetailPage() {
     { label: 'Email',               value: staff.email ?? '—' },
     { label: 'Role',                value: staff.role ?? '—' },
     { label: 'Credentials',         value: staff.credentials ?? <span className="text-gray-400 italic">—</span> },
-    { label: 'RBT Number',         value: staff.certification_number ?? '—', mono: true },
+    { label: 'Certification Number', value: staff.certification_number ?? '—', mono: true },
     { label: 'Original Cert Date',  value: staff.original_certification_date ? formatDate(staff.original_certification_date) : '—' },
   ]
 
@@ -1059,9 +1065,8 @@ export default function StaffDetailPage() {
               <Select value={staffForm.role} onValueChange={v => setStaffForm(f => ({ ...f, role: v ?? '' }))}>
                 <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="RBT">RBT</SelectItem>
-                  <SelectItem value="Trainer">Trainer</SelectItem>
-                  <SelectItem value="Admin">Admin</SelectItem>
+                  {credentialCodes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="Trainer">Trainer (no RBT/BCBA credential)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1076,7 +1081,7 @@ export default function StaffDetailPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>RBT Number</Label>
+                <Label>Certification Number</Label>
                 <Input placeholder="e.g. 1-23-456789" value={staffForm.certification_number} onChange={e => setStaffForm(f => ({ ...f, certification_number: e.target.value }))} />
               </div>
               <div className="space-y-2">

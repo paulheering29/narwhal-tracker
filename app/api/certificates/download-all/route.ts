@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         certification_number, credentials
       ),
       courses:course_id (
-        id, name, date, modality, units,
+        id, name, date, modality, units, eligible_credentials, ethics_units, supervision_units,
         trainer_staff_id, trainer_name, trainer_cert_number,
         trainer_staff:trainer_staff_id (
           first_name, last_name, display_first_name, display_last_name,
@@ -91,7 +91,9 @@ export async function GET(request: NextRequest) {
     .lte('start_date', today)
     .gte('end_date',   today)
 
-  const certifiedStaffIds = new Set((cycles ?? []).map(c => c.staff_id))
+  // Only attendees whose credential this training counts for get a certificate.
+  const eligible = (records[0].courses as unknown as { eligible_credentials: string[] | null }).eligible_credentials ?? ['RBT']
+  const certifiedStaffIds = new Set((cycles ?? []).filter(c => eligible.includes(c.certification_type)).map(c => c.staff_id))
   const certifiedRecords  = records.filter(r => certifiedStaffIds.has(r.staff_id as string))
 
   if (certifiedRecords.length === 0) {

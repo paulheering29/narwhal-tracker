@@ -8,6 +8,7 @@ import { getDisplayName } from '@/lib/display-name'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { CreditFields, creditPayload, creditSummary, emptyCreditForm, validateCredit, type CreditForm } from '@/components/credit-fields'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -34,6 +35,9 @@ type StreamedCourse = {
   name: string
   description: string | null
   units: number | null
+  eligible_credentials: string[] | null
+  ethics_units: number | null
+  supervision_units: number | null
   validity_months: number | null
   topic_id: string | null
   trainer_staff_id: string | null
@@ -59,6 +63,7 @@ export default function CoursesPage() {
 
   const [dialogOpen, setDialogOpen]   = useState(false)
   const [form, setForm]               = useState(emptyForm)
+  const [credit, setCredit]           = useState<CreditForm>(emptyCreditForm)
   const [trainerType, setTrainerType] = useState<'staff' | 'external' | 'none'>('none')
   const [saving, setSaving]           = useState(false)
   const [error, setError]             = useState<string | null>(null)
@@ -73,6 +78,7 @@ export default function CoursesPage() {
           .from('courses')
           .select(`
             id, name, description, units, validity_months, topic_id,
+            eligible_credentials, ethics_units, supervision_units,
             trainer_staff_id, trainer_name,
             staff:trainer_staff_id(id, first_name, last_name, display_first_name, display_last_name),
             course_videos(id)
@@ -101,6 +107,7 @@ export default function CoursesPage() {
 
   function openAdd() {
     setForm(emptyForm)
+    setCredit(emptyCreditForm)
     setTrainerType('none')
     setError(null)
     setDialogOpen(true)
@@ -108,7 +115,9 @@ export default function CoursesPage() {
 
   async function handleSave() {
     if (!form.name.trim()) { setError('Course name is required.'); return }
-    if (!form.units)       { setError('PDUs are required.'); return }
+    if (!form.units)       { setError('Units are required.'); return }
+    const creditError = validateCredit(credit, form.units)
+    if (creditError)       { setError(creditError); return }
 
     setSaving(true)
     setError(null)
@@ -133,6 +142,7 @@ export default function CoursesPage() {
       trainer_name:         trainerType === 'external' ? form.trainer_name || null     : null,
       trainer_cert_number:  trainerType === 'external' ? form.trainer_cert_number || null : null,
       topic_id:             form.topic_id || null,
+      ...creditPayload(credit),
     }).select('id').single()
 
     if (err) { setError(err.message); setSaving(false); return }
@@ -197,7 +207,7 @@ export default function CoursesPage() {
                 <TableRow key={c.id} className="cursor-pointer hover:bg-gray-50"
                   onClick={() => router.push(`/courses/${c.id}`)}>
                   <TableCell className="font-medium text-blue-600">{c.name}</TableCell>
-                  <TableCell className="text-gray-600">{c.units != null ? `${c.units} PDU${c.units !== 1 ? 's' : ''}` : '—'}</TableCell>
+                  <TableCell className="text-gray-600">{creditSummary(c)}</TableCell>
                   <TableCell className="text-gray-500 text-sm">{topic?.name ?? '—'}</TableCell>
                   <TableCell className="text-gray-500 text-sm">{trainerDisplay}</TableCell>
                   <TableCell className="text-gray-600 text-sm">
@@ -239,7 +249,7 @@ export default function CoursesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>PDUs *</Label>
+                <Label>Units *</Label>
                 <Input type="number" min="0" step="0.25" placeholder="e.g. 1.5"
                   value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value }))} />
               </div>
@@ -256,6 +266,7 @@ export default function CoursesPage() {
                 </div>
               )}
             </div>
+            <CreditFields value={credit} onChange={setCredit} />
 
             <div className="space-y-3">
               <Label>Trainer of Record <span className="text-gray-400 font-normal">(shown on the certificate, optional)</span></Label>

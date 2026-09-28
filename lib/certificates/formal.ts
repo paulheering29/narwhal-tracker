@@ -131,6 +131,7 @@ export async function generateFormal(data: CertData): Promise<Uint8Array> {
   infoLines.push(`Organization: ${data.companyName}`)
   if (data.orgContactName) infoLines.push(`Organization Contact: ${data.orgContactName}${data.orgContactCertNumber ? `  ·  BACB #${data.orgContactCertNumber}` : ''}`)
   if (data.certNumber)     infoLines.push(`${data.credentialCode} BACB Certification #: ${data.certNumber}`)
+  if (data.unitBreakdown)  infoLines.push(data.unitBreakdown)
 
   for (const line of infoLines) {
     const shortened = serif.widthOfTextAtSize(line, infoSz) > W - 100

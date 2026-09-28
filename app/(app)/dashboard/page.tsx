@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardCards, type DashboardCardData } from './dashboard-cards'
@@ -135,13 +136,13 @@ export default async function DashboardPage() {
 
   const { data: staff } = await supabase
     .from('staff')
-    .select('id, tier, role')
+    .select('id, tier, role, is_supervisor')
     .eq('auth_id', user.id)
     .single()
 
   if ((staff?.tier ?? 'rbt') === 'rbt' && staff?.id) {
     const credential = await getCredential(supabase, staff.role)
-    const personal   = await getPersonalDashboardData(supabase, staff.id, credential)
+    const personal   = await getPersonalDashboardData(supabase, staff.id, credential, staff.is_supervisor ?? false)
     return (
       <div className="p-4 md:p-8">
         <div className="mb-8">
@@ -153,7 +154,10 @@ export default async function DashboardPage() {
     )
   }
 
-  const data = await getDashboardData(supabase)
+  const [data, { count: pendingReviews }] = await Promise.all([
+    getDashboardData(supabase),
+    supabase.from('external_trainings').select('id', { count: 'exact', head: true }).eq('review_status', 'pending'),
+  ])
 
   function formatDate(dateStr: string | null | undefined) {
     if (!dateStr) return ''
@@ -267,6 +271,18 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
         <p className="mt-1 text-sm text-gray-500">Overview of your training programme</p>
       </div>
+
+      {(pendingReviews ?? 0) > 0 && (
+        <Link
+          href="/outside-trainings"
+          className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 hover:bg-amber-100 transition-colors"
+        >
+          <span>
+            <span className="font-semibold">{pendingReviews} outside training{pendingReviews === 1 ? '' : 's'}</span> waiting for review
+          </span>
+          <span className="font-medium whitespace-nowrap">Review →</span>
+        </Link>
+      )}
 
       <DashboardCards cards={cards} />
     </div>

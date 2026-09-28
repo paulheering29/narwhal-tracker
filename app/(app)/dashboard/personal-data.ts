@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Credential } from '@/lib/credentials'
 import type { PersonalDashboardData } from './personal-dashboard'
+import { OUTSIDE_TRAINING_COLUMNS, countsTowardTotals, toOutsideTraining } from '@/lib/outside-trainings'
 
 function fmtDate(dateStr: string | null | undefined) {
   if (!dateStr) return ''
@@ -32,10 +33,11 @@ export async function getPersonalDashboardData(
   supabase: SupabaseClient,
   staffId: string,
   credential: Credential | null,
+  isSupervisor: boolean,
 ): Promise<PersonalDashboardData> {
   const today = new Date().toISOString().split('T')[0]
 
-  const [cyclesRes, recordsRes, assignmentsRes] = await Promise.all([
+  const [cyclesRes, recordsRes, assignmentsRes, externalRes, settingsRes] = await Promise.all([
     supabase
       .from('certification_cycles')
       .select('certification_type, start_date, end_date')
@@ -43,14 +45,21 @@ export async function getPersonalDashboardData(
       .order('end_date', { ascending: false }),
     supabase
       .from('training_records')
-      .select('id, completed_date, confirmed, courses:course_id(id, name, units, course_type, date, start_time, end_time)')
+      .select('id, completed_date, confirmed, courses:course_id(id, name, units, course_type, date, start_time, end_time, eligible_credentials, ethics_units, supervision_units)')
       .eq('staff_id', staffId)
       .order('completed_date', { ascending: false }),
     supabase
       .from('course_assignments')
       .select('course_id, courses:course_id(id, name, units, course_type)')
       .eq('staff_id', staffId),
+    supabase
+      .from('external_trainings')
+      .select(OUTSIDE_TRAINING_COLUMNS)
+      .eq('staff_id', staffId)
+      .order('completed_date', { ascending: false }),
+    supabase.rpc('my_external_training_settings').maybeSingle<{ allowed_credentials: string[]; review_required: boolean }>(),
   ])
+  const outsideSettings = settingsRes.data
 
   const cycles = (cyclesRes.data ?? []).filter(c => !credential || c.certification_type.toUpperCase() === credential.code.toUpperCase())
   const activeCycle = cycles.find(c => c.start_date <= today && c.end_date >= today) ?? cycles[0] ?? null
@@ -60,17 +69,43 @@ export async function getPersonalDashboardData(
 
   const records = (recordsRes.data ?? []) as unknown as {
     id: string; completed_date: string; confirmed: boolean
-    courses: { id: string; name: string; units: number | null; course_type: string; date: string | null; start_time: string | null; end_time: string | null } | null
+    courses: {
+      id: string; name: string; units: number | null; course_type: string; date: string | null; start_time: string | null; end_time: string | null
+      eligible_credentials: string[] | null; ethics_units: number | null; supervision_units: number | null
+    } | null
   }[]
 
   let unitsDone = 0
   let unitsScheduled = 0
-  if (activeCycle) {
+  let ethicsDone = 0
+  let supervisionDone = 0
+  if (activeCycle && credential) {
     for (const r of records) {
       if (r.completed_date < activeCycle.start_date || r.completed_date > activeCycle.end_date) continue
-      const units = r.courses?.units ?? 0
-      if (r.confirmed) unitsDone += units
-      else             unitsScheduled += units
+      // Only trainings marked as counting for this credential earn units
+      // toward it (an RBT in-service isn't a BCBA CEU).
+      if (!(r.courses?.eligible_credentials ?? ['RBT']).includes(credential.code)) continue
+      const units = Number(r.courses?.units ?? 0)
+      if (r.confirmed) {
+        unitsDone       += units
+        ethicsDone      += Number(r.courses?.ethics_units ?? 0)
+        supervisionDone += Number(r.courses?.supervision_units ?? 0)
+      } else {
+        unitsScheduled += units
+      }
+    }
+  }
+
+  // Trainings earned elsewhere count toward the person's own credential,
+  // unless the team marked them not approved.
+  const outsideTrainings = (externalRes.data ?? []).map(toOutsideTraining)
+  if (activeCycle && credential) {
+    for (const t of outsideTrainings) {
+      if (!countsTowardTotals(t)) continue
+      if (t.completed_date < activeCycle.start_date || t.completed_date > activeCycle.end_date) continue
+      unitsDone       += t.units
+      ethicsDone      += t.ethics_units
+      supervisionDone += t.supervision_units
     }
   }
 
@@ -142,6 +177,16 @@ export async function getPersonalDashboardData(
     unitsDone,
     unitsScheduled,
     unitsTarget,
+    ethicsDone,
+    ethicsTarget:      credential?.ethics_units_required ?? 0,
+    supervisionDone,
+    supervisionTarget: isSupervisor ? (credential?.supervision_units_required ?? 0) : 0,
+    staffId,
+    tracksEthics:      (credential?.ethics_units_required ?? 0) > 0,
+    tracksSupervision: (credential?.supervision_units_required ?? 0) > 0,
+    outsideTrainings,
+    canAddOutside:     !!credential && (outsideSettings?.allowed_credentials ?? []).includes(credential.code),
+    outsideReviewRequired: outsideSettings?.review_required ?? false,
     pacingTarget,
     assignedCourses,
     completed,

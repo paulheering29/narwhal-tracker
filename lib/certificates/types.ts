@@ -6,6 +6,7 @@ export type CertData = {
   unitCount:            string
   unitLabel:            string   // 'PDU' / 'CEU', from the learner's credential
   credentialCode:       string   // 'RBT' / 'BCBA' — labels the learner's cert number
+  unitBreakdown:        string   // e.g. 'Includes 1 ethics CEU' — '' when not applicable
   modality:             string
   trainerName:          string
   trainerCertNumber:    string

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         certification_number, email, credentials
       ),
       courses:course_id (
-        id, name, date, modality, units,
+        id, name, date, modality, units, ethics_units, supervision_units,
         trainer_staff_id, trainer_name, trainer_cert_number,
         trainer_staff:trainer_staff_id (
           first_name, last_name, display_first_name, display_last_name,
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
           </p>
           <p style="margin: 0 0 16px;">
             You earned <strong>${cert.unitCount || '0'} ${cert.unitLabel}${cert.unitCount === '1' ? '' : 's'}</strong>
-            for this training${cert.companyName ? ` with ${cert.companyName}` : ''}.
+            for this training${cert.companyName ? ` with ${cert.companyName}` : ''}.${cert.unitBreakdown ? ` ${cert.unitBreakdown}.` : ''}
           </p>
           <p style="margin: 0; color: #6b7280; font-size: 14px;">
             Keep this certificate for your BACB records.

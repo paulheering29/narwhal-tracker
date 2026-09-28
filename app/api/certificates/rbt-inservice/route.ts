@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         certification_number, credentials
       ),
       courses:course_id (
-        id, name, date, modality, units,
+        id, name, date, modality, units, ethics_units, supervision_units,
         trainer_staff_id, trainer_name, trainer_cert_number,
         trainer_staff:trainer_staff_id (
           first_name, last_name, display_first_name, display_last_name,

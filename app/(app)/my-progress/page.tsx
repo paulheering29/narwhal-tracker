@@ -14,7 +14,7 @@ export default async function MyProgressPage() {
 
   const { data: staff } = await supabase
     .from('staff')
-    .select('id, tier, role')
+    .select('id, tier, role, is_supervisor')
     .eq('auth_id', user.id)
     .single()
 
@@ -22,7 +22,7 @@ export default async function MyProgressPage() {
   if (staff.tier === 'rbt') redirect('/dashboard')
 
   const credential = await getCredential(supabase, staff.role)
-  const data       = await getPersonalDashboardData(supabase, staff.id, credential)
+  const data       = await getPersonalDashboardData(supabase, staff.id, credential, staff.is_supervisor ?? false)
 
   return (
     <div className="p-4 md:p-8">

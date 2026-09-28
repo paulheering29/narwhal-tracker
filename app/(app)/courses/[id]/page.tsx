@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { CreditFields, creditFormFrom, creditPayload, creditSummary, emptyCreditForm, validateCredit, type CreditForm } from '@/components/credit-fields'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -40,6 +41,7 @@ type TopicOption = { id: string; name: string }
 type StreamedCourse = {
   id: string; name: string; description: string | null; objectives: string | null
   units: number | null; validity_months: number | null
+  eligible_credentials: string[] | null; ethics_units: number | null; supervision_units: number | null
   trainer_staff_id: string | null; trainer_name: string | null; trainer_cert_number: string | null
   topic_id: string | null
   staff: StaffOption | null
@@ -102,6 +104,7 @@ export default function CourseDetailPage() {
   // ── Edit sheet ───────────────────────────────────────────────────────────────
   const [editOpen, setEditOpen]       = useState(false)
   const [form, setForm]               = useState(emptyForm)
+  const [credit, setCredit]           = useState<CreditForm>(emptyCreditForm)
   const [trainerType, setTrainerType] = useState<'none' | 'staff' | 'external'>('none')
   const [saving, setSaving]           = useState(false)
   const [editError, setEditError]     = useState<string | null>(null)
@@ -507,6 +510,7 @@ export default function CourseDetailPage() {
       trainer_cert_number: course.trainer_cert_number ?? '',
       topic_id:            course.topic_id ?? '',
     })
+    setCredit(creditFormFrom(course))
     setTrainerType(course.trainer_staff_id ? 'staff' : course.trainer_name ? 'external' : 'none')
     setEditError(null)
     setEditOpen(true)
@@ -514,9 +518,11 @@ export default function CourseDetailPage() {
 
   async function handleSave() {
     if (!form.name.trim() || !form.units) {
-      setEditError('Course name and PDUs are required.')
+      setEditError('Course name and units are required.')
       return
     }
+    const creditError = validateCredit(credit, form.units)
+    if (creditError) { setEditError(creditError); return }
     setSaving(true)
     setEditError(null)
     const { error } = await supabase.from('courses').update({
@@ -529,6 +535,7 @@ export default function CourseDetailPage() {
       trainer_name:        trainerType === 'external' ? form.trainer_name || null     : null,
       trainer_cert_number: trainerType === 'external' ? form.trainer_cert_number || null : null,
       topic_id:            form.topic_id || null,
+      ...creditPayload(credit),
     }).eq('id', courseId)
     if (error) { setEditError(error.message); setSaving(false); return }
     setSaving(false)
@@ -692,7 +699,7 @@ export default function CourseDetailPage() {
             <div>
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">PDUs</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {course.units != null ? `${course.units} PDU${course.units !== 1 ? 's' : ''}` : '—'}
+                {creditSummary(course)}
               </dd>
             </div>
             <div>
@@ -1109,7 +1116,7 @@ export default function CourseDetailPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>PDUs *</Label>
+                <Label>Units *</Label>
                 <Input type="number" min="0" step="0.25" value={form.units}
                   onChange={e => setForm(f => ({ ...f, units: e.target.value }))} />
               </div>
@@ -1126,6 +1133,7 @@ export default function CourseDetailPage() {
                 </div>
               )}
             </div>
+            <CreditFields value={credit} onChange={setCredit} />
             <div className="space-y-3">
               <Label>Trainer of Record <span className="text-gray-400 font-normal">(optional)</span></Label>
               <div className="flex rounded-md border overflow-hidden w-fit">

@@ -23,6 +23,8 @@ const ICONS: Record<string, string[]> = {
   arrowRight:   ['M5 12l14 0', 'M13 18l6 -6', 'M13 6l6 6'],
   userCheck:    ['M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0', 'M6 21v-2a4 4 0 0 1 4 -4h4', 'M15 19l2 2l4 -4'],
   checklist:    ['M9.615 20h-2.615a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8', 'M14 19l2 2l4 -4', 'M9 8h4', 'M9 12h2'],
+  world:        ['M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0', 'M3.6 9h16.8', 'M3.6 15h16.8', 'M11.5 3a17 17 0 0 0 0 18', 'M12.5 3a17 17 0 0 1 0 18'],
+  scale:        ['M7 20l10 0', 'M6 6l6 -1l6 1', 'M12 3l0 17', 'M9 12l-3 -6l-3 6a3 3 0 0 0 6 0', 'M21 12l-3 -6l-3 6a3 3 0 0 0 6 0'],
 }
 
 function Icon({ name, className = 'h-6 w-6' }: { name: keyof typeof ICONS; className?: string }) {
@@ -71,6 +73,16 @@ const features = [
     icon: 'fileCert',
     title: 'Certificates your way',
     body: 'Choose from several certificate styles or the BACB in-service form, signed by the trainer and branded with your logo.',
+  },
+  {
+    icon: 'scale',
+    title: 'Ethics & supervision minimums',
+    body: 'BCBA CEUs are tracked by type, so ethics and supervision requirements show up alongside the total — not as a surprise at recertification.',
+  },
+  {
+    icon: 'world',
+    title: 'Training from anywhere',
+    body: 'Conference sessions and outside courses can be added with the certificate attached, with an optional review step for your team.',
   },
   {
     icon: 'calendar',
@@ -268,8 +280,8 @@ export default function HomePage() {
             <ul className="space-y-3 text-gray-600">
               {[
                 'Earn CEUs through live trainings and self-paced courses',
-                'See the CEUs you’ve earned against what your recertification requires',
-                'Keep every CEU certificate in one place, ready when you recertify',
+                'See your total, ethics, and supervision CEUs against what recertification requires',
+                'Add CEUs you earned elsewhere, like a conference, with the certificate attached',
                 'Know how many days until your certification renews',
               ].map(t => (
                 <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>
@@ -286,6 +298,7 @@ export default function HomePage() {
                 'Schedule trainings, take attendance, and issue certificates in a few clicks',
                 'Upload video courses once and assign them to anyone who needs them',
                 'See every RBT’s PDUs and every BCBA’s CEUs, plus upcoming expirations, at a glance',
+                'Choose who can add outside trainings, and review them all from one queue',
                 'Keep certification cycle documents together, ready for an audit',
               ].map(t => (
                 <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>
@@ -302,7 +315,7 @@ export default function HomePage() {
             <p className="text-sm font-semibold mb-3" style={{ color: BLUE }}>Features</p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Everything the loop needs.</h2>
           </div>
-          <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
             {features.map(({ icon, title, body }) => (
               <div key={title}>
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 mb-4" style={{ color: BLUE }}>

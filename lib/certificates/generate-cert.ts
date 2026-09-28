@@ -116,7 +116,12 @@ export function certFilename(staffName: string, courseDate: string | null, crede
   return `${prefix}-${safeStaffName}-${safeDateStr}.pdf`
 }
 
-export type CertCredential = { code: string; unitLabel: string }
+export type CertCredential = {
+  code: string
+  unitLabel: string
+  tracksEthics: boolean       // credential has an ethics minimum (BCBA)
+  tracksSupervision: boolean  // credential has a supervision minimum (BCBA)
+}
 
 /**
  * Loads credential_types once so a caller generating many certificates can
@@ -125,14 +130,23 @@ export type CertCredential = { code: string; unitLabel: string }
 export async function loadCredentialLookup(
   service: SupabaseClient,
 ): Promise<(role: string | null | undefined) => CertCredential> {
-  const { data } = await service.from('credential_types').select('code, unit_label')
-  const byCode = new Map((data ?? []).map(c => [c.code.toUpperCase(), c.unit_label as string]))
+  const { data } = await service
+    .from('credential_types')
+    .select('code, unit_label, ethics_units_required, supervision_units_required')
+  const byCode = new Map((data ?? []).map(c => [c.code.toUpperCase(), c]))
   // People with no credential (e.g. a trainer who attended) get RBT/PDU
   // wording, which is what every certificate said before BCBAs existed.
   return role => {
     const code = role?.toUpperCase() ?? ''
-    const unitLabel = byCode.get(code)
-    return unitLabel ? { code, unitLabel } : { code: 'RBT', unitLabel: 'PDU' }
+    const row  = byCode.get(code)
+    return row
+      ? {
+          code,
+          unitLabel:         row.unit_label as string,
+          tracksEthics:      Number(row.ethics_units_required) > 0,
+          tracksSupervision: Number(row.supervision_units_required) > 0,
+        }
+      : { code: 'RBT', unitLabel: 'PDU', tracksEthics: false, tracksSupervision: false }
   }
 }
 
@@ -152,6 +166,8 @@ export type RecordShape = {
     date: string | null
     modality: string | null
     units: number | null
+    ethics_units?: number | null
+    supervision_units?: number | null
     trainer_staff_id:  string | null
     trainer_name:      string | null
     trainer_cert_number: string | null
@@ -164,6 +180,20 @@ export type RecordShape = {
       signature_url: string | null
       credentials: string | null
     } | null
+  }
+}
+
+// "Includes 1 ethics CEU and 0.5 supervision CEUs" — only for credentials
+// that track those minimums, so RBT certificates are unchanged.
+function unitBreakdown(course: RecordShape['courses'], credential: CertCredential) {
+  const found: [number, string][] = []
+  const ethics      = Number(course.ethics_units ?? 0)
+  const supervision = Number(course.supervision_units ?? 0)
+  if (credential.tracksEthics      && ethics > 0)      found.push([ethics, 'ethics'])
+  if (credential.tracksSupervision && supervision > 0) found.push([supervision, 'supervision'])
+  const unit = (n: number) => `${credential.unitLabel}${n === 1 ? '' : 's'}`
+  return {
+    unitBreakdown: found.length ? `Includes ${found.map(([n, k]) => `${n} ${k} ${unit(n)}`).join(' and ')}` : '',
   }
 }
 
@@ -216,6 +246,7 @@ export function buildCertData(
     unitCount:            course.units != null ? String(course.units) : '',
     unitLabel:            credential.unitLabel,
     credentialCode:       credential.code,
+    ...unitBreakdown(course, credential),
     modality:             MODALITY_LABELS[course.modality ?? ''] ?? course.modality ?? '',
     trainerName,
     trainerCertNumber,

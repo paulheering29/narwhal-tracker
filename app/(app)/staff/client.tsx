@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getCompanyId } from '@/lib/get-company-id'
@@ -43,6 +44,7 @@ type StaffMember = {
   roles: string[] | null
   certification_number: string | null
   credentials: string | null
+  is_supervisor?: boolean
 }
 
 type StaffRow = StaffMember & {
@@ -54,6 +56,9 @@ type StaffRow = StaffMember & {
   pctScheduled: number
   pacingTarget: number
   variance:     number
+  ethicsDone:        number
+  supervisionDone:   number
+  supervisionTarget: number   // 0 unless this person supervises
 }
 
 // ─── Role badge colours ───────────────────────────────────────────────────────
@@ -77,6 +82,16 @@ function computePacingTarget(startDate: string, endDate: string, target: number)
 }
 
 function fmtPdu(n: number) { return n % 1 === 0 ? String(n) : n.toFixed(1) }
+// "1 / 4", green once the minimum is met; "n/a" when nothing is owed
+// (e.g. supervision for someone who doesn't supervise).
+function MinimumCell({ done, target }: { done: number; target: number }) {
+  if (target <= 0) return <span className="text-gray-300">n/a</span>
+  return (
+    <span className={done >= target ? 'text-emerald-600 font-semibold' : 'text-gray-700 font-medium'}>
+      {fmtPdu(done)} / {fmtPdu(target)}
+    </span>
+  )
+}
 function fmtPct(n: number) { return `${Math.round(n * 100)}%` }
 function fmtVariance(n: number) {
   if (n === 0) return { label: '0', cls: 'text-gray-400' }
@@ -281,12 +296,14 @@ export function StaffPageClient({
   initialStaff,
   planLimits,
   credentialTypes,
+  pendingOutsideReviews,
 }: {
   currentAuthId: string
   currentRoles: string[]
   initialStaff: StaffMember[]
   planLimits: { maxRbts: number; currentRbts: number; planName: string }
   credentialTypes: Credential[]
+  pendingOutsideReviews: number
 }) {
   const supabase = createClient()
   const router   = useRouter()
@@ -294,6 +311,8 @@ export function StaffPageClient({
   const [tab, setTab] = useState<StaffTab>(credentialTypes[0]?.code ?? 'trainers')
   // The credential whose tab is open; null on the Trainers & Admin tab.
   const credential = credentialTypes.find(c => c.code === tab) ?? null
+  // Ethics / supervision columns only for credentials with those minimums (BCBA).
+  const showMinimums = !!credential && (credential.ethics_units_required > 0 || credential.supervision_units_required > 0)
 
   // ── All staff (live, refreshable) ────────────────────────────────────────────
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff)
@@ -309,7 +328,7 @@ export function StaffPageClient({
   async function reloadStaff() {
     const { data } = await supabase
       .from('staff')
-      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number, credentials')
+      .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number, credentials, is_supervisor')
       .order('last_name')
     setStaff(data ?? [])
   }
@@ -340,34 +359,56 @@ export function StaffPageClient({
     const today = new Date().toISOString().split('T')[0]
     const target = credential.units_required
 
-    const [cyclesRes, recordsRes] = await Promise.all([
+    const [cyclesRes, recordsRes, externalRes] = await Promise.all([
       supabase.from('certification_cycles')
         .select('staff_id, start_date, end_date')
         .eq('certification_type', credential.code)
         .lte('start_date', today)
         .gte('end_date', today),
       supabase.from('training_records')
-        .select('staff_id, completed_date, confirmed, courses(units)'),
+        .select('staff_id, completed_date, confirmed, courses(units, eligible_credentials, ethics_units, supervision_units)'),
+      supabase.from('external_trainings')
+        .select('staff_id, completed_date, units, ethics_units, supervision_units')
+        .neq('review_status', 'not_approved'),
     ])
 
     const cycleMap = new Map<string, { start_date: string; end_date: string }>()
     for (const c of cyclesRes.data ?? []) cycleMap.set(c.staff_id, c)
 
-    type TRec = { completed_date: string; confirmed: boolean; units: number }
+    type TRec = { completed_date: string; confirmed: boolean; units: number; ethics: number; supervision: number }
+    type RawRec = {
+      staff_id: string; completed_date: string; confirmed: boolean
+      courses: { units: number | null; eligible_credentials: string[] | null; ethics_units: number | null; supervision_units: number | null } | null
+    }
     const recMap = new Map<string, TRec[]>()
-    for (const r of (recordsRes.data ?? []) as unknown as { staff_id: string; completed_date: string; confirmed: boolean; courses: { units: number } | null }[]) {
-      const units = r.courses?.units ?? 0
+    for (const r of (recordsRes.data ?? []) as unknown as RawRec[]) {
+      // Only trainings that count for this tab's credential earn units toward it.
+      if (!(r.courses?.eligible_credentials ?? ['RBT']).includes(credential.code)) continue
       if (!recMap.has(r.staff_id)) recMap.set(r.staff_id, [])
-      recMap.get(r.staff_id)!.push({ completed_date: r.completed_date, confirmed: r.confirmed, units })
+      recMap.get(r.staff_id)!.push({
+        completed_date: r.completed_date, confirmed: r.confirmed,
+        units:       Number(r.courses?.units ?? 0),
+        ethics:      Number(r.courses?.ethics_units ?? 0),
+        supervision: Number(r.courses?.supervision_units ?? 0),
+      })
+    }
+    // Outside trainings count toward the person's own credential, already
+    // completed — except ones the team marked not approved (filtered above).
+    for (const t of externalRes.data ?? []) {
+      if (!recMap.has(t.staff_id)) recMap.set(t.staff_id, [])
+      recMap.get(t.staff_id)!.push({
+        completed_date: t.completed_date, confirmed: true,
+        units: Number(t.units), ethics: Number(t.ethics_units), supervision: Number(t.supervision_units),
+      })
     }
 
     const computed: StaffRow[] = staffWithRole(credential.code).map(s => {
       const cycle = cycleMap.get(s.id) ?? null
-      let pduDone = 0, pduScheduled = 0
+      let pduDone = 0, pduScheduled = 0, ethicsDone = 0, supervisionDone = 0
       if (cycle) {
         for (const r of recMap.get(s.id) ?? []) {
           if (r.completed_date >= cycle.start_date && r.completed_date <= cycle.end_date) {
-            if (r.confirmed) pduDone      += r.units
+            if (r.confirmed) { pduDone += r.units; ethicsDone += r.ethics; supervisionDone += r.supervision }
             else             pduScheduled += r.units
           }
         }
@@ -382,6 +423,9 @@ export function StaffPageClient({
         pctScheduled: (pduDone + pduScheduled) / target,
         pacingTarget,
         variance:     pduDone - pacingTarget,
+        ethicsDone,
+        supervisionDone,
+        supervisionTarget: s.is_supervisor ? credential.supervision_units_required : 0,
       }
     })
 
@@ -677,11 +721,22 @@ export function StaffPageClient({
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          {credentialTypes.map(c => `${staffWithRole(c.code).filter(s => s.active).length} active ${c.code}s`).join(' · ')} · {adminStaff.length} trainer{adminStaff.length !== 1 ? 's' : ''} / admin{adminStaff.length !== 1 ? 's' : ''}
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {credentialTypes.map(c => `${staffWithRole(c.code).filter(s => s.active).length} active ${c.code}s`).join(' · ')} · {adminStaff.length} trainer{adminStaff.length !== 1 ? 's' : ''} / admin{adminStaff.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <Link
+          href="/outside-trainings"
+          className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Outside training reviews
+          {pendingOutsideReviews > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{pendingOutsideReviews} pending</span>
+          )}
+        </Link>
       </div>
 
       {/* Tabs */}
@@ -798,6 +853,12 @@ export function StaffPageClient({
                           <p className="text-xs font-medium text-teal-500 tabular-nums">{fmtPdu(s.pacingTarget)} target</p>
                         </div>
                       </div>
+                      {showMinimums && (
+                        <div className="mt-2 flex gap-4 text-xs text-gray-500">
+                          <span>Ethics <MinimumCell done={s.ethicsDone} target={credential.ethics_units_required} /></span>
+                          <span>Supervision <MinimumCell done={s.supervisionDone} target={s.supervisionTarget} /></span>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <p className="text-xs text-gray-400 italic">No active cycle</p>
@@ -810,19 +871,23 @@ export function StaffPageClient({
           {/* ── Desktop table (hidden below md) ──────────────────────────── */}
           <div className="hidden md:block rounded-lg border bg-white shadow-sm overflow-x-auto">
             <table className="w-full table-fixed border-collapse text-base">
-              <colgroup>
-                <col className="w-[18%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[9%]" />
-                <col className="w-[5%]" />
-                <col className="w-[5%]" />
-              </colgroup>
+              {showMinimums ? (
+                <colgroup>
+                  <col className="w-[15%]" />
+                  {Array.from({ length: 8 }, (_, i) => <col key={i} className="w-[8%]" />)}
+                  <col className="w-[6%]" />
+                  <col className="w-[6%]" />
+                  <col className="w-[4%]" />
+                  <col className="w-[5%]" />
+                </colgroup>
+              ) : (
+                <colgroup>
+                  <col className="w-[18%]" />
+                  {Array.from({ length: 8 }, (_, i) => <col key={i} className="w-[9%]" />)}
+                  <col className="w-[5%]" />
+                  <col className="w-[5%]" />
+                </colgroup>
+              )}
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100 text-sm select-none">
                   <th rowSpan={2} className="text-center align-middle font-semibold text-gray-700 px-3 py-2 border-r border-gray-200">
@@ -834,6 +899,9 @@ export function StaffPageClient({
                   <th colSpan={2} className="text-center font-semibold text-indigo-600 px-3 pt-2 pb-0.5 border-r border-gray-200">Actual</th>
                   <th colSpan={2} className="text-center font-semibold text-amber-600 px-3 pt-2 pb-0.5 border-r border-gray-200">Scheduled</th>
                   <th colSpan={2} className="text-center font-semibold text-teal-600 px-3 pt-2 pb-0.5 border-r border-gray-200">Pacing</th>
+                  {showMinimums && (
+                    <th colSpan={2} className="text-center font-semibold text-gray-600 px-3 pt-2 pb-0.5 border-r border-gray-200">Minimums</th>
+                  )}
                   <th rowSpan={2} className="w-10 align-middle">
                     <button onClick={() => handleSort('active')} className="w-full flex justify-center hover:opacity-70 transition-opacity pt-1">
                       <SortIcon col="active" />
@@ -882,15 +950,21 @@ export function StaffPageClient({
                       Variance <SortIcon col="variance" />
                     </button>
                   </th>
+                  {showMinimums && (
+                    <>
+                      <th className="px-2 py-1.5 text-center text-gray-500 font-medium">Ethics</th>
+                      <th className="px-2 py-1.5 text-center text-gray-500 font-medium border-r border-gray-200">Superv.</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  <tr><td colSpan={11} className="text-center py-12 text-gray-400">
+                  <tr><td colSpan={showMinimums ? 13 : 11} className="text-center py-12 text-gray-400">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={11} className="text-center py-12 text-gray-400">
+                  <tr><td colSpan={showMinimums ? 13 : 11} className="text-center py-12 text-gray-400">
                     {search ? 'No staff match your search.' : `No ${credential.code}s yet. Add your first team member.`}
                   </td></tr>
                 ) : filtered.map(s => {
@@ -933,6 +1007,16 @@ export function StaffPageClient({
                       <td className={`text-center tabular-nums font-semibold px-3 py-3 border-r border-gray-200 ${hasCycle ? variance.cls : 'text-gray-300'}`}>
                         {hasCycle ? variance.label : '—'}
                       </td>
+                      {showMinimums && (
+                        <>
+                          <td className="text-center tabular-nums text-sm px-2 py-3">
+                            {hasCycle ? <MinimumCell done={s.ethicsDone} target={credential.ethics_units_required} /> : <span className="text-gray-300">—</span>}
+                          </td>
+                          <td className="text-center tabular-nums text-sm px-2 py-3 border-r border-gray-200">
+                            {hasCycle ? <MinimumCell done={s.supervisionDone} target={s.supervisionTarget} /> : <span className="text-gray-300">—</span>}
+                          </td>
+                        </>
+                      )}
                       <td className="text-center py-3">
                         <span className="text-xs text-gray-400">{s.active ? 'active' : 'inactive'}</span>
                       </td>

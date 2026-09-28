@@ -141,6 +141,7 @@ export async function generateFun(data: CertData): Promise<Uint8Array> {
   ]
   if (data.orgContactName) infoLines.push(['Org Contact', `${data.orgContactName}${data.orgContactCertNumber ? ` · BACB #${data.orgContactCertNumber}` : ''}`])
   if (data.certNumber)     infoLines.push([`${data.credentialCode} BACB #`, data.certNumber])
+  if (data.unitBreakdown)  infoLines.push([`${data.unitLabel}s`, data.unitBreakdown])
 
   const infoRowH = 18
   const cardH    = cardPad + infoLines.length * infoRowH + cardPad

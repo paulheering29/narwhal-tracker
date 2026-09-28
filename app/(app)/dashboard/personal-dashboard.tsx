@@ -1,5 +1,7 @@
 import { CalendarClock, Gauge } from 'lucide-react'
 import { DashboardCards, type DashboardCardData } from './dashboard-cards'
+import { OutsideTrainings } from '@/components/outside-trainings'
+import type { OutsideTraining } from '@/lib/outside-trainings'
 
 export type PersonalDashboardData = {
   certType: string | null
@@ -9,6 +11,16 @@ export type PersonalDashboardData = {
   unitsDone: number
   unitsScheduled: number
   unitsTarget: number
+  ethicsDone: number
+  ethicsTarget: number        // 0 when the credential has no ethics minimum
+  supervisionDone: number
+  supervisionTarget: number   // 0 unless the person supervises and the credential requires it
+  staffId: string
+  tracksEthics: boolean       // credential has an ethics minimum (asks for ethics units on outside trainings)
+  tracksSupervision: boolean
+  outsideTrainings: OutsideTraining[]
+  canAddOutside: boolean          // company lets this person's credential add their own
+  outsideReviewRequired: boolean
   pacingTarget: number
   assignedCourses: { id: string; name: string; href: string; completedSections: number; totalSections: number; status: 'not_started' | 'in_progress' | 'complete' }[]
   completed: { id: string; label: string; sublabel: string; href: string }[]
@@ -27,6 +39,24 @@ function urgencyColor(days: number | null): { text: string; bg: string } {
   if (days <= 30)        return { text: 'text-rose-600',   bg: 'bg-rose-50' }
   if (days <= 90)        return { text: 'text-amber-600',  bg: 'bg-amber-50' }
   return                        { text: 'text-emerald-600', bg: 'bg-emerald-50' }
+}
+
+// A required minimum within the total (ethics, supervision): green once met.
+function MinimumBar({ label, done, target }: { label: string; done: number; target: number }) {
+  const met = done >= target
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <p className="text-sm text-gray-600">{label}</p>
+        <p className={`text-sm font-medium tabular-nums ${met ? 'text-emerald-600' : 'text-gray-700'}`}>
+          {fmtUnits(done)} / {fmtUnits(target)}{met ? ' ✓' : ''}
+        </p>
+      </div>
+      <div className="mt-1 h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+        <div className={`h-full ${met ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(1, done / target) * 100}%` }} />
+      </div>
+    </div>
+  )
 }
 
 export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
@@ -155,12 +185,34 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
               +{fmtUnits(data.unitsScheduled)} scheduled, not yet confirmed
             </p>
           )}
+          {(data.ethicsTarget > 0 || data.supervisionTarget > 0) && (
+            <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+              {data.ethicsTarget > 0 && (
+                <MinimumBar label={`Ethics ${units}`} done={data.ethicsDone} target={data.ethicsTarget} />
+              )}
+              {data.supervisionTarget > 0 && (
+                <MinimumBar label={`Supervision ${units}`} done={data.supervisionDone} target={data.supervisionTarget} />
+              )}
+            </div>
+          )}
           </>
           )}
         </div>
       </div>
 
       <DashboardCards cards={cards} />
+
+      {data.unitLabel && (
+        <OutsideTrainings
+          staffId={data.staffId}
+          unitLabel={data.unitLabel}
+          showEthics={data.tracksEthics}
+          showSupervision={data.tracksSupervision}
+          items={data.outsideTrainings}
+          canAdd={data.canAddOutside}
+          reviewRequired={data.outsideReviewRequired}
+        />
+      )}
     </div>
   )
 }

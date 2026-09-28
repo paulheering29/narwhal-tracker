@@ -60,7 +60,11 @@ type StaffMember = {
 
 type Topic = { id: string; name: string; created_at: string }
 
-type Company = { id: string; name: string; logo_url?: string | null; org_contact_staff_id?: string | null; preferred_cert_template?: string | null; enabled_cert_templates?: string[] | null }
+type Company = {
+  id: string; name: string; logo_url?: string | null; org_contact_staff_id?: string | null
+  preferred_cert_template?: string | null; enabled_cert_templates?: string[] | null
+  external_training_credentials?: string[] | null; external_training_review?: boolean | null
+}
 
 export function AdminUsersClient({
   currentAuthId,
@@ -71,6 +75,7 @@ export function AdminUsersClient({
   planLimits,
   billing,
   allPlans,
+  credentialTypes,
 }: {
   currentAuthId: string
   currentRoles: string[]
@@ -80,6 +85,7 @@ export function AdminUsersClient({
   planLimits: { maxRbts: number; currentRbts: number; planName: string }
   billing: CompanyBilling | null
   allPlans: Plan[]
+  credentialTypes: { code: string; unit_label: string }[]
 }) {
   const supabase = createClient()
   const router   = useRouter()
@@ -178,6 +184,24 @@ export function AdminUsersClient({
     setCertTemplateSaving(false)
     if (!res.ok) { setCertTemplateStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
     setCertTemplateStatus({ type: 'success', msg: 'Certificate templates saved.' })
+  }
+
+  const [outsideAllowed, setOutsideAllowed] = useState<string[]>(initialCompany.external_training_credentials ?? ['BCBA'])
+  const [outsideReview, setOutsideReview]   = useState<boolean>(initialCompany.external_training_review ?? false)
+  const [outsideSaving, setOutsideSaving]   = useState(false)
+  const [outsideStatus, setOutsideStatus]   = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+
+  async function handleSaveOutsideSettings() {
+    setOutsideSaving(true); setOutsideStatus(null)
+    const res = await fetch('/api/company/update-external-training-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ allowed_credentials: outsideAllowed, review_required: outsideReview }),
+    })
+    const json = await res.json()
+    setOutsideSaving(false)
+    if (!res.ok) { setOutsideStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
+    setOutsideStatus({ type: 'success', msg: 'Outside training settings saved.' })
   }
 
   async function handleSaveOrgContact() {
@@ -837,6 +861,75 @@ export function AdminUsersClient({
                 {orgContactSaving
                   ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
                   : 'Save Contact'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Outside Trainings */}
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Outside Trainings</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Trainings people earned somewhere else, like a conference, that they add to their own record.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Who can add their own</Label>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                {credentialTypes.map(c => (
+                  <label key={c.code} className="flex items-center gap-2 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      checked={outsideAllowed.includes(c.code)}
+                      onChange={e => {
+                        setOutsideAllowed(prev => e.target.checked ? [...prev, c.code] : prev.filter(x => x !== c.code))
+                        setOutsideStatus(null)
+                      }}
+                      className="accent-[#025CA8]"
+                    />
+                    {c.code}s
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400">
+                {outsideAllowed.length === 0
+                  ? 'Nobody can add their own. Admins can still add them from a staff member’s page.'
+                  : 'Admins can always add them for anyone from a staff member’s page.'}
+              </p>
+            </div>
+            <label className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+              outsideReview ? 'border-[#025CA8] bg-[#025CA8]/5' : 'border-gray-200 hover:border-gray-300'
+            } ${outsideAllowed.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}>
+              <input
+                type="checkbox"
+                checked={outsideReview}
+                onChange={e => { setOutsideReview(e.target.checked); setOutsideStatus(null) }}
+                className="mt-0.5 accent-[#025CA8]"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-800">Require review by your team</p>
+                <p className="text-xs text-gray-500">
+                  New entries go into a review queue. Anything marked not approved stays visible to the
+                  person but stops counting toward their totals.
+                </p>
+              </div>
+            </label>
+
+            {outsideStatus && (
+              <p className={`text-sm rounded px-3 py-2 ${outsideStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                {outsideStatus.msg}
+              </p>
+            )}
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSaveOutsideSettings}
+                disabled={outsideSaving}
+                className="bg-[#025CA8] hover:bg-[#024A87]"
+              >
+                {outsideSaving
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
+                  : 'Save Settings'}
               </Button>
             </div>
           </div>

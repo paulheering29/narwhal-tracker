@@ -123,6 +123,13 @@ export async function generateBasic(data: CertData): Promise<Uint8Array> {
   })
   curY += cellH + 16
 
+  // Ethics / supervision breakdown gets its own line — too long for a grid cell.
+  if (data.unitBreakdown) {
+    const bdSz = 9
+    page.drawText(data.unitBreakdown, { x: 36, y: T(curY + bdSz - 8), font: regular, size: bdSz, color: GRAY })
+    curY += 10
+  }
+
   // ── 2-column detail grid: Trainer | Organization ──────────────────────────────
   const col2W = (W - 72) / 2
   const pairs: Array<[string, string]> = [

@@ -23,11 +23,11 @@ export default async function AdminUsersPage() {
   const service = createServiceClient()
   const companyPromise = service
     .from('companies')
-    .select('id, name, logo_url, org_contact_staff_id, preferred_cert_template, enabled_cert_templates')
+    .select('id, name, logo_url, org_contact_staff_id, preferred_cert_template, enabled_cert_templates, external_training_credentials, external_training_review')
     .eq('id', me.company_id)
     .single()
 
-  const [{ data: staff }, { data: topics }, { data: company }, billing, allPlans, rbtCount] = await Promise.all([
+  const [{ data: staff }, { data: topics }, { data: company }, billing, allPlans, rbtCount, { data: credentialTypes }] = await Promise.all([
     supabase
       .from('staff')
       .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number, credentials')
@@ -41,6 +41,7 @@ export default async function AdminUsersPage() {
     getCompanyBilling(me.company_id),
     getAllPlans(),
     getRBTCount(me.company_id),
+    supabase.from('credential_types').select('code, unit_label').order('sort_order'),
   ])
 
   const planLimits = {
@@ -59,6 +60,7 @@ export default async function AdminUsersPage() {
       planLimits={planLimits}
       billing={billing}
       allPlans={allPlans}
+      credentialTypes={credentialTypes ?? []}
     />
   )
 }

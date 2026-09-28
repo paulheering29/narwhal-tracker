@@ -27,6 +27,8 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog'
+import { OutsideTrainings } from '@/components/outside-trainings'
+import { OUTSIDE_TRAINING_COLUMNS, toOutsideTraining, type OutsideTraining } from '@/lib/outside-trainings'
 import { getCompanyId } from '@/lib/get-company-id'
 import { getDisplayName, getLegalName, hasPreferredName } from '@/lib/display-name'
 import { getCycleStatus, isActiveCycle, cycleStatusStyles } from '@/lib/cycle-status'
@@ -62,6 +64,8 @@ type StaffMember = {
   certification_number: string | null
   original_certification_date: string | null
   credentials: string | null
+  is_supervisor: boolean
+  auth_id: string | null
 }
 
 type Cycle = {
@@ -181,6 +185,11 @@ export default function StaffDetailPage() {
   // Data
   const [staff, setStaff] = useState<StaffMember | null>(null)
   const [credentialCodes, setCredentialCodes] = useState<string[]>(['RBT', 'BCBA'])
+  // Credentials with a supervision minimum — only those ask "Supervises?"
+  const [supervisionCodes, setSupervisionCodes] = useState<string[]>([])
+  const [credentialRows, setCredentialRows] = useState<{ code: string; unit_label: string; ethics_units_required: number; supervision_units_required: number }[]>([])
+  const [outside, setOutside] = useState<OutsideTraining[]>([])
+  const [myAuthId, setMyAuthId] = useState<string | null>(null)
   const [cycles, setCycles] = useState<Cycle[]>([])
   const [allRecords, setAllRecords] = useState<AllTrainingRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -199,7 +208,7 @@ export default function StaffDetailPage() {
 
   // Edit staff dialog
   const [editStaffOpen, setEditStaffOpen] = useState(false)
-  const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', display_first_name: '', display_last_name: '', email: '', role: '', ehr_id: '', certification_number: '', original_certification_date: '', credentials: '' })
+  const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', display_first_name: '', display_last_name: '', email: '', role: '', ehr_id: '', certification_number: '', original_certification_date: '', credentials: '', is_supervisor: false })
   const [savingStaff, setSavingStaff] = useState(false)
   const [staffError, setStaffError] = useState<string | null>(null)
   const [togglingActive, setTogglingActive] = useState(false)
@@ -268,15 +277,33 @@ export default function StaffDetailPage() {
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [pendingFilesError, setPendingFilesError] = useState<string | null>(null)
 
+  // This person's credential row (RBT, BCBA, …); null for plain trainers.
+  const staffCredential = credentialRows.find(c => c.code === staff?.role?.toUpperCase()) ?? null
+
   // ─── Data loading ───────────────────────────────────────────────────────────
 
   const loadStaff = useCallback(async () => {
-    const [{ data }, { data: types }] = await Promise.all([
+    const [{ data }, { data: types }, { data: { user } }] = await Promise.all([
       supabase.from('staff').select('*').eq('id', staffId).single(),
-      supabase.from('credential_types').select('code').order('sort_order'),
+      supabase.from('credential_types').select('code, unit_label, ethics_units_required, supervision_units_required').order('sort_order'),
+      supabase.auth.getUser(),
     ])
     if (data) setStaff(data)
-    if (types?.length) setCredentialCodes(types.map(t => t.code))
+    setMyAuthId(user?.id ?? null)
+    if (types?.length) {
+      setCredentialRows(types.map(t => ({ ...t, ethics_units_required: Number(t.ethics_units_required), supervision_units_required: Number(t.supervision_units_required) })))
+      setCredentialCodes(types.map(t => t.code))
+      setSupervisionCodes(types.filter(t => Number(t.supervision_units_required) > 0).map(t => t.code))
+    }
+  }, [staffId])
+
+  const loadOutside = useCallback(async () => {
+    const { data } = await supabase
+      .from('external_trainings')
+      .select(OUTSIDE_TRAINING_COLUMNS)
+      .eq('staff_id', staffId)
+      .order('completed_date', { ascending: false })
+    setOutside((data ?? []).map(toOutsideTraining))
   }, [staffId])
 
   const loadCycles = useCallback(async () => {
@@ -300,11 +327,11 @@ export default function StaffDetailPage() {
   useEffect(() => {
     async function init() {
       setLoading(true)
-      await Promise.all([loadStaff(), loadCycles(), loadAllRecords()])
+      await Promise.all([loadStaff(), loadCycles(), loadAllRecords(), loadOutside()])
       setLoading(false)
     }
     init()
-  }, [loadStaff, loadCycles, loadAllRecords])
+  }, [loadStaff, loadCycles, loadAllRecords, loadOutside])
 
   async function loadCycleRecords(cycle: Cycle) {
     if (cycleRecords[cycle.id]) return // already loaded
@@ -448,6 +475,7 @@ export default function StaffDetailPage() {
       certification_number: staff.certification_number ?? '',
       original_certification_date: staff.original_certification_date ?? '',
       credentials: staff.credentials ?? '',
+      is_supervisor: staff.is_supervisor ?? false,
     })
     setStaffError(null)
     setEditStaffOpen(true)
@@ -470,6 +498,8 @@ export default function StaffDetailPage() {
       certification_number: staffForm.certification_number.trim() || null,
       original_certification_date: staffForm.original_certification_date || null,
       credentials: staffForm.credentials.trim() || null,
+      // Only meaningful for credentials with a supervision minimum
+      is_supervisor: supervisionCodes.includes(staffForm.role.toUpperCase()) && staffForm.is_supervisor,
     }).eq('id', staffId)
     if (error) { setStaffError(error.message); setSavingStaff(false); return }
     setSavingStaff(false)
@@ -637,6 +667,7 @@ export default function StaffDetailPage() {
     { label: 'Role',                value: staff.role ?? '—' },
     { label: 'Credentials',         value: staff.credentials ?? <span className="text-gray-400 italic">—</span> },
     { label: 'Certification Number', value: staff.certification_number ?? '—', mono: true },
+    ...(supervisionCodes.includes(staff.role?.toUpperCase() ?? '') ? [{ label: 'Supervises', value: staff.is_supervisor ? 'Yes' : 'No' }] : []),
     { label: 'Original Cert Date',  value: staff.original_certification_date ? formatDate(staff.original_certification_date) : '—' },
   ]
 
@@ -963,6 +994,22 @@ export default function StaffDetailPage() {
               })}
             </div>
           )}
+
+          {staffCredential && (
+            <div className="mt-6">
+              <OutsideTrainings
+                staffId={staffId}
+                unitLabel={staffCredential.unit_label}
+                showEthics={staffCredential.ethics_units_required > 0}
+                showSupervision={staffCredential.supervision_units_required > 0}
+                items={outside}
+                onChanged={loadOutside}
+                canAdd
+                // Nobody reviews their own entries (the database enforces this too).
+                canReview={!!staff && staff.auth_id !== myAuthId}
+              />
+            </div>
+          )}
         </section>
 
       </div>
@@ -1070,6 +1117,20 @@ export default function StaffDetailPage() {
                 </SelectContent>
               </Select>
             </div>
+            {supervisionCodes.includes(staffForm.role.toUpperCase()) && (
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={staffForm.is_supervisor}
+                  onChange={e => setStaffForm(f => ({ ...f, is_supervisor: e.target.checked }))}
+                  className="mt-0.5 rounded border-gray-300 text-blue-600"
+                />
+                <span className="text-sm">
+                  Supervises others
+                  <span className="block text-xs text-gray-400">Adds the supervision CEU requirement to their cycle</span>
+                </span>
+              </label>
+            )}
             <div className="space-y-2">
               <Label>Credentials</Label>
               <Input

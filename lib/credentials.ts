@@ -5,6 +5,8 @@ export type Credential = {
   code: string            // 'RBT', 'BCBA', ... — matches staff.role
   unit_label: string      // 'PDU' / 'CEU', singular
   units_required: number  // per certification cycle
+  ethics_units_required: number
+  supervision_units_required: number  // only owed by staff with is_supervisor
 }
 
 /**
@@ -19,8 +21,15 @@ export async function getCredential(
   if (!role) return null
   const { data } = await supabase
     .from('credential_types')
-    .select('code, unit_label, units_required')
+    .select('code, unit_label, units_required, ethics_units_required, supervision_units_required')
     .ilike('code', role)
     .maybeSingle()
-  return data ? { ...data, units_required: Number(data.units_required) } : null
+  return data
+    ? {
+        ...data,
+        units_required:             Number(data.units_required),
+        ethics_units_required:      Number(data.ethics_units_required),
+        supervision_units_required: Number(data.supervision_units_required),
+      }
+    : null
 }

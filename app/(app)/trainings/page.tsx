@@ -9,6 +9,7 @@ import { getDisplayName } from '@/lib/display-name'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { CreditFields, creditFormFrom, creditPayload, creditSummary, emptyCreditForm, validateCredit, type CreditForm } from '@/components/credit-fields'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -61,6 +62,9 @@ type Training = {
   start_time: string | null
   end_time: string | null
   units: number | null
+  eligible_credentials: string[] | null
+  ethics_units: number | null
+  supervision_units: number | null
   modality: string | null
   validity_months: number | null
   trainer_staff_id: string | null
@@ -308,6 +312,7 @@ export default function TrainingsPage() {
   const [editing, setEditing]         = useState<Training | null>(null)
   const [copying, setCopying]         = useState<Training | null>(null)
   const [form, setForm]               = useState(emptyForm)
+  const [credit, setCredit] = useState<CreditForm>(emptyCreditForm)
   const [trainerType, setTrainerType] = useState<'staff' | 'external'>('staff')
   const [saving, setSaving]           = useState(false)
   const [error, setError]             = useState<string | null>(null)
@@ -364,6 +369,7 @@ export default function TrainingsPage() {
           .from('courses')
           .select(`
             id, name, description, date, start_time, end_time, units, modality,
+            eligible_credentials, ethics_units, supervision_units,
             validity_months, trainer_staff_id, trainer_name, trainer_cert_number,
             topic_id,
             staff:trainer_staff_id(id, first_name, last_name, display_first_name, display_last_name),
@@ -404,6 +410,7 @@ export default function TrainingsPage() {
   function openAdd() {
     setEditing(null)
     setForm(emptyForm)
+    setCredit(emptyCreditForm)
     setTrainerType('staff')
     setError(null)
     setDialogOpen(true)
@@ -426,6 +433,7 @@ export default function TrainingsPage() {
       trainer_cert_number: t.trainer_cert_number ?? '',
       topic_id:           t.topic_id ?? '',
     })
+    setCredit(creditFormFrom(t))
     setTrainerType(t.trainer_staff_id ? 'staff' : 'external')
     setError(null)
     setDialogOpen(true)
@@ -445,6 +453,7 @@ export default function TrainingsPage() {
       topic_id:        t.topic_id ?? '',
       // date, start_time, end_time, trainer fields intentionally blank
     })
+    setCredit(creditFormFrom(t))
     setTrainerType('staff')
     setError(null)
     setDialogOpen(true)
@@ -457,8 +466,10 @@ export default function TrainingsPage() {
     if (!form.date)             { setError('Date is required.'); return }
     if (!form.start_time)       { setError('Start time is required.'); return }
     if (!form.end_time)         { setError('End time is required.'); return }
-    if (!form.units)            { setError('PDUs are required.'); return }
+    if (!form.units)            { setError('Units are required.'); return }
     if (!form.modality)         { setError('Modality is required.'); return }
+    const creditError = validateCredit(credit, form.units)
+    if (creditError)            { setError(creditError); return }
 
     const payload = {
       name:                form.name.trim(),
@@ -473,6 +484,7 @@ export default function TrainingsPage() {
       trainer_name:        trainerType === 'external'  ? form.trainer_name || null     : null,
       trainer_cert_number: trainerType === 'external'  ? form.trainer_cert_number || null : null,
       topic_id:            form.topic_id || null,
+      ...creditPayload(credit),
     }
 
     setSaving(true)
@@ -678,7 +690,7 @@ export default function TrainingsPage() {
                         <Clock className="h-3.5 w-3.5" />{fmtTime(t.start_time)}–{fmtTime(t.end_time)}
                       </span>
                     )}
-                    {t.units != null && <span className="font-medium text-gray-700">{t.units} PDU{t.units !== 1 ? 's' : ''}</span>}
+                    {t.units != null && <span className="font-medium text-gray-700">{creditSummary(t)}</span>}
                   </div>
 
                   {/* Badges row */}
@@ -763,7 +775,7 @@ export default function TrainingsPage() {
                           ? <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{fmtTime(t.start_time)}–{fmtTime(t.end_time)}</span>
                           : '—'}
                       </TableCell>
-                      <TableCell className="text-gray-600">{t.units != null ? `${t.units} PDU${t.units !== 1 ? 's' : ''}` : '—'}</TableCell>
+                      <TableCell className="text-gray-600">{creditSummary(t)}</TableCell>
                       <TableCell>
                         {t.modality ? (
                           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${MODALITY_STYLES[t.modality] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -901,7 +913,7 @@ export default function TrainingsPage() {
                                 </span>
                               )}
                               {c.units != null && (
-                                <span className="text-xs text-gray-400">{c.units} PDU{c.units !== 1 ? 's' : ''}</span>
+                                <span className="text-xs text-gray-400">{c.units} unit{c.units !== 1 ? 's' : ''}</span>
                               )}
                             </div>
                           </div>
@@ -1241,12 +1253,13 @@ export default function TrainingsPage() {
                   </div>
                 </div>
 
-                {/* PDUs */}
+                {/* Units + who they count for */}
                 <div className="space-y-2">
-                  <Label>PDUs *</Label>
+                  <Label>Units *</Label>
                   <Input type="number" min="0" step="0.25" placeholder="e.g. 1.5"
                     value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value }))} />
                 </div>
+                <CreditFields value={credit} onChange={setCredit} />
 
                 {/* Trainer */}
                 <div className="space-y-3">

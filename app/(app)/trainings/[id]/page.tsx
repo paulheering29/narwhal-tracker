@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TemplatePickerDialog } from '@/components/template-picker-dialog'
+import { CreditFields, creditFormFrom, creditPayload, creditSummary, emptyCreditForm, validateCredit, type CreditForm } from '@/components/credit-fields'
 import {
   ArrowLeft, Pencil, Loader2, Upload, FileText, Download,
   Link2, Link2Off, Clock, Calendar, CheckCircle2, Circle, Search, Award, Mail,
@@ -36,6 +37,7 @@ type Training = {
   id: string; name: string; description: string | null; objectives: string | null
   date: string | null; start_time: string | null; end_time: string | null
   units: number | null; modality: string | null; validity_months: number | null
+  eligible_credentials: string[] | null; ethics_units: number | null; supervision_units: number | null
   trainer_staff_id: string | null; trainer_name: string | null; trainer_cert_number: string | null
   topic_id: string | null
   staff: StaffOption | null
@@ -131,6 +133,7 @@ export default function TrainingDetailPage() {
   // ── Edit dialog ──────────────────────────────────────────────────────────────
   const [editOpen, setEditOpen]       = useState(false)
   const [form, setForm]               = useState(emptyForm)
+  const [credit, setCredit]           = useState<CreditForm>(emptyCreditForm)
   const [trainerType, setTrainerType] = useState<'staff' | 'external'>('staff')
   const [topicList, setTopicList]     = useState<TopicOption[]>([])
   const [saving, setSaving]           = useState(false)
@@ -358,6 +361,7 @@ export default function TrainingDetailPage() {
       trainer_cert_number: training.trainer_cert_number ?? '',
       topic_id:           training.topic_id ?? '',
     })
+    setCredit(creditFormFrom(training))
     setTrainerType(training.trainer_staff_id ? 'staff' : 'external')
     setEditError(null)
     setEditOpen(true)
@@ -368,6 +372,8 @@ export default function TrainingDetailPage() {
       setEditError('Please fill in all required fields.')
       return
     }
+    const creditError = validateCredit(credit, form.units)
+    if (creditError) { setEditError(creditError); return }
     setSaving(true)
     setEditError(null)
     const { error } = await supabase.from('courses').update({
@@ -384,6 +390,7 @@ export default function TrainingDetailPage() {
       trainer_name:        trainerType === 'external' ? form.trainer_name || null     : null,
       trainer_cert_number: trainerType === 'external' ? form.trainer_cert_number || null : null,
       topic_id:            form.topic_id || null,
+      ...creditPayload(credit),
     }).eq('id', trainingId)
     if (error) { setEditError(error.message); setSaving(false); return }
     setSaving(false)
@@ -443,12 +450,16 @@ export default function TrainingDetailPage() {
     loadAttendees()
   }
 
-  // Anyone with an active certification cycle (RBT or BCBA), not yet added,
-  // can be added — the cycle is what their PDUs/CEUs count toward.
+  // A person earns credit here if their active cycle's credential (RBT,
+  // BCBA) is one this training counts for.
+  const eligibleCodes = training?.eligible_credentials ?? ['RBT']
+  const earnsCredit = (staffId: string) => eligibleCodes.includes(activeCycleMap[staffId] ?? '')
+
+  // Only people who'd earn credit (and aren't already added) can be added.
   const attendeeStaffIds = new Set(attendees.map(a => a.staff_id))
   const availableStaff = staffList
     .filter(s => !attendeeStaffIds.has(s.id))
-    .filter(s => activeCycleMap[s.id] !== undefined)
+    .filter(s => earnsCredit(s.id))
     .filter(s => staffSearch === '' ||
       getDisplayName(s).toLowerCase().includes(staffSearch.toLowerCase()))
 
@@ -578,7 +589,7 @@ export default function TrainingDetailPage() {
             <div>
               <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">PDUs</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {training.units != null ? `${training.units} PDU${training.units !== 1 ? 's' : ''}` : '—'}
+                {creditSummary(training)}
               </dd>
             </div>
             <div>
@@ -636,7 +647,7 @@ export default function TrainingDetailPage() {
               )}
             </p>
             {(() => {
-              const certifiedConfirmed = attendees.filter(a => a.confirmed && activeCycleMap[a.staff_id])
+              const certifiedConfirmed = attendees.filter(a => a.confirmed && earnsCredit(a.staff_id))
               if (certifiedConfirmed.length === 0) return null
               const allEmailed  = certifiedConfirmed.every(a => emailedIds.has(a.id))
               const anyEmailing = certifiedConfirmed.some(a => emailingIds.has(a.id))
@@ -734,7 +745,7 @@ export default function TrainingDetailPage() {
                           </button>
                         </TableCell>
                         <TableCell className="text-right">
-                          {attendee.confirmed && certType ? (
+                          {attendee.confirmed && certType && earnsCredit(attendee.staff_id) ? (
                             <div className="flex items-center justify-end gap-1.5 flex-wrap">
                               {!trainingEnded ? (
                                 <span className="text-xs text-gray-400 italic">Available after training ends</span>
@@ -809,7 +820,7 @@ export default function TrainingDetailPage() {
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
               <Input
-                placeholder="Search RBTs and BCBAs…"
+                placeholder="Search staff…"
                 value={staffSearch}
                 onChange={e => setStaffSearch(e.target.value)}
                 className="pl-8 h-8 text-sm"
@@ -822,7 +833,7 @@ export default function TrainingDetailPage() {
                 <p className="py-8 text-center text-sm text-gray-400">
                   {staffSearch
                     ? 'No one matches your search.'
-                    : 'Everyone with an active RBT or BCBA cycle has been added.'}
+                    : `Everyone with an active ${eligibleCodes.join(' or ')} cycle has been added.`}
                 </p>
               ) : (
                 availableStaff.map(s => {
@@ -994,7 +1005,7 @@ export default function TrainingDetailPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>PDUs *</Label>
+                <Label>Units *</Label>
                 <Input type="number" min="0" step="0.25" value={form.units}
                   onChange={e => setForm(f => ({ ...f, units: e.target.value }))} />
               </div>
@@ -1016,6 +1027,7 @@ export default function TrainingDetailPage() {
                 </div>
               )}
             </div>
+            <CreditFields value={credit} onChange={setCredit} />
             <div className="space-y-3">
               <Label>Trainer</Label>
               <div className="flex rounded-md border overflow-hidden w-fit">

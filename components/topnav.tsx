@@ -111,13 +111,13 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress }: TopNav
           </Link>
 
           {/* Desktop nav links */}
-          <nav className="hidden lg:flex items-center gap-1 flex-1">
+          <nav className="hidden xl:flex items-center gap-1 flex-1">
             {navItems.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
+                  'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
                   isActive(href)
                     ? 'bg-[#025CA8]/10 text-[#025CA8]'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -134,7 +134,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress }: TopNav
                 <button
                   onClick={() => setAnalyticsOpen(o => !o)}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
+                    'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
                     isActive('/analytics')
                       ? 'bg-[#025CA8]/10 text-[#025CA8]'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -166,7 +166,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress }: TopNav
               <Link
                 href="/admin/users"
                 className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
+                  'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
                   isActive('/admin')
                     ? 'bg-[#025CA8]/10 text-[#025CA8]'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -179,7 +179,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress }: TopNav
           </nav>
 
           {/* Desktop: user info + profile + sign out */}
-          <div className="hidden lg:flex items-center gap-3 shrink-0 ml-auto">
+          <div className="hidden xl:flex items-center gap-3 shrink-0 ml-auto">
             <div className="text-right">
               <p className="text-xs text-gray-500 leading-none">{userName}</p>
               <p className="text-xs text-gray-700 font-medium leading-none mt-0.5">
@@ -212,7 +212,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress }: TopNav
           {/* Mobile: hamburger button */}
           <button
             onClick={() => setMobileOpen(o => !o)}
-            className="lg:hidden ml-auto flex items-center justify-center h-9 w-9 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+            className="xl:hidden ml-auto flex items-center justify-center h-9 w-9 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -224,7 +224,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress }: TopNav
       {/* Mobile drawer */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-30"
+          className="xl:hidden fixed inset-0 z-30"
           onClick={() => setMobileOpen(false)}
         >
           <div

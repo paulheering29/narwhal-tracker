@@ -1,5 +1,6 @@
 'use client'
 
+import { compressVideo } from '@/lib/compress-video'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import * as tus from 'tus-js-client'
@@ -120,6 +121,7 @@ export default function CourseDetailPage() {
   const [savingPart, setSavingPart]     = useState(false)
   const [uploading, setUploading]       = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [optimizing, setOptimizing]     = useState(false)
   const [uploadError, setUploadError]   = useState<string | null>(null)
   const [deletingPartId, setDeletingPartId] = useState<string | null>(null)
   const [partError, setPartError]       = useState<string | null>(null)
@@ -579,9 +581,9 @@ export default function CourseDetailPage() {
   }
 
   async function handleFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (!file.type.startsWith('video/')) {
+    const chosen = e.target.files?.[0]
+    if (!chosen) return
+    if (!chosen.type.startsWith('video/')) {
       setUploadError('Please choose a video file.')
       return
     }
@@ -592,6 +594,11 @@ export default function CourseDetailPage() {
     setUploadProgress(0)
 
     try {
+      setOptimizing(true)
+      const file = await compressVideo(chosen, f => setUploadProgress(Math.round(f * 100)))
+      setOptimizing(false)
+      setUploadProgress(0)
+
       const authRes = await fetch('/api/admin/course-videos/upload-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -639,6 +646,7 @@ export default function CourseDetailPage() {
       loadVideos()
     } catch (err) {
       setUploading(false)
+      setOptimizing(false)
       setUploadError(err instanceof Error ? err.message : 'Upload failed.')
     }
   }
@@ -1208,7 +1216,7 @@ export default function CourseDetailPage() {
                 <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
                   <div className="h-full bg-[#025CA8] transition-all" style={{ width: `${uploadProgress}%` }} />
                 </div>
-                <p className="text-sm text-gray-500 text-center">Uploading… {uploadProgress}%</p>
+                <p className="text-sm text-gray-500 text-center">{optimizing ? 'Optimizing video for faster upload…' : 'Uploading…'} {uploadProgress}%</p>
               </div>
             ) : (
               <Button variant="outline" className="w-full" onClick={handleFilePick}>

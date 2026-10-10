@@ -47,8 +47,8 @@ const rbtNavItems: Item[] = [
 
 const analyticsItems: Item[] = [
   { href: '/analytics/topics',        label: 'Topic Analysis', icon: Tag        },
-  { href: '/analytics/rbt-insights',  label: 'RBT Insights',   icon: Award      },
-  { href: '/analytics/rbt-timeline',  label: 'RBT Timeline',   icon: GitCommitHorizontal },
+  { href: '/analytics/rbt-insights',  label: 'RBT & BCBA Insights',   icon: Award      },
+  { href: '/analytics/rbt-timeline',  label: 'RBT & BCBA Timeline',   icon: GitCommitHorizontal },
 ]
 
 const linkBase = 'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors'

@@ -10,13 +10,16 @@ export default async function RbtTimelinePage() {
   const supabase = await createClient()
   const service = createServiceClient()
 
-  const [{ data: staff }, { data: comparisons }] = await Promise.all([
-    supabase
-      .from('staff')
-      .select('id, first_name, last_name, display_first_name, display_last_name, original_certification_date')
-      .eq('role', 'RBT')
-      .not('original_certification_date', 'is', null)
-      .order('original_certification_date', { ascending: true }),
+  const byCredential = (code: string) => supabase
+    .from('staff')
+    .select('id, first_name, last_name, display_first_name, display_last_name, original_certification_date')
+    .ilike('role', code)
+    .not('original_certification_date', 'is', null)
+    .order('original_certification_date', { ascending: true })
+
+  const [{ data: rbts }, { data: bcbas }, { data: comparisons }] = await Promise.all([
+    byCredential('RBT'),
+    byCredential('BCBA'),
     service
       .from('timeline_comparisons')
       .select('name, year, value, image')
@@ -38,5 +41,5 @@ export default async function RbtTimelinePage() {
     return { name: c.name, year: c.year, value: c.value, image_url }
   })
 
-  return <RbtTimelineClient staff={staff ?? []} comparisons={resolved} />
+  return <RbtTimelineClient rbts={rbts ?? []} bcbas={bcbas ?? []} comparisons={resolved} />
 }

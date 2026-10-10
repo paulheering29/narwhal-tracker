@@ -12,7 +12,8 @@ type StaffMember = {
 }
 
 type Props = {
-  staff: StaffMember[]
+  rbts:  StaffMember[]
+  bcbas: StaffMember[]
   today: string
 }
 
@@ -54,14 +55,14 @@ function fmtDate(dateStr: string) {
   })
 }
 
-export function RbtInsightsClient({ staff, today }: Props) {
+function InsightsPanel({ label, staff, today }: { label: string; staff: StaffMember[]; today: string }) {
   if (staff.length === 0) {
     return (
-      <div className="p-8">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">RBT Insights</h1>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">{label} Insights</h2>
         <p className="text-gray-400 text-sm">
-          No active RBTs with a certification date on record yet. Add original certification
-          dates on each RBT&apos;s profile page to see insights here.
+          No active {label}s with a certification date on record yet. Add original certification
+          dates on each {label}&apos;s profile page to see insights here.
         </p>
       </div>
     )
@@ -85,19 +86,19 @@ export function RbtInsightsClient({ staff, today }: Props) {
   const avgYears    = (averageDays / 365).toFixed(1)
 
   return (
-    <div className="p-8 max-w-5xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">RBT Insights</h1>
+    <div>
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-900">{label} Insights</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Tenure stats across {staff.length} active RBT{staff.length !== 1 ? 's' : ''} with certification dates on record.
+          Tenure stats across {staff.length} active {label}{staff.length !== 1 ? 's' : ''} with certification dates on record.
         </p>
       </div>
 
       {/* Top row: 2 spotlight cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
         {/* Newest RBT */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-50 to-blue-100 border border-blue-200 p-6">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-50 to-blue-100 border border-blue-200 p-5">
           <div className="absolute -right-4 -top-4 opacity-10">
             <Star className="h-32 w-32 text-blue-500" />
           </div>
@@ -105,7 +106,7 @@ export function RbtInsightsClient({ staff, today }: Props) {
             <div className="flex items-center justify-center h-9 w-9 rounded-full bg-blue-500 text-white shrink-0">
               <Star className="h-4 w-4" />
             </div>
-            <span className="text-xs font-semibold text-blue-600 uppercase tracking-widest">Newest RBT</span>
+            <span className="text-xs font-semibold text-blue-600 uppercase tracking-widest">Newest {label}</span>
           </div>
           <p className="text-2xl font-bold text-gray-900 mb-1">{getDisplayName(newest)}</p>
           <p className="text-sm text-blue-700 font-medium mb-3">
@@ -113,12 +114,12 @@ export function RbtInsightsClient({ staff, today }: Props) {
           </p>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 px-3 py-1">
             <Clock className="h-3.5 w-3.5 text-blue-600" />
-            <span className="text-sm font-semibold text-blue-700">{formatTenure(newestDays)} as RBT</span>
+            <span className="text-sm font-semibold text-blue-700">{formatTenure(newestDays)} as {label}</span>
           </div>
         </div>
 
         {/* Longest Tenured */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 p-6">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 p-5">
           <div className="absolute -right-4 -top-4 opacity-10">
             <Award className="h-32 w-32 text-amber-500" />
           </div>
@@ -126,7 +127,7 @@ export function RbtInsightsClient({ staff, today }: Props) {
             <div className="flex items-center justify-center h-9 w-9 rounded-full bg-amber-500 text-white shrink-0">
               <Award className="h-4 w-4" />
             </div>
-            <span className="text-xs font-semibold text-amber-600 uppercase tracking-widest">Longest Tenured RBT</span>
+            <span className="text-xs font-semibold text-amber-600 uppercase tracking-widest">Longest Tenured {label}</span>
           </div>
           <p className="text-2xl font-bold text-gray-900 mb-1">{getDisplayName(longestTenured)}</p>
           <p className="text-sm text-amber-700 font-medium mb-3">
@@ -134,31 +135,31 @@ export function RbtInsightsClient({ staff, today }: Props) {
           </p>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1">
             <Clock className="h-3.5 w-3.5 text-amber-600" />
-            <span className="text-sm font-semibold text-amber-700">{formatTenure(longestDays)} as RBT</span>
+            <span className="text-sm font-semibold text-amber-700">{formatTenure(longestDays)} as {label}</span>
           </div>
         </div>
       </div>
 
       {/* Bottom row: 3 stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 
         {/* Total Time */}
-        <div className="rounded-2xl bg-white border border-gray-200 p-6 flex flex-col gap-3 shadow-sm">
+        <div className="rounded-2xl bg-white border border-gray-200 p-5 flex flex-col gap-3 shadow-sm">
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center h-9 w-9 rounded-full bg-violet-100 shrink-0">
               <TrendingUp className="h-4 w-4 text-violet-600" />
             </div>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Total RBT Tenure</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Total {label} Tenure</span>
           </div>
           <div>
             <p className="text-4xl font-extrabold text-gray-900">{totalYears}</p>
             <p className="text-sm text-gray-500 mt-0.5">years combined</p>
           </div>
-          <p className="text-xs text-gray-400">{formatTotalTenure(totalDays)} across all active RBTs</p>
+          <p className="text-xs text-gray-400">{formatTotalTenure(totalDays)} across all active {label}s</p>
         </div>
 
         {/* Average Time */}
-        <div className="rounded-2xl bg-white border border-gray-200 p-6 flex flex-col gap-3 shadow-sm">
+        <div className="rounded-2xl bg-white border border-gray-200 p-5 flex flex-col gap-3 shadow-sm">
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center h-9 w-9 rounded-full bg-emerald-100 shrink-0">
               <Users className="h-4 w-4 text-emerald-600" />
@@ -167,22 +168,22 @@ export function RbtInsightsClient({ staff, today }: Props) {
           </div>
           <div>
             <p className="text-4xl font-extrabold text-gray-900">{avgYears}</p>
-            <p className="text-sm text-gray-500 mt-0.5">years per RBT</p>
+            <p className="text-sm text-gray-500 mt-0.5">years per {label}</p>
           </div>
-          <p className="text-xs text-gray-400">{formatTenure(averageDays)} average across {staff.length} RBT{staff.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-gray-400">{formatTenure(averageDays)} average across {staff.length} {label}{staff.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* RBTs counted */}
-        <div className="rounded-2xl bg-white border border-gray-200 p-6 flex flex-col gap-3 shadow-sm">
+        <div className="rounded-2xl bg-white border border-gray-200 p-5 flex flex-col gap-3 shadow-sm">
           <div className="flex items-center gap-2">
             <div className="flex items-center justify-center h-9 w-9 rounded-full bg-teal-100 shrink-0">
               <CalendarDays className="h-4 w-4 text-teal-600" />
             </div>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">RBTs Counted</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{label}s Counted</span>
           </div>
           <div>
             <p className="text-4xl font-extrabold text-gray-900">{staff.length}</p>
-            <p className="text-sm text-gray-500 mt-0.5">active RBTs</p>
+            <p className="text-sm text-gray-500 mt-0.5">active {label}s</p>
           </div>
           <p className="text-xs text-gray-400">with original certification date on record</p>
         </div>
@@ -190,14 +191,14 @@ export function RbtInsightsClient({ staff, today }: Props) {
 
       {/* Tenure bar chart */}
       <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-5">Tenure by RBT</h2>
+        <h2 className="text-base font-semibold text-gray-900 mb-5">Tenure by {label}</h2>
         <div className="space-y-3">
           {sorted.slice().reverse().map(s => {
             const days = daysFromDate(s.original_certification_date, today)
             const pct  = longestDays > 0 ? Math.max(2, Math.round((days / longestDays) * 100)) : 2
             return (
               <div key={s.id} className="flex items-center gap-3">
-                <span className="w-36 shrink-0 text-sm text-gray-700 font-medium truncate text-right">
+                <span className="w-28 shrink-0 text-sm text-gray-700 font-medium truncate text-right">
                   {getDisplayName(s)}
                 </span>
                 <div className="flex-1 h-5 rounded-full bg-gray-100 overflow-hidden">
@@ -206,13 +207,26 @@ export function RbtInsightsClient({ staff, today }: Props) {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="w-28 shrink-0 text-xs text-gray-500 tabular-nums">
+                <span className="w-24 shrink-0 text-xs text-gray-500 tabular-nums">
                   {formatTenure(days)}
                 </span>
               </div>
             )
           })}
         </div>
+      </div>
+    </div>
+  )
+}
+
+
+export function RbtInsightsClient({ rbts, bcbas, today }: Props) {
+  return (
+    <div className="p-4 md:p-8">
+      <h1 className="text-2xl font-semibold text-gray-900 mb-8">RBT &amp; BCBA Insights</h1>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 items-start">
+        <InsightsPanel label="RBT"  staff={rbts}  today={today} />
+        <InsightsPanel label="BCBA" staff={bcbas} today={today} />
       </div>
     </div>
   )

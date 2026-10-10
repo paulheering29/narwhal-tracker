@@ -29,8 +29,12 @@ const DOT_COLORS = [
   { bg: 'bg-blue-400',    border: 'border-blue-400',    text: 'text-blue-600',    line: '#60a5fa' },
 ]
 
-export function RbtTimelineClient({ staff, comparisons }: { staff: StaffMember[]; comparisons: Comparison[] }) {
-  const [selectedComparison, setSelectedComparison] = useState<string>('none')
+function TimelinePanel({ label, staff, comparisons, selectedComparison }: {
+  label: string
+  staff: StaffMember[]
+  comparisons: Comparison[]
+  selectedComparison: string
+}) {
 
   // Group staff by year
   const byYear = new Map<number, StaffMember[]>()
@@ -48,15 +52,12 @@ export function RbtTimelineClient({ staff, comparisons }: { staff: StaffMember[]
 
   if (years.length === 0) {
     return (
-      <div className="p-8">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">RBT Timeline</h1>
-        <p className="text-sm text-gray-400">No RBTs with a certification date on record yet.</p>
-      </div>
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">{label} Timeline</h2>
+        <p className="text-sm text-gray-400">No {label}s with a certification date on record yet.</p>
+      </section>
     )
   }
-
-  // Unique category names from comparisons table
-  const comparisonNames = Array.from(new Set(comparisons.map(c => c.name)))
 
   // Build lookup for selected comparison: year → { value, image_url }
   const comparisonByYear = new Map<number, { value: string; image_url: string | null }>()
@@ -69,31 +70,12 @@ export function RbtTimelineClient({ staff, comparisons }: { staff: StaffMember[]
   }
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">RBT Timeline</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {staff.length} RBT{staff.length !== 1 ? 's' : ''} certified across {years.length} year{years.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-
-        {/* Comparison dropdown */}
-        {comparisonNames.length > 0 && (
-          <div className="flex items-center gap-2 shrink-0">
-            <label className="text-sm text-gray-500 whitespace-nowrap">Also show:</label>
-            <select
-              value={selectedComparison}
-              onChange={e => setSelectedComparison(e.target.value)}
-              className="text-sm rounded-md border border-gray-200 bg-white px-3 py-1.5 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
-            >
-              <option value="none">None</option>
-              {comparisonNames.map(name => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+    <section>
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-900">{label} Timeline</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          {staff.length} {label}{staff.length !== 1 ? 's' : ''} certified across {years.length} year{years.length !== 1 ? 's' : ''}
+        </p>
       </div>
 
       {/* Scrollable timeline container */}
@@ -138,7 +120,7 @@ export function RbtTimelineClient({ staff, comparisons }: { staff: StaffMember[]
                       {/* Count badge */}
                       <div className={`mb-2 self-start inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${color.text} bg-opacity-10`}
                         style={{ backgroundColor: `${color.line}22` }}>
-                        {members.length} RBT{members.length !== 1 ? 's' : ''}
+                        {members.length} {label}{members.length !== 1 ? 's' : ''}
                       </div>
 
                       {/* Names */}
@@ -227,6 +209,41 @@ export function RbtTimelineClient({ staff, comparisons }: { staff: StaffMember[]
           )}
 
         </div>
+      </div>
+    </section>
+  )
+}
+
+export function RbtTimelineClient({ rbts, bcbas, comparisons }: { rbts: StaffMember[]; bcbas: StaffMember[]; comparisons: Comparison[] }) {
+  const [selectedComparison, setSelectedComparison] = useState<string>('none')
+  const comparisonNames = Array.from(new Set(comparisons.map(c => c.name)))
+
+  return (
+    <div className="p-4 md:p-8">
+      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-semibold text-gray-900">RBT &amp; BCBA Timeline</h1>
+
+        {/* Comparison dropdown */}
+        {comparisonNames.length > 0 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-sm text-gray-500 whitespace-nowrap">Also show:</label>
+            <select
+              value={selectedComparison}
+              onChange={e => setSelectedComparison(e.target.value)}
+              className="text-sm rounded-md border border-gray-200 bg-white px-3 py-1.5 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+            >
+              <option value="none">None</option>
+              {comparisonNames.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-12">
+        <TimelinePanel label="RBT"  staff={rbts}  comparisons={comparisons} selectedComparison={selectedComparison} />
+        <TimelinePanel label="BCBA" staff={bcbas} comparisons={comparisons} selectedComparison={selectedComparison} />
       </div>
     </div>
   )

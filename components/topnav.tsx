@@ -26,7 +26,7 @@ import {
   ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { showAdminNav, canManageTrainings, rolesDisplay } from '@/lib/permissions'
+import { showAdminNav, canManageTrainings, hasRole, rolesDisplay } from '@/lib/permissions'
 
 interface TopNavProps {
   userTier:   'rbt' | 'staff'
@@ -140,7 +140,11 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
     { href: '/my-courses', label: 'My Courses', icon: GraduationCap },
     ...(showMyProgress ? [{ href: '/my-progress', label: 'My Progress', icon: Gauge }] : []),
   ] : []
-  const accountItems: Item[] = [...myItems, { href: '/settings', label: 'Profile & Signature', icon: UserCircle }]
+  // The settings page only holds the trainer signature, so only trainers get it.
+  const accountItems: Item[] = [
+    ...myItems,
+    ...(isStaff && hasRole(userRoles, 'Trainer') ? [{ href: '/settings', label: 'Signature', icon: UserCircle }] : []),
+  ]
 
   const trainingActive = trainingItems.some(i => isActive(i.href))
 

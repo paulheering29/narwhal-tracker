@@ -9,14 +9,17 @@ export default async function SettingsPage() {
 
   const { data: staff } = await supabase
     .from('staff')
-    .select('signature_url')
+    .select('signature_url, tier, roles')
     .eq('auth_id', user.id)
     .single()
+
+  // Only trainers sign certificates; nobody else has anything to do here.
+  if (staff?.tier !== 'staff' || !(staff.roles ?? []).includes('Trainer')) redirect('/dashboard')
 
   return (
     <div className="p-4 md:p-8 max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">My Profile &amp; Signature</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">My Signature</h1>
         <p className="mt-1 text-sm text-gray-500">
           Draw your signature once — it will be placed automatically on any certificate
           where you are listed as the trainer.

@@ -93,6 +93,11 @@ function MinimumCell({ done, target }: { done: number; target: number }) {
   )
 }
 function fmtPct(n: number) { return `${Math.round(n * 100)}%` }
+
+// Green means done: total units plus any ethics / supervision minimums.
+function isComplete(s: StaffRow, ethicsRequired: number) {
+  return !!s.cycleStart && s.pctDone >= 1 && s.ethicsDone >= ethicsRequired && s.supervisionDone >= s.supervisionTarget
+}
 function fmtVariance(n: number) {
   if (n === 0) return { label: '0', cls: 'text-gray-400' }
   return n > 0
@@ -810,7 +815,7 @@ export function StaffPageClient({
                 <div
                   key={s.id}
                   onClick={() => router.push(`/staff/${s.id}`)}
-                  className={`rounded-xl border bg-white shadow-sm p-4 cursor-pointer active:bg-gray-50 transition-colors ${!s.active ? 'opacity-50' : ''}`}
+                  className={`rounded-xl border shadow-sm p-4 cursor-pointer transition-colors ${isComplete(s, credential.ethics_units_required) ? 'bg-emerald-50 border-emerald-200 active:bg-emerald-100' : 'bg-white active:bg-gray-50'} ${!s.active ? 'opacity-50' : ''}`}
                 >
                   {/* Name row */}
                   <div className="flex items-start justify-between gap-2 mb-3">
@@ -973,7 +978,7 @@ export function StaffPageClient({
                   return (
                     <tr
                       key={s.id}
-                      className={`cursor-pointer hover:bg-gray-50 transition-colors ${!s.active ? 'opacity-50' : ''}`}
+                      className={`cursor-pointer transition-colors ${isComplete(s, credential.ethics_units_required) ? 'bg-emerald-50 hover:bg-emerald-100' : 'hover:bg-gray-50'} ${!s.active ? 'opacity-50' : ''}`}
                       onClick={() => router.push(`/staff/${s.id}`)}
                     >
                       <td className="text-center px-3 py-3 border-r border-gray-200">

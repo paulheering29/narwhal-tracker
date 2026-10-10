@@ -38,7 +38,7 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
     // trainings-completed card needs no full cycle table scan anymore.
     supabase
       .from('certification_cycles')
-      .select('id, staff_id, end_date, start_date, staff(id, first_name, last_name)')
+      .select('id, staff_id, end_date, start_date, certification_type, staff(id, first_name, last_name, is_supervisor)')
       .gte('end_date', today)
       .lte('end_date', in30Days),
     supabase
@@ -85,19 +85,43 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
       return true
     })
 
-  // PDU pacing for each expiring RBT — tally confirmed vs scheduled
-  // training records that fall inside their cycle window.
-  const pacingByStaff = new Map<string, { done: number; scheduled: number }>()
+  // Progress for each expiring person, against their own credential's
+  // requirements: confirmed vs scheduled trainings in the cycle, plus outside
+  // trainings (unless marked not approved), plus ethics / supervision.
+  type Pacing = { done: number; scheduled: number; ethics: number; supervision: number }
+  const pacingByStaff = new Map<string, Pacing>()
+  const credByCode = new Map<string, {
+    unit_label: string; units_required: number; ethics_units_required: number; supervision_units_required: number
+  }>()
   if (expiringUnique.length > 0) {
     const expiringStaffIds = expiringUnique.map(c => c.staff_id as string)
-    const cycleByStaff = new Map<string, { start: string; end: string }>()
+    const cycleByStaff = new Map<string, { start: string; end: string; code: string }>()
     for (const c of expiringUnique) {
-      cycleByStaff.set(c.staff_id as string, { start: c.start_date as string, end: c.end_date as string })
+      cycleByStaff.set(c.staff_id as string, {
+        start: c.start_date as string, end: c.end_date as string, code: String(c.certification_type).toUpperCase(),
+      })
     }
-    const { data: recs } = await supabase
-      .from('training_records')
-      .select('staff_id, completed_date, confirmed, courses(units)')
-      .in('staff_id', expiringStaffIds)
+    const [{ data: recs }, { data: outside }, { data: types }] = await Promise.all([
+      supabase
+        .from('training_records')
+        .select('staff_id, completed_date, confirmed, courses(units, eligible_credentials, ethics_units, supervision_units)')
+        .in('staff_id', expiringStaffIds),
+      supabase
+        .from('external_trainings')
+        .select('staff_id, completed_date, units, ethics_units, supervision_units, review_status')
+        .in('staff_id', expiringStaffIds),
+      supabase
+        .from('credential_types')
+        .select('code, unit_label, units_required, ethics_units_required, supervision_units_required'),
+    ])
+    for (const t of types ?? []) {
+      credByCode.set(String(t.code).toUpperCase(), {
+        unit_label: t.unit_label as string,
+        units_required: Number(t.units_required),
+        ethics_units_required: Number(t.ethics_units_required),
+        supervision_units_required: Number(t.supervision_units_required),
+      })
+    }
     for (const r of recs ?? []) {
       const staffId = r.staff_id as string
       const cycle   = cycleByStaff.get(staffId)
@@ -105,10 +129,29 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
       const date = r.completed_date as string
       if (date < cycle.start || date > cycle.end) continue
       const course = Array.isArray(r.courses) ? r.courses[0] : r.courses
-      const units  = (course?.units as number | null | undefined) ?? 0
-      const entry  = pacingByStaff.get(staffId) ?? { done: 0, scheduled: 0 }
-      if (r.confirmed) entry.done      += units
-      else             entry.scheduled += units
+      // A training only counts toward the credentials it's marked eligible for.
+      if (!((course?.eligible_credentials as string[] | null) ?? ['RBT']).includes(cycle.code)) continue
+      const units  = Number(course?.units ?? 0)
+      const entry  = pacingByStaff.get(staffId) ?? { done: 0, scheduled: 0, ethics: 0, supervision: 0 }
+      if (r.confirmed) {
+        entry.done        += units
+        entry.ethics      += Number(course?.ethics_units ?? 0)
+        entry.supervision += Number(course?.supervision_units ?? 0)
+      } else {
+        entry.scheduled   += units
+      }
+      pacingByStaff.set(staffId, entry)
+    }
+    for (const t of outside ?? []) {
+      const staffId = t.staff_id as string
+      const cycle   = cycleByStaff.get(staffId)
+      if (!cycle || t.review_status === 'not_approved') continue
+      const date = t.completed_date as string
+      if (date < cycle.start || date > cycle.end) continue
+      const entry = pacingByStaff.get(staffId) ?? { done: 0, scheduled: 0, ethics: 0, supervision: 0 }
+      entry.done        += Number(t.units)
+      entry.ethics      += Number(t.ethics_units)
+      entry.supervision += Number(t.supervision_units)
       pacingByStaff.set(staffId, entry)
     }
   }
@@ -120,6 +163,7 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
     trainersCount:   trainersList.count   ?? 0,
     expiringUnique,
     pacingByStaff,
+    credByCode,
     upcomingCourses: upcomingCourses.data  ?? [],
     upcomingCount:   upcomingCourses.count ?? 0,
     allCourses:      allCourses.data      ?? [],
@@ -169,27 +213,39 @@ export default async function DashboardPage() {
     {
       title:          'Expiring Soon',
       value:          data.expiringUnique.length,
-      description:    'RBT certifications expiring in the next 30 days',
+      description:    'Certifications expiring in the next 30 days',
       icon:           'alert',
       color:          'rose',
       alwaysExpanded: true,
       items: data.expiringUnique.slice(0, 25).map(c => {
         const staff = Array.isArray(c.staff) ? c.staff[0] : c.staff
         const name  = staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown'
-        const pacing = data.pacingByStaff.get(c.staff_id as string) ?? { done: 0, scheduled: 0 }
-        const TOTAL  = 12
+        const pacing = data.pacingByStaff.get(c.staff_id as string) ?? { done: 0, scheduled: 0, ethics: 0, supervision: 0 }
+        const cred   = data.credByCode.get(String(c.certification_type).toUpperCase())
+        const TOTAL  = cred?.units_required ?? 12
+        const label  = cred?.unit_label ?? 'PDU'
+        const ethicsNeeded      = cred?.ethics_units_required ?? 0
+        const supervisionNeeded = staff?.is_supervisor ? (cred?.supervision_units_required ?? 0) : 0
+        const ethicsLeft      = Math.max(0, ethicsNeeded      - pacing.ethics)
+        const supervisionLeft = Math.max(0, supervisionNeeded - pacing.supervision)
+        const complete  = pacing.done >= TOTAL && ethicsLeft === 0 && supervisionLeft === 0
         const committed = pacing.done + pacing.scheduled
         const pct = Math.min(1, committed / TOTAL)
         const status: 'done' | 'scheduled' | 'behind' =
-          pacing.done >= TOTAL     ? 'done'      :
-          committed   >= TOTAL     ? 'scheduled' :
-                                     'behind'
+          complete             ? 'done'      :
+          committed >= TOTAL   ? 'scheduled' :
+                                 'behind'
+        const gaps = [
+          ethicsLeft      > 0 ? `${ethicsLeft} ethics`           : '',
+          supervisionLeft > 0 ? `${supervisionLeft} supervision` : '',
+        ].filter(Boolean)
         return {
           id:       c.id,
           label:    name,
-          sublabel: `Expires ${formatDate(c.end_date)} · ${pacing.done}/${TOTAL} PDUs`,
+          sublabel: `Expires ${formatDate(c.end_date)} · ${Number(pacing.done.toFixed(2))}/${TOTAL} ${label}s${gaps.length ? ` · needs ${gaps.join(' + ')}` : ''}`,
           href:     `/staff/${c.staff_id}`,
           progress: { pct, status },
+          badge:    complete ? { label: 'All requirements met' } : undefined,
         }
       }),
     },

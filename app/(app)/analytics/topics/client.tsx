@@ -23,7 +23,7 @@ export type MatrixCell = {
 }
 
 export type AvailableTraining = {
-  id: string; topic_id: string; name: string
+  id: string; topic_id: string; name: string; eligible: string[]
   date: string | null; start_time: string | null; end_time: string | null; trainer: string
 }
 
@@ -32,6 +32,7 @@ type StaffMember = {
   id: string; first_name: string; last_name: string
   display_first_name: string | null; display_last_name: string | null
   cycle_end_date: string | null
+  role: string | null
 }
 
 interface Props {
@@ -139,6 +140,7 @@ export function TopicAnalysisClient({ topics, staff, matrix, availableTrainings 
   const [signupError,   setSignupError]   = useState<string | null>(null)
   // Track newly signed-up (staff_id + course_id) so UI updates immediately without re-fetch
   const [justSigned,    setJustSigned]    = useState<Set<string>>(new Set())
+  const [tab,           setTab]           = useState<'RBT' | 'BCBA'>('RBT')
 
   if (topics.length === 0) {
     return (
@@ -152,6 +154,7 @@ export function TopicAnalysisClient({ topics, staff, matrix, availableTrainings 
   // We keep all per-topic trainings so we can check against each staff member's expiry
   const trainingsByTopic: Record<string, AvailableTraining[]> = {}
   for (const t of availableTrainings) {
+    if (!t.eligible.includes(tab)) continue      // only offer sessions that count for this credential
     if (!trainingsByTopic[t.topic_id]) trainingsByTopic[t.topic_id] = []
     trainingsByTopic[t.topic_id].push(t)
   }
@@ -170,7 +173,8 @@ export function TopicAnalysisClient({ topics, staff, matrix, availableTrainings 
   }
 
   // ── Sort rows ─────────────────────────────────────────────────────────────
-  const sorted = [...staff].sort((a, b) => {
+  const tabStaff = staff.filter(s => s.role?.toUpperCase() === tab)
+  const sorted = [...tabStaff].sort((a, b) => {
     let cmp = 0
     if (sort.topicId === 'name') {
       cmp = displayName(a).localeCompare(displayName(b))
@@ -227,6 +231,24 @@ export function TopicAnalysisClient({ topics, staff, matrix, availableTrainings 
 
   return (
     <div className="space-y-4">
+      {/* Credential tabs */}
+      <div className="flex border-b border-gray-200">
+        {(['RBT', 'BCBA'] as const).map(code => (
+          <button
+            key={code}
+            onClick={() => setTab(code)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
+              tab === code ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            {code}
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+              {staff.filter(s => s.role?.toUpperCase() === code).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Legend */}
       <div className="flex items-center gap-6 flex-wrap">
         <div className="flex items-center gap-2 text-sm text-gray-600">

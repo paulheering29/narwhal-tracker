@@ -16,7 +16,7 @@ export default async function TopicAnalysisPage() {
       .order('name'),
     supabase
       .from('staff')
-      .select('id, first_name, last_name, display_first_name, display_last_name')
+      .select('id, first_name, last_name, display_first_name, display_last_name, role')
       .eq('active', true)
       .order('last_name'),
     supabase
@@ -42,7 +42,7 @@ export default async function TopicAnalysisPage() {
     supabase
       .from('courses')
       .select(`
-        id, name, date, start_time, end_time, topic_id,
+        id, name, date, start_time, end_time, topic_id, eligible_credentials,
         trainer_name,
         trainer_staff:trainer_staff_id(
           first_name, last_name, display_first_name, display_last_name
@@ -124,7 +124,7 @@ export default async function TopicAnalysisPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-gray-900">Topic Analysis</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Training completion by topic across all active staff
+          Training completion by topic, by credential
         </p>
       </div>
 
@@ -144,6 +144,7 @@ export default async function TopicAnalysisPage() {
           return {
             id:         c.id,
             topic_id:   c.topic_id as string,
+            eligible:   (c.eligible_credentials as string[] | null) ?? ['RBT'],
             name:       c.name,
             date:       c.date,
             start_time: c.start_time,
@@ -158,6 +159,7 @@ export default async function TopicAnalysisPage() {
           display_first_name: s.display_first_name ?? null,
           display_last_name:  s.display_last_name  ?? null,
           cycle_end_date:     cycleEndMap[s.id] ?? null,
+          role:               s.role ?? null,
         }))}
         matrix={matrix}
       />

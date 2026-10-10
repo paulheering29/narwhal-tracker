@@ -5,6 +5,17 @@ export type OutsideTraining = {
   id: string
   name: string
   provider: string | null
+  provider_number: string | null
+  certificate_name: string | null
+  certificate_name_mismatch: boolean
+  participant_cert_number: string | null
+  event_modality: string | null
+  trainer_name: string | null
+  trainer_cert_number: string | null
+  org_contact_name: string | null
+  org_contact_cert_number: string | null
+  signed: boolean | null
+  signature_date: string | null
   completed_date: string
   units: number
   ethics_units: number
@@ -15,7 +26,7 @@ export type OutsideTraining = {
 }
 
 export const OUTSIDE_TRAINING_COLUMNS =
-  'id, name, provider, completed_date, units, ethics_units, supervision_units, certificate_path, notes, review_status'
+  'id, name, provider, provider_number, certificate_name, certificate_name_mismatch, participant_cert_number, event_modality, trainer_name, trainer_cert_number, org_contact_name, org_contact_cert_number, signed, signature_date, completed_date, units, ethics_units, supervision_units, certificate_path, notes, review_status'
 
 /** Supabase returns numerics as strings; normalise a row for the UI. */
 export function toOutsideTraining(row: Record<string, unknown>): OutsideTraining {

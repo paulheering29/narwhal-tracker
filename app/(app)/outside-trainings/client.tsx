@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getDisplayName } from '@/lib/display-name'
-import { ReviewBadge } from '@/components/outside-trainings'
+import { NameMismatchBadge, ReviewBadge } from '@/components/outside-trainings'
 import type { OutsideTraining } from '@/lib/outside-trainings'
 import { Ban, Check, ExternalLink, Loader2 } from 'lucide-react'
 
@@ -110,6 +110,7 @@ export function ReviewQueueClient({ rows, myStaffId }: { rows: QueueRow[]; mySta
                     )}
                     {r.staff?.role && <span className="text-xs text-gray-400">{r.staff.role}</span>}
                     <ReviewBadge status={r.review_status} />
+                    {r.certificate_name_mismatch && <NameMismatchBadge name={r.certificate_name} />}
                   </div>
                   <p className="mt-0.5 text-sm text-gray-900">{r.name}</p>
                   <p className="text-xs text-gray-500">

@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment
+
+Beyond the Supabase, Stripe, Resend and Bunny keys in `.env.local`:
+
+- `ANTHROPIC_API_KEY` — reads uploaded certificates to pre-fill outside trainings (`/api/external-trainings/extract`). Without it, the form simply stays manual. The model is set in `lib/certificate-extraction.ts`.
+
 ## Getting Started
 
 First, run the development server:

@@ -35,7 +35,7 @@ type Item = {
   complete: boolean | null // everything required is done; null when there's nothing to measure
 }
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+export const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const fmtDate = (iso: string) => {
   const [y, m, d] = iso.split('-')
   return `${m}/${d}/${y}`
@@ -43,7 +43,7 @@ const fmtDate = (iso: string) => {
 const nameOf = (p: Person) =>
   `${p.display_first_name?.trim() || p.first_name} ${p.display_last_name?.trim() || p.last_name}`
 
-const shell = (appUrl: string, body: string) => `
+export const shell = (appUrl: string, body: string) => `
   <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; color: #1a1a1a;">
     <div style="background: #025CA8; padding: 24px 32px; border-radius: 8px 8px 0 0;">
       <h1 style="color: white; margin: 0; font-size: 20px;">Training Loop</h1>

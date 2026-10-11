@@ -54,6 +54,7 @@ type StaffMember = {
   roles: string[] | null
   certification_number: string | null
   credentials: string | null
+  license_check_email?: boolean
 }
 
 
@@ -66,6 +67,7 @@ type Company = {
   preferred_cert_template?: string | null; enabled_cert_templates?: string[] | null
   external_training_credentials?: string[] | null; external_training_review?: boolean | null
   license_reminders_enabled?: boolean | null
+  license_check_email_enabled?: boolean | null
 }
 
 export function AdminUsersClient({
@@ -225,6 +227,30 @@ export function AdminUsersClient({
     setRemindersSaving(false)
     if (!res.ok) { setRemindersOn(!next); setRemindersStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
     setRemindersStatus({ type: 'success', msg: next ? 'Renewal reminders are on.' : 'Renewal reminders are off.' })
+  }
+
+  // ── Nightly license check email ──
+  // Only active people with an email address can be chosen: the email can't go to anyone outside Training Loop.
+  const checkEmailCandidates = initialStaff.filter(s => s.active && s.email)
+  const [checkEmailOn, setCheckEmailOn] = useState<boolean>(initialCompany.license_check_email_enabled ?? false)
+  const [checkEmailIds, setCheckEmailIds] = useState<Set<string>>(
+    new Set(checkEmailCandidates.filter(s => s.license_check_email).map(s => s.id)),
+  )
+  const [checkEmailSaving, setCheckEmailSaving] = useState(false)
+  const [checkEmailStatus, setCheckEmailStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+
+  async function handleSaveCheckEmail(enabled = checkEmailOn) {
+    setCheckEmailSaving(true); setCheckEmailStatus(null)
+    const res = await fetch('/api/company/update-license-check-email', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled, recipient_ids: Array.from(checkEmailIds) }),
+    })
+    const json = await res.json().catch(() => ({}))
+    setCheckEmailSaving(false)
+    if (!res.ok) { setCheckEmailStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return false }
+    setCheckEmailOn(enabled)
+    setCheckEmailStatus({ type: 'success', msg: enabled ? 'Saved. The next nightly check will be emailed.' : 'Nightly license check emails are off.' })
+    return true
   }
 
   async function handleSaveOrgContact() {
@@ -979,6 +1005,56 @@ export function AdminUsersClient({
             {remindersStatus && (
               <p className={`text-sm rounded px-3 py-2 ${remindersStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
                 {remindersStatus.msg}
+              </p>
+            )}
+          </div>
+
+          {/* Nightly license check email */}
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Nightly license check results</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Each night we compare your staff&apos;s state licenses with the states&apos; published lists. Turn this on to email the results to the people you choose below.
+              </p>
+            </div>
+            <label className="flex items-center gap-3 cursor-pointer text-sm">
+              <input type="checkbox" checked={checkEmailOn} disabled={checkEmailSaving}
+                onChange={e => {
+                  if (e.target.checked) { setCheckEmailOn(true); setCheckEmailStatus(null) }
+                  else handleSaveCheckEmail(false)   // turning it off needs no recipients, so it saves at once
+                }} className="accent-[#025CA8]" />
+              Email me the nightly results
+            </label>
+            {checkEmailOn && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-600">Send it to</p>
+                {checkEmailCandidates.length === 0 ? (
+                  <p className="text-sm text-gray-400">No one with an email address yet.</p>
+                ) : (
+                  <div className="max-h-56 overflow-y-auto rounded-md border border-gray-200 divide-y divide-gray-100">
+                    {checkEmailCandidates.map(s => (
+                      <label key={s.id} className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+                        <input type="checkbox" className="accent-[#025CA8]" checked={checkEmailIds.has(s.id)}
+                          onChange={e => setCheckEmailIds(prev => {
+                            const next = new Set(prev)
+                            if (e.target.checked) next.add(s.id); else next.delete(s.id)
+                            return next
+                          })} />
+                        <span className="text-gray-800">{getDisplayName(s)}</span>
+                        <span className="text-xs text-gray-400 truncate">{s.email}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <Button onClick={() => handleSaveCheckEmail(true)} disabled={checkEmailSaving || checkEmailIds.size === 0}
+                  className="bg-[#025CA8] hover:bg-[#024A87]">
+                  {checkEmailSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save'}
+                </Button>
+              </div>
+            )}
+            {checkEmailStatus && (
+              <p className={`text-sm rounded px-3 py-2 ${checkEmailStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                {checkEmailStatus.msg}
               </p>
             )}
           </div>

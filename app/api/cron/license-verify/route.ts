@@ -11,5 +11,6 @@ export async function GET(request: NextRequest) {
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  return NextResponse.json(await runLicenseVerification(createServiceClient()))
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin
+  return NextResponse.json(await runLicenseVerification(createServiceClient(), appUrl))
 }

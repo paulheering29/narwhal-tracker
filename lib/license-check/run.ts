@@ -4,7 +4,10 @@ import { connecticut, illinois, rhodeIsland, texas, washington } from './states'
 import { newJersey } from './newJersey'
 import { pennsylvania } from './pennsylvania'
 import { vermont } from './vermont'
-import { verifyLicense } from './verify'
+import { Resend } from 'resend'
+import { EMAIL_FROM } from '@/lib/email'
+import { esc, shell } from '@/lib/renewal-reminders'
+import { verifyLicense, type VerificationResult } from './verify'
 import type { StateLicense, StateSource } from './types'
 
 // Add a state here once its reader exists. Everything else is state-agnostic.
@@ -66,9 +69,12 @@ async function syncStates(db: SupabaseClient) {
 }
 
 type Row = {
-  id: string; jurisdiction_code: string; license_number: string | null; expiration_date: string | null
+  id: string; company_id: string; jurisdiction_code: string; license_number: string | null; expiration_date: string | null
   staff: { first_name: string; last_name: string; display_first_name: string | null } | null
 }
+
+/** One license's result, kept for the nightly email. */
+type Outcome = { companyId: string; name: string; state: string; number: string | null; result: VerificationResult; detail: string }
 
 /** Check every staff license for the states we have a fresh list for. */
 async function verifyAll(db: SupabaseClient) {
@@ -77,6 +83,7 @@ async function verifyAll(db: SupabaseClient) {
   const ready = (syncs ?? []).filter(s => s.last_synced_at).map(s => s.jurisdiction_code as string)
 
   let checked = 0
+  const outcomes: Outcome[] = []
   for (const code of ready) {
     const records: StateLicense[] = []
     // PostgREST returns at most 1000 rows a request.
@@ -93,7 +100,7 @@ async function verifyAll(db: SupabaseClient) {
     }
 
     const { data: licenses } = await db.from('staff_licenses')
-      .select('id, jurisdiction_code, license_number, expiration_date, staff:staff_id(first_name, last_name, display_first_name)')
+      .select('id, company_id, jurisdiction_code, license_number, expiration_date, staff:staff_id(first_name, last_name, display_first_name)')
       .eq('jurisdiction_code', code)
 
     for (const row of (licenses ?? []) as unknown as Row[]) {
@@ -107,13 +114,69 @@ async function verifyAll(db: SupabaseClient) {
         state_status: v.stateStatus, state_expiration: v.stateExpiration,
       }).eq('id', row.id)
       checked++
+      outcomes.push({
+        companyId: row.company_id, name: `${row.staff.display_first_name?.trim() || row.staff.first_name} ${row.staff.last_name}`,
+        state: code, number: row.license_number, result: v.result, detail: v.detail,
+      })
     }
   }
-  return { checked, states: ready }
+  return { checked, states: ready, outcomes }
 }
 
-export async function runLicenseVerification(db: SupabaseClient) {
+const RESULT_LABEL: Record<VerificationResult, string> = {
+  verified: 'Verified', review: 'Needs review', expired: 'Expired on the state list', not_found: 'Not found on the state list',
+}
+
+/**
+ * Email each company that asked for it the night's results: a count, then every
+ * license that was not a clean match. Goes only to staff the Account Owner ticked.
+ */
+async function sendNightlyEmails(db: SupabaseClient, outcomes: Outcome[], appUrl: string) {
+  const companyIds = Array.from(new Set(outcomes.map(o => o.companyId)))
+  if (companyIds.length === 0) return { emails: 0, failed: 0 }
+
+  const { data: companies } = await db.from('companies').select('id, name')
+    .in('id', companyIds).eq('license_check_email_enabled', true)
+  if (!companies?.length) return { emails: 0, failed: 0 }
+
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  let emails = 0, failed = 0
+  for (const company of companies) {
+    const mine = outcomes.filter(o => o.companyId === company.id)
+    const bad = mine.filter(o => o.result !== 'verified')
+    const { data: people } = await db.from('staff').select('email')
+      .eq('company_id', company.id).eq('license_check_email', true).eq('active', true).not('email', 'is', null)
+    const to = Array.from(new Set((people ?? []).map(p => p.email as string)))
+    if (to.length === 0) continue
+
+    const subject = bad.length === 0
+      ? `License check: all ${mine.length} verified`
+      : `License check: ${bad.length} of ${mine.length} need attention`
+    const rows = bad.map(o => `<li style="margin: 0 0 12px;"><strong>${esc(o.name)}</strong> · ${esc(o.state)}${o.number ? ` #${esc(o.number)}` : ''}<br>
+      <span style="color:${o.result === 'review' ? '#b45309' : '#b91c1c'}; font-size: 13px;">${RESULT_LABEL[o.result]}</span>
+      <span style="color:#6b7280; font-size: 13px;"> — ${esc(o.detail)}</span></li>`).join('')
+    const html = shell(appUrl, `<p style="margin: 0 0 16px;">Last night's check of <strong>${esc(company.name as string)}</strong>'s state licenses against the states' published lists:</p>
+      <p style="margin: 0 0 16px;"><strong>${mine.length - bad.length}</strong> of ${mine.length} verified.${bad.length ? ` <strong>${bad.length}</strong> need attention:` : ' Nothing needs attention.'}</p>
+      ${bad.length ? `<ul style="margin: 0; padding-left: 20px;">${rows}</ul>` : ''}`)
+
+    for (const address of to) {
+      try {
+        const { error } = await resend.emails.send({ from: EMAIL_FROM, to: address, subject, html })
+        if (error) throw error
+        emails++
+      } catch (err) {
+        failed++
+        const reason = err as { name?: string; statusCode?: number }
+        console.error('license check email failed', reason.statusCode ?? '', reason.name ?? '')   // no addresses logged
+      }
+    }
+  }
+  return { emails, failed }
+}
+
+export async function runLicenseVerification(db: SupabaseClient, appUrl: string) {
   const synced = await syncStates(db)
-  const verified = await verifyAll(db)
-  return { synced, verified }
+  const { outcomes, ...verified } = await verifyAll(db)
+  const email = await sendNightlyEmails(db, outcomes, appUrl)
+  return { synced, verified, email }
 }

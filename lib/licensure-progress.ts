@@ -4,7 +4,7 @@ import type { Jurisdiction, RequirementTopic, StaffLicense } from '@/lib/licensu
 // Pure calculations plus one loader for state CE hours and topic requirements.
 // No React, so server and client code can both use it.
 
-export type UnitEvent = { date: string; units: number; ethics: number }
+export type UnitEvent = { date: string; units: number; ethics: number; supervision: number }
 
 export type TopicCompletion = {
   id: string
@@ -38,12 +38,12 @@ export async function loadUnitEvents(
   const [recordsRes, externalRes] = await Promise.all([
     supabase
       .from('training_records')
-      .select('staff_id, completed_date, courses:course_id(units, ethics_units, eligible_credentials)')
+      .select('staff_id, completed_date, courses:course_id(units, ethics_units, supervision_units, eligible_credentials)')
       .in('staff_id', staffIds)
       .eq('confirmed', true),
     supabase
       .from('external_trainings')
-      .select('staff_id, completed_date, units, ethics_units, review_status')
+      .select('staff_id, completed_date, units, ethics_units, supervision_units, review_status')
       .in('staff_id', staffIds)
       .neq('review_status', 'not_approved'),
   ])
@@ -53,11 +53,13 @@ export async function loadUnitEvents(
     if (!course || !((course.eligible_credentials as string[] | null) ?? ['RBT']).includes('BCBA')) continue
     ;(out[r.staff_id as string] ??= []).push({
       date: r.completed_date as string, units: Number(course.units ?? 0), ethics: Number(course.ethics_units ?? 0),
+      supervision: Number(course.supervision_units ?? 0),
     })
   }
   for (const t of externalRes.data ?? []) {
     ;(out[t.staff_id as string] ??= []).push({
       date: t.completed_date as string, units: Number(t.units), ethics: Number(t.ethics_units),
+      supervision: Number(t.supervision_units),
     })
   }
   return out
@@ -93,8 +95,9 @@ export function computeCeProgress(
   for (const e of events) {
     if (e.date > windowStart && e.date <= windowEnd) { done += e.units; ethicsDone += e.ethics }
   }
-  const required       = license.ce_hours_override ?? jurisdiction.ce_hours_required
-  const ethicsRequired = jurisdiction.ethics_hours_required ?? 0
+  // Numeric columns can arrive as strings, so make them numbers here once.
+  const required       = Number(license.ce_hours_override ?? jurisdiction.ce_hours_required)
+  const ethicsRequired = Number(jurisdiction.ethics_hours_required ?? 0)
   const exempt         = !!license.ce_exempt_this_cycle
   const metByBacb      = jurisdiction.ce_met_by_bacb && bacbActive
   return {

@@ -1,6 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { EMAIL_FROM } from '@/lib/email'
+import {
+  JURISDICTION_COLUMNS, LICENSE_COLUMNS, bacbEndsBeforeLicense,
+  type Jurisdiction, type RequirementTopic, type StaffLicense,
+} from '@/lib/licensure'
+import {
+  COMPLETION_COLUMNS, computeCeProgress, computeTopicStatuses, loadUnitEvents,
+  type TopicCompletion,
+} from '@/lib/licensure-progress'
 
 const THRESHOLDS = [90, 60, 30]   // days before expiry
 
@@ -20,6 +28,11 @@ type Item = {
   expiration: string
   days: number
   unsent: number[]         // thresholds that are due and haven't gone out yet
+  cycleStart?: string      // BACB cycles: where the cycle began
+  license?: StaffLicense   // licenses: the row, for CE hours and topics
+  jurisdiction?: Jurisdiction
+  progress: string[]       // lines like "24 of 32 CEUs · ethics 4 of 4 ✓"
+  complete: boolean | null // everything required is done; null when there's nothing to measure
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -44,8 +57,83 @@ const shell = (appUrl: string, body: string) => `
   </div>`
 
 const line = (i: Item, withName: boolean) =>
-  `<li style="margin: 0 0 8px;">${withName ? `<strong>${esc(nameOf(i.person))}</strong> · ` : ''}${esc(i.title)} expires ${fmtDate(i.expiration)}
-   <span style="color:#6b7280;">(${i.days} day${i.days === 1 ? '' : 's'})</span>${i.detail ? `<br><span style="color:#6b7280; font-size: 13px;">${esc(i.detail)}</span>` : ''}</li>`
+  `<li style="margin: 0 0 12px;">${withName ? `<strong>${esc(nameOf(i.person))}</strong> · ` : ''}${esc(i.title)} expires ${fmtDate(i.expiration)}
+   <span style="color:#6b7280;">(${i.days} day${i.days === 1 ? '' : 's'})</span>${i.detail ? `<br><span style="color:#6b7280; font-size: 13px;">${esc(i.detail)}</span>` : ''}${
+     i.complete ? '<br><span style="color:#047857; font-size: 13px;">✓ All requirements met</span>' : ''}${
+     i.progress.map(p => `<br><span style="color:#374151; font-size: 13px;">${esc(p)}</span>`).join('')}</li>`
+
+const n = (v: number) => String(Number(v.toFixed(2)))
+
+/**
+ * Fill in each due item's progress: BACB CEUs (total, ethics, supervision) for
+ * certification cycles; state CE hours, topics still due and BACB timing for
+ * licenses. Uses the same calculations as the app's screens.
+ */
+async function addProgress(service: SupabaseClient, due: Item[], todayIso: string) {
+  const staffIds = Array.from(new Set(due.map(i => i.staffId)))
+  const licenseIds = due.filter(i => i.kind === 'license').map(i => i.refId)
+
+  const [events, credRes, supervisorRes, cyclesRes, topicRes, compRes] = await Promise.all([
+    loadUnitEvents(service, staffIds),
+    service.from('credential_types').select('units_required, ethics_units_required, supervision_units_required').eq('code', 'BCBA').maybeSingle(),
+    service.from('staff').select('id, is_supervisor').in('id', staffIds),
+    service.from('certification_cycles').select('staff_id, end_date').eq('certification_type', 'BCBA').gte('end_date', todayIso).in('staff_id', staffIds),
+    service.from('license_requirement_topics').select('*'),
+    licenseIds.length
+      ? service.from('staff_license_topic_completions').select(COMPLETION_COLUMNS).in('license_id', licenseIds)
+      : Promise.resolve({ data: [] }),
+  ])
+  const cred = credRes.data
+  const supervisors = new Set((supervisorRes.data ?? []).filter(s => s.is_supervisor).map(s => s.id as string))
+  const bacbEnd = new Map<string, string>()
+  for (const c of cyclesRes.data ?? []) {
+    const id = c.staff_id as string
+    if (!bacbEnd.has(id) || (c.end_date as string) < (bacbEnd.get(id) as string)) bacbEnd.set(id, c.end_date as string)
+  }
+  const topics = (topicRes.data ?? []) as RequirementTopic[]
+  const completions = (compRes.data ?? []) as TopicCompletion[]
+
+  for (const i of due) {
+    const mine = events[i.staffId] ?? []
+
+    if (i.kind === 'bacb_cycle' && cred && i.cycleStart) {
+      let done = 0, ethics = 0, supervision = 0
+      for (const e of mine) {
+        if (e.date >= i.cycleStart && e.date <= i.expiration) { done += e.units; ethics += e.ethics; supervision += e.supervision }
+      }
+      const required = Number(cred.units_required)
+      const ethicsReq = Number(cred.ethics_units_required)
+      const supReq = supervisors.has(i.staffId) ? Number(cred.supervision_units_required) : 0
+      const parts = [`${n(done)} of ${n(required)} CEUs`]
+      if (ethicsReq > 0) parts.push(`ethics ${n(ethics)} of ${n(ethicsReq)}${ethics >= ethicsReq ? ' ✓' : ''}`)
+      if (supReq > 0) parts.push(`supervision ${n(supervision)} of ${n(supReq)}${supervision >= supReq ? ' ✓' : ''}`)
+      i.progress = [parts.join(' · ')]
+      i.complete = done >= required && ethics >= ethicsReq && supervision >= supReq
+    }
+
+    if (i.kind === 'license' && i.license && i.jurisdiction) {
+      const j = i.jurisdiction
+      const jTopics = topics.filter(t => t.jurisdiction_code === i.license!.jurisdiction_code)
+      const ce = computeCeProgress(i.license, j, mine, bacbEnd.has(i.staffId))
+      const statuses = computeTopicStatuses(i.license, j, jTopics, completions)
+      const due = statuses.filter(s => !s.done)
+      const lines: string[] = []
+      if (ce) {
+        lines.push(ce.exempt ? 'State CE: not required this cycle'
+          : ce.metByBacb ? 'State CE: met through the active BACB certification'
+          : `State CE: ${n(ce.done)} of ${n(ce.required)} hours${ce.ethicsRequired > 0 ? ` · ethics ${n(ce.ethicsDone)} of ${n(ce.ethicsRequired)}` : ''}${ce.complete ? ' ✓' : ''}`)
+      }
+      if (statuses.length > 0) {
+        lines.push(due.length === 0 ? 'Required topics: all done'
+          : `Required topics still due: ${due.map(d => d.topic.name).join(', ')}`)
+      }
+      const shortBacb = bacbEndsBeforeLicense(i.license, j, bacbEnd.get(i.staffId))
+      if (shortBacb) lines.push(`The BACB certification ends ${fmtDate(shortBacb)}, before this license expires. ${j.name} requires an active BACB certification.`)
+      i.progress = lines
+      i.complete = (ce ? ce.complete : true) && due.length === 0 && !shortBacb && (ce !== null || statuses.length > 0)
+    }
+  }
+}
 
 /**
  * Daily job: email reminders at 90, 60 and 30 days before a BCBA's state license
@@ -69,10 +157,10 @@ export async function runRenewalReminders(service: SupabaseClient, appUrl: strin
   const personCols = 'first_name, last_name, display_first_name, display_last_name, email, auth_id, active'
   const [licRes, cycleRes] = await Promise.all([
     service.from('staff_licenses')
-      .select(`id, company_id, staff_id, expiration_date, license_number, jurisdiction_code, license_jurisdictions(name, tied_to_bacb), staff:staff_id(${personCols})`)
+      .select(`${LICENSE_COLUMNS}, company_id, license_jurisdictions(${JURISDICTION_COLUMNS}), staff:staff_id(${personCols})`)
       .eq('status', 'active').gte('expiration_date', todayIso).lte('expiration_date', horizon),
     service.from('certification_cycles')
-      .select(`id, company_id, staff_id, end_date, staff:staff_id(${personCols})`)
+      .select(`id, company_id, staff_id, start_date, end_date, staff:staff_id(${personCols})`)
       .eq('certification_type', 'BCBA').gte('end_date', todayIso).lte('end_date', horizon),
   ])
 
@@ -86,13 +174,14 @@ export async function runRenewalReminders(service: SupabaseClient, appUrl: strin
   const items: Item[] = []
   for (const l of licRes.data ?? []) {
     const person = (Array.isArray(l.staff) ? l.staff[0] : l.staff) as Person | null
-    const j = Array.isArray(l.license_jurisdictions) ? l.license_jurisdictions[0] : l.license_jurisdictions
+    const j = (Array.isArray(l.license_jurisdictions) ? l.license_jurisdictions[0] : l.license_jurisdictions) as Jurisdiction | undefined
     if (!person?.active || !enabled.has(l.company_id as string)) continue
     items.push({
       kind: 'license', refId: l.id as string, companyId: l.company_id as string, staffId: l.staff_id as string, person,
       title: `${j?.name ?? l.jurisdiction_code} license`,
       detail: l.license_number ? `License #${l.license_number}` : null,
       expiration: l.expiration_date as string, days: daysTo(l.expiration_date as string), unsent: [],
+      license: l as unknown as StaffLicense, jurisdiction: j, progress: [], complete: null,
     })
   }
   for (const c of cycleRes.data ?? []) {
@@ -101,6 +190,7 @@ export async function runRenewalReminders(service: SupabaseClient, appUrl: strin
     items.push({
       kind: 'bacb_cycle', refId: c.id as string, companyId: c.company_id as string, staffId: c.staff_id as string, person,
       title: 'BACB certification', detail: null, expiration: c.end_date as string, days: daysTo(c.end_date as string), unsent: [],
+      cycleStart: c.start_date as string, progress: [], complete: null,
     })
   }
   if (items.length === 0) return { items: 0, emails: 0, failed: 0 }
@@ -114,6 +204,8 @@ export async function runRenewalReminders(service: SupabaseClient, appUrl: strin
     if (i.unsent.length > 0) due.push(i)
   }
   if (due.length === 0) return { items: 0, emails: 0, failed: 0 }
+
+  await addProgress(service, due, todayIso)
 
   const resend = new Resend(process.env.RESEND_API_KEY)
   let emails = 0, failed = 0

@@ -428,7 +428,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <section className="px-4 sm:px-8 pb-24">
+      <section className="px-4 sm:px-8 py-24">
         <div className="max-w-6xl mx-auto rounded-3xl px-6 sm:px-12 py-14 text-center text-white" style={{ backgroundColor: BLUE }}>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
             PDUs, CEUs, and certificates — finally in one place.

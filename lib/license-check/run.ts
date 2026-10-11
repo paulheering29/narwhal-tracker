@@ -49,15 +49,17 @@ async function syncStates(db: SupabaseClient) {
         .delete().eq('jurisdiction_code', source.code).lt('refreshed_at', attempt)
       if (delError) throw new Error(delError.message)
 
-      await db.from('state_license_sync').upsert({
+      const { error: syncError } = await db.from('state_license_sync').upsert({
         jurisdiction_code: source.code, last_synced_at: attempt, last_attempt_at: attempt,
         row_count: rows.length, source_date: sourceDate, error: null,
       })
+      if (syncError) throw new Error(syncError.message)
       out[source.code] = `${rows.length} licenses`
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
-      await db.from('state_license_sync').upsert({ jurisdiction_code: source.code, last_attempt_at: attempt, error: message })
-      out[source.code] = `failed: ${message}`
+      const { error: recordError } = await db.from('state_license_sync')
+        .upsert({ jurisdiction_code: source.code, last_attempt_at: attempt, error: message })
+      out[source.code] = `failed: ${message}${recordError ? ` (and could not be recorded: ${recordError.message})` : ''}`
     }
   }
   return out

@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { MarketingNav } from '@/components/marketing-nav'
 import { PriceCalculator } from '@/components/price-calculator'
 import { TRIAL_DAYS, CONTACT_EMAIL, formatMoney, lockInLine, monthlyTotalCents } from '@/lib/pricing'
 import { getCurrentOffer } from '@/lib/billing'
@@ -122,7 +122,7 @@ export default async function HomePage() {
   const { rates, endsOn, next } = await getCurrentOffer()
   const introductory = endsOn != null
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className="min-h-screen overflow-x-clip bg-white text-gray-900">
 
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
@@ -135,20 +135,7 @@ export default async function HomePage() {
             className="h-6 sm:h-7 w-auto shrink-0"
             priority
           />
-          <nav className="flex items-center gap-1 sm:gap-6">
-            <a href="#how-it-works" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">How it works</a>
-            <a href="#features" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">Features</a>
-            <a href="#pricing" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">Pricing</a>
-            <a href={SIGNUP_URL} className="text-sm font-medium text-gray-600 hover:text-gray-900 px-2 py-2">Sign Up Your Org</a>
-            <ThemeToggle />
-            <a
-              href={LOGIN_URL}
-              className="text-sm font-semibold px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: BLUE }}
-            >
-              Sign In
-            </a>
-          </nav>
+          <MarketingNav signupUrl={SIGNUP_URL} loginUrl={LOGIN_URL} blue={BLUE} />
         </div>
       </header>
 

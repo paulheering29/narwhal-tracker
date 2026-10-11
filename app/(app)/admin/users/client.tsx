@@ -406,6 +406,58 @@ export function AdminUsersClient({
 
   // ─────────────────────────────────────────────────────────────────────────────
 
+  // Shown inside the Billing section, under the state picker it belongs with.
+  const licenseEmailCard = (
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Nightly license check results</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Each night we compare your staff&apos;s state licenses with the states&apos; published lists. Turn this on to email the results to the people you choose below.
+              </p>
+            </div>
+            <label className="flex items-center gap-3 cursor-pointer text-sm">
+              <input type="checkbox" checked={checkEmailOn} disabled={checkEmailSaving}
+                onChange={e => {
+                  if (e.target.checked) { setCheckEmailOn(true); setCheckEmailStatus(null) }
+                  else handleSaveCheckEmail(false)   // turning it off needs no recipients, so it saves at once
+                }} className="accent-[#025CA8]" />
+              Email me the nightly results
+            </label>
+            {checkEmailOn && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-600">Send it to</p>
+                {checkEmailCandidates.length === 0 ? (
+                  <p className="text-sm text-gray-400">No one with an email address yet.</p>
+                ) : (
+                  <div className="max-h-56 overflow-y-auto rounded-md border border-gray-200 divide-y divide-gray-100">
+                    {checkEmailCandidates.map(s => (
+                      <label key={s.id} className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+                        <input type="checkbox" className="accent-[#025CA8]" checked={checkEmailIds.has(s.id)}
+                          onChange={e => setCheckEmailIds(prev => {
+                            const next = new Set(prev)
+                            if (e.target.checked) next.add(s.id); else next.delete(s.id)
+                            return next
+                          })} />
+                        <span className="text-gray-800">{getDisplayName(s)}</span>
+                        <span className="text-xs text-gray-400 truncate">{s.email}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <Button onClick={() => handleSaveCheckEmail(true)} disabled={checkEmailSaving || checkEmailIds.size === 0}
+                  className="bg-[#025CA8] hover:bg-[#024A87]">
+                  {checkEmailSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save'}
+                </Button>
+              </div>
+            )}
+            {checkEmailStatus && (
+              <p className={`text-sm rounded px-3 py-2 ${checkEmailStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                {checkEmailStatus.msg}
+              </p>
+            )}
+          </div>
+  )
+
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
@@ -910,12 +962,24 @@ export function AdminUsersClient({
 
       {/* ── Account Tab (Account Owner only) ────────────────────────────────── */}
       {tab === 'account' && isAccountOwner && (
-        <div>
-          <p className="text-sm text-gray-500 mb-6">
-            Settings only the Account Owner can change: who can add outside trainings, certificate import usage, and your plan.
+        <div className="space-y-12">
+          <p className="text-sm text-gray-500 -mb-6">
+            Settings only the Account Owner can change: your plan and billing, nightly license checks, and organization-wide training settings.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
+          {/* Plan, price, and which states are checked nightly */}
+          <BillingClient
+            billing={billing}
+            supportedStates={supportedStates}
+            licenseEmailCard={licenseEmailCard}
+          />
+
+          {/* Training settings */}
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900">Training settings</h2>
+            <p className="mt-1 mb-4 text-sm text-gray-500">How outside trainings, reminders, and certificate imports work for your organization.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <div className="space-y-6">
           {/* Outside Trainings */}
           <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
             <div>
@@ -985,6 +1049,8 @@ export function AdminUsersClient({
             </div>
           </div>
 
+              </div>
+              <div className="space-y-6">
           {/* Renewal reminders */}
           <div className="rounded-lg border bg-white shadow-sm p-6 space-y-3">
             <div>
@@ -1003,56 +1069,6 @@ export function AdminUsersClient({
             {remindersStatus && (
               <p className={`text-sm rounded px-3 py-2 ${remindersStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
                 {remindersStatus.msg}
-              </p>
-            )}
-          </div>
-
-          {/* Nightly license check email */}
-          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-3">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700">Nightly license check results</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Each night we compare your staff&apos;s state licenses with the states&apos; published lists. Turn this on to email the results to the people you choose below.
-              </p>
-            </div>
-            <label className="flex items-center gap-3 cursor-pointer text-sm">
-              <input type="checkbox" checked={checkEmailOn} disabled={checkEmailSaving}
-                onChange={e => {
-                  if (e.target.checked) { setCheckEmailOn(true); setCheckEmailStatus(null) }
-                  else handleSaveCheckEmail(false)   // turning it off needs no recipients, so it saves at once
-                }} className="accent-[#025CA8]" />
-              Email me the nightly results
-            </label>
-            {checkEmailOn && (
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-gray-600">Send it to</p>
-                {checkEmailCandidates.length === 0 ? (
-                  <p className="text-sm text-gray-400">No one with an email address yet.</p>
-                ) : (
-                  <div className="max-h-56 overflow-y-auto rounded-md border border-gray-200 divide-y divide-gray-100">
-                    {checkEmailCandidates.map(s => (
-                      <label key={s.id} className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
-                        <input type="checkbox" className="accent-[#025CA8]" checked={checkEmailIds.has(s.id)}
-                          onChange={e => setCheckEmailIds(prev => {
-                            const next = new Set(prev)
-                            if (e.target.checked) next.add(s.id); else next.delete(s.id)
-                            return next
-                          })} />
-                        <span className="text-gray-800">{getDisplayName(s)}</span>
-                        <span className="text-xs text-gray-400 truncate">{s.email}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                <Button onClick={() => handleSaveCheckEmail(true)} disabled={checkEmailSaving || checkEmailIds.size === 0}
-                  className="bg-[#025CA8] hover:bg-[#024A87]">
-                  {checkEmailSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : 'Save'}
-                </Button>
-              </div>
-            )}
-            {checkEmailStatus && (
-              <p className={`text-sm rounded px-3 py-2 ${checkEmailStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
-                {checkEmailStatus.msg}
               </p>
             )}
           </div>
@@ -1098,15 +1114,9 @@ export function AdminUsersClient({
               )
             })()}
           </div>
-          </div>
-
-          {/* Billing & plan */}
-          <div className="-mx-4 md:-mx-8 mt-4">
-            <BillingClient
-              billing={billing}
-              supportedStates={supportedStates}
-            />
-          </div>
+              </div>
+            </div>
+          </section>
         </div>
       )}
 

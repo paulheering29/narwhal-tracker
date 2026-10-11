@@ -86,8 +86,12 @@ export async function POST(request: NextRequest) {
         </div>
       `,
     })
-    if (sendError) throw new Error('send failed')
-  } catch {
+    if (sendError) throw sendError
+  } catch (err) {
+    // Resend's reason (unverified domain, bad key, bad sender) is what's needed to
+    // fix this; it contains no recipient or password data.
+    const reason = err as { name?: string; message?: string; statusCode?: number }
+    console.error('signup confirmation email failed', reason.statusCode ?? '', reason.name ?? '', reason.message ?? '')
     // Remove the login so they can simply try again.
     await service.auth.admin.deleteUser(data.user.id)
     return NextResponse.json({ error: 'We couldn’t send the confirmation email. Please try again in a moment.' }, { status: 502 })

@@ -115,8 +115,16 @@ export function topicFrequencyLabel(t: Pick<RequirementTopic, 'frequency' | 'eve
   return `every ${t.every_n_years ?? '?'} years`
 }
 
-/** The states whose license list we download nightly, so a license there is checked automatically. */
+/**
+ * The states this organization has added nightly checking for (and whose list we
+ * have downloaded), so a license there is checked automatically. Both tables are
+ * scoped to the signed-in organization or readable by everyone.
+ */
 export async function loadCoveredStates(supabase: SupabaseClient): Promise<Set<string>> {
-  const { data } = await supabase.from('state_license_sync').select('jurisdiction_code').not('last_synced_at', 'is', null)
-  return new Set((data ?? []).map(r => r.jurisdiction_code as string))
+  const [{ data: chosen }, { data: synced }] = await Promise.all([
+    supabase.from('company_license_states').select('jurisdiction_code'),
+    supabase.from('state_license_sync').select('jurisdiction_code').not('last_synced_at', 'is', null),
+  ])
+  const downloaded = new Set((synced ?? []).map(r => r.jurisdiction_code as string))
+  return new Set((chosen ?? []).map(r => r.jurisdiction_code as string).filter(c => downloaded.has(c)))
 }

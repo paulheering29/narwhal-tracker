@@ -28,6 +28,7 @@ import {
   DialogContent,
 } from '@/components/ui/dialog'
 import { OutsideTrainings } from '@/components/outside-trainings'
+import { syncBilling } from '@/lib/billing-client'
 import { StaffPaths } from '@/components/staff-paths'
 import { StaffLicenses } from '@/components/staff-licenses'
 import { OUTSIDE_TRAINING_COLUMNS, toOutsideTraining, type OutsideTraining } from '@/lib/outside-trainings'
@@ -219,7 +220,7 @@ export default function StaffDetailPage() {
     if (!staff) return
     setTogglingActive(true)
     const { error } = await supabase.from('staff').update({ active: !staff.active }).eq('id', staffId)
-    if (!error) setStaff(s => s ? { ...s, active: !s.active } : s)
+    if (!error) { setStaff(s => s ? { ...s, active: !s.active } : s); syncBilling() }
     setTogglingActive(false)
   }
 

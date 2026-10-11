@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { AdminUsersClient } from './client'
 import { canManageUsers } from '@/lib/permissions'
-import { getCompanyBilling, getAllPlans, getRBTCount } from '@/lib/plans'
+import { getBillingSummary } from '@/lib/billing'
+import { SUPPORTED_STATE_CODES } from '@/lib/license-check/sources'
 
 export default async function AdminUsersPage() {
   const supabase = await createClient()
@@ -27,7 +28,7 @@ export default async function AdminUsersPage() {
     .eq('id', me.company_id)
     .single()
 
-  const [{ data: staff }, { data: topics }, { data: company }, billing, allPlans, rbtCount, { data: credentialTypes }] = await Promise.all([
+  const [{ data: staff }, { data: topics }, { data: company }, billing, { data: jurisdictions }, { data: credentialTypes }] = await Promise.all([
     supabase
       .from('staff')
       .select('id, auth_id, first_name, last_name, display_first_name, display_last_name, email, role, ehr_id, active, tier, roles, certification_number, credentials, license_check_email')
@@ -38,9 +39,8 @@ export default async function AdminUsersPage() {
       .select('id, name, created_at')
       .order('name'),
     companyPromise,
-    getCompanyBilling(me.company_id),
-    getAllPlans(),
-    getRBTCount(me.company_id),
+    getBillingSummary(me.company_id),
+    supabase.from('license_jurisdictions').select('code, name').in('code', SUPPORTED_STATE_CODES).order('name'),
     supabase.from('credential_types').select('code, unit_label').order('sort_order'),
   ])
 
@@ -59,12 +59,6 @@ export default async function AdminUsersPage() {
     }
   }
 
-  const planLimits = {
-    maxRbts:     billing?.plan?.max_rbts     ?? 5,
-    currentRbts: rbtCount,
-    planName:    billing?.plan?.display_name ?? 'Free',
-  }
-
   return (
     <AdminUsersClient
       currentAuthId={user.id}
@@ -72,9 +66,8 @@ export default async function AdminUsersPage() {
       initialStaff={staff ?? []}
       initialTopics={topics ?? []}
       initialCompany={company ?? { id: me.company_id, name: '' }}
-      planLimits={planLimits}
       billing={billing}
-      allPlans={allPlans}
+      supportedStates={jurisdictions ?? []}
       credentialTypes={credentialTypes ?? []}
       importUsage={importUsage}
     />

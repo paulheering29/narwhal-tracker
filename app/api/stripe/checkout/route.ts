@@ -1,53 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { countUsers, getPriceIds, getStripe } from '@/lib/billing'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-
-export async function POST(request: NextRequest) {
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
-  )
+export async function POST() {
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { planName } = await request.json()
-  if (!planName) return NextResponse.json({ error: 'planName is required' }, { status: 400 })
-
   const service = createServiceClient()
 
-  // ── Get staff → company ───────────────────────────────────────────────────
-  const { data: staff } = await service
-    .from('staff')
-    .select('company_id')
-    .eq('auth_id', user.id)
-    .single()
+  const { data: staff } = await service.from('staff').select('company_id, roles').eq('auth_id', user.id).single()
   if (!staff?.company_id) return NextResponse.json({ error: 'No company found' }, { status: 400 })
-
-  // ── Get plan + Stripe price ───────────────────────────────────────────────
-  const { data: plan } = await service
-    .from('plans')
-    .select('id, stripe_price_id, display_name')
-    .eq('name', planName)
-    .single()
-  if (!plan?.stripe_price_id) {
-    return NextResponse.json({ error: 'This plan is not yet available for purchase. Please contact support.' }, { status: 400 })
+  if (!staff.roles?.includes('Account Owner')) {
+    return NextResponse.json({ error: 'Only the Account Owner can manage billing.' }, { status: 403 })
   }
 
-  // ── Get or create Stripe customer ─────────────────────────────────────────
   const { data: company } = await service
     .from('companies')
-    .select('id, name, stripe_customer_id')
+    .select('id, name, stripe_customer_id, stripe_subscription_id, subscription_status')
     .eq('id', staff.company_id)
     .single()
   if (!company) return NextResponse.json({ error: 'Company not found' }, { status: 400 })
+  if (company.stripe_subscription_id && ['active', 'trialing', 'past_due'].includes(company.subscription_status)) {
+    return NextResponse.json({ error: 'You already have a subscription. Use Manage billing to change it.' }, { status: 400 })
+  }
 
+  let prices
+  try {
+    prices = await getPriceIds()
+  } catch (err) {
+    console.error('stripe prices missing', err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'Billing is not set up yet. Please contact support.' }, { status: 500 })
+  }
+
+  const stripe = getStripe()
   let customerId = company.stripe_customer_id
   if (!customerId) {
     const customer = await stripe.customers.create({
@@ -59,15 +46,28 @@ export async function POST(request: NextRequest) {
     await service.from('companies').update({ stripe_customer_id: customerId }).eq('id', company.id)
   }
 
-  // ── Create Checkout Session ───────────────────────────────────────────────
+  const [users, { count: stateCount }] = await Promise.all([
+    countUsers(company.id),
+    service.from('company_license_states').select('jurisdiction_code', { count: 'exact', head: true }).eq('company_id', company.id),
+  ])
+
+  // Stripe rejects zero-quantity lines, so states are included only when chosen.
+  // The subscription's quantities are kept current afterwards by syncSubscriptionQuantities.
+  const line_items = [
+    { price: prices.base, quantity: 1 },
+    { price: prices.user, quantity: Math.max(1, users) },
+    ...(stateCount ? [{ price: prices.state, quantity: stateCount }] : []),
+  ]
+
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trainingloop.tech'
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
-    line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
+    line_items,
     success_url: `${baseUrl}/admin/users?tab=account&success=true`,
     cancel_url:  `${baseUrl}/admin/users?tab=account`,
-    metadata: { company_id: company.id, plan_id: plan.id },
+    metadata: { company_id: company.id },
+    subscription_data: { metadata: { company_id: company.id } },
   })
 
   return NextResponse.json({ url: session.url })

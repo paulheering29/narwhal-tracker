@@ -95,8 +95,8 @@ export default function SignupPage() {
         ) : (
           <Card>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl">Start free</CardTitle>
-              <CardDescription>Set up your organization. Free for up to 5 RBTs, no card needed.</CardDescription>
+              <CardTitle className="text-2xl">Start your free trial</CardTitle>
+              <CardDescription>Set up your organization. 30 days free, no card needed.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50 p-3.5 text-sm text-blue-900">

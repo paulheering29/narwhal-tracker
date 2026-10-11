@@ -25,7 +25,7 @@ import {
   UserX, UserCheck, Users, ShieldCheck, Award, LayoutList, ChartBar,
 } from 'lucide-react'
 import { ALL_ROLES } from '@/lib/permissions'
-import { UpgradeDialog } from '@/components/upgrade-dialog'
+import { syncBilling } from '@/lib/billing-client'
 import { LicenseTable } from '@/components/license-table'
 import {
   JURISDICTION_COLUMNS, LICENSE_COLUMNS, daysUntil, fmtLicenseDate, loadCoveredStates,
@@ -375,14 +375,12 @@ export function StaffPageClient({
   currentAuthId,
   currentRoles,
   initialStaff,
-  planLimits,
   credentialTypes,
   pendingOutsideReviews,
 }: {
   currentAuthId: string
   currentRoles: string[]
   initialStaff: StaffMember[]
-  planLimits: { maxRbts: number; currentRbts: number; planName: string }
   credentialTypes: Credential[]
   pendingOutsideReviews: number
 }) {
@@ -573,8 +571,6 @@ export function StaffPageClient({
   const [staffForm, setStaffForm]     = useState(emptyStaffForm)
   const [staffSaving, setStaffSaving] = useState(false)
   const [staffError, setStaffError]   = useState<string | null>(null)
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const [localRbtCount, setLocalRbtCount] = useState(planLimits.currentRbts)
 
   const [importOpen, setImportOpen]     = useState(false)
   const [csvRows, setCsvRows]           = useState<CsvRow[]>([])
@@ -592,11 +588,6 @@ export function StaffPageClient({
     if (!staffForm.first_name.trim() || !staffForm.last_name.trim()) {
       setStaffError('First name and last name are required.'); return
     }
-    // Plans cap RBTs only; other credentials don't count toward the limit.
-    const addingRbt = staffForm.role === 'RBT'
-    if (addingRbt && localRbtCount >= planLimits.maxRbts) {
-      setAddRbtOpen(false); setUpgradeOpen(true); return
-    }
     setStaffSaving(true); setStaffError(null)
     const companyId = await getCompanyId()
     if (!companyId) { setStaffError('Could not determine your company.'); setStaffSaving(false); return }
@@ -613,7 +604,7 @@ export function StaffPageClient({
       credentials: staffForm.credentials || null,
     }).select('id').single()
     if (insertErr) { setStaffError(insertErr.message); setStaffSaving(false); return }
-    if (addingRbt) setLocalRbtCount(c => c + 1)
+    syncBilling()
     setStaffSaving(false); setAddRbtOpen(false); setStaffForm(emptyStaffForm)
     router.push(`/staff/${newStaff.id}`)
   }
@@ -679,6 +670,7 @@ export function StaffPageClient({
       await supabase.from('certification_cycles').insert(cycleInserts)
     }
 
+    syncBilling()
     setImporting(false)
     setImportResult({ imported: valid.length, errors: csvRows.filter(r => r.error).length })
     setCsvRows([]); reloadStaff()
@@ -687,6 +679,7 @@ export function StaffPageClient({
   async function toggleActive(s: StaffMember, e: React.MouseEvent) {
     e.stopPropagation()
     await supabase.from('staff').update({ active: !s.active }).eq('id', s.id)
+    syncBilling()
     reloadStaff()
   }
 
@@ -1763,15 +1756,6 @@ export function StaffPageClient({
           </Sheet>
         </>
       )}
-
-      {/* Upgrade dialog */}
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        currentPlan={planLimits.planName}
-        currentRbts={localRbtCount}
-        maxRbts={planLimits.maxRbts}
-      />
     </div>
   )
 }

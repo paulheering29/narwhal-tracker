@@ -25,7 +25,7 @@ import {
 import { ALL_ROLES } from '@/lib/permissions'
 import { EXTRACTION_YEARLY_LIMIT } from '@/lib/certificate-extraction'
 import { BillingClient } from '@/app/(app)/billing/client'
-import type { Plan, CompanyBilling } from '@/lib/plans'
+import type { BillingSummary } from '@/lib/billing'
 import { resizeImage } from '@/lib/resize-image'
 import { CERT_TEMPLATES } from '@/lib/certificates/templates'
 
@@ -76,9 +76,8 @@ export function AdminUsersClient({
   initialStaff,
   initialTopics,
   initialCompany,
-  planLimits,
   billing,
-  allPlans,
+  supportedStates,
   credentialTypes,
   importUsage,
 }: {
@@ -87,9 +86,8 @@ export function AdminUsersClient({
   initialStaff: StaffMember[]
   initialTopics: Topic[]
   initialCompany: Company
-  planLimits: { maxRbts: number; currentRbts: number; planName: string }
-  billing: CompanyBilling | null
-  allPlans: Plan[]
+  billing: BillingSummary | null
+  supportedStates: { code: string; name: string }[]
   credentialTypes: { code: string; unit_label: string }[]
   importUsage: Record<string, number>   // staff_id → certificate imports used this year
 }) {
@@ -1106,8 +1104,7 @@ export function AdminUsersClient({
           <div className="-mx-4 md:-mx-8 mt-4">
             <BillingClient
               billing={billing}
-              allPlans={allPlans}
-              rbtCount={planLimits.currentRbts}
+              supportedStates={supportedStates}
             />
           </div>
         </div>

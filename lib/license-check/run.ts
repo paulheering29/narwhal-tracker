@@ -1,17 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { massachusetts } from './massachusetts'
-import { connecticut, illinois, rhodeIsland, texas, washington } from './states'
-import { newJersey } from './newJersey'
-import { pennsylvania } from './pennsylvania'
-import { vermont } from './vermont'
 import { Resend } from 'resend'
 import { EMAIL_FROM } from '@/lib/email'
 import { esc, shell } from '@/lib/renewal-reminders'
+import { ACCESS_COLUMNS, hasAccess, type AccessRow } from '@/lib/pricing'
+import { SOURCES } from './sources'
 import { verifyLicense, type VerificationResult } from './verify'
-import type { StateLicense, StateSource } from './types'
+import type { StateLicense } from './types'
 
-// Add a state here once its reader exists. Everything else is state-agnostic.
-const SOURCES: StateSource[] = [massachusetts, rhodeIsland, washington, texas, illinois, connecticut, newJersey, pennsylvania, vermont]
 const NOTES = new Map(SOURCES.map(s => [s.code, s.notFoundNote ?? '']))
 
 const CHUNK = 500
@@ -76,11 +71,27 @@ type Row = {
 /** One license's result, kept for the nightly email. */
 type Outcome = { companyId: string; name: string; state: string; number: string | null; result: VerificationResult; detail: string }
 
-/** Check every staff license for the states we have a fresh list for. */
+/**
+ * Check staff licenses, but only the ones an organization pays for: a company is
+ * checked for a state when it has added that state (company_license_states) and
+ * still has access (trial, subscription, or comped).
+ */
 async function verifyAll(db: SupabaseClient) {
   const today = new Date().toISOString().slice(0, 10)
   const { data: syncs } = await db.from('state_license_sync').select('jurisdiction_code, last_synced_at')
-  const ready = (syncs ?? []).filter(s => s.last_synced_at).map(s => s.jurisdiction_code as string)
+  const synced = new Set((syncs ?? []).filter(s => s.last_synced_at).map(s => s.jurisdiction_code as string))
+
+  const [{ data: companies }, { data: chosen }] = await Promise.all([
+    db.from('companies').select(`id, ${ACCESS_COLUMNS}`),
+    db.from('company_license_states').select('company_id, jurisdiction_code'),
+  ])
+  const active = new Set((companies ?? []).filter(c => hasAccess(c as AccessRow)).map(c => c.id as string))
+  const companiesByState = new Map<string, string[]>()
+  for (const c of chosen ?? []) {
+    if (!active.has(c.company_id) || !synced.has(c.jurisdiction_code)) continue
+    companiesByState.set(c.jurisdiction_code, [...(companiesByState.get(c.jurisdiction_code) ?? []), c.company_id])
+  }
+  const ready = Array.from(companiesByState.keys())
 
   let checked = 0
   const outcomes: Outcome[] = []
@@ -101,7 +112,7 @@ async function verifyAll(db: SupabaseClient) {
 
     const { data: licenses } = await db.from('staff_licenses')
       .select('id, company_id, jurisdiction_code, license_number, expiration_date, staff:staff_id(first_name, last_name, display_first_name)')
-      .eq('jurisdiction_code', code)
+      .eq('jurisdiction_code', code).in('company_id', companiesByState.get(code) ?? [])
 
     for (const row of (licenses ?? []) as unknown as Row[]) {
       if (!row.staff) continue

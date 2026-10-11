@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { runLicenseVerification } from '@/lib/license-check/run'
+import { syncQuietly } from '@/lib/billing'
 
 export const maxDuration = 300
 
@@ -12,5 +13,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin
-  return NextResponse.json(await runLicenseVerification(createServiceClient(), appUrl))
+  const db = createServiceClient()
+  const result = await runLicenseVerification(db, appUrl)
+
+  // Same nightly pass: catch any headcount change that didn't sync when it happened
+  // (a bulk import, an edit made straight in the database) so invoices stay accurate.
+  const { data: subscribed } = await db.from('companies').select('id').not('stripe_subscription_id', 'is', null)
+  for (const c of subscribed ?? []) await syncQuietly(c.id as string)
+
+  return NextResponse.json({ ...result, billingSynced: subscribed?.length ?? 0 })
 }

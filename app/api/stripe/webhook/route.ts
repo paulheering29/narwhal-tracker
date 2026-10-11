@@ -29,11 +29,9 @@ export async function POST(request: NextRequest) {
       if (session.mode !== 'subscription') break
 
       const companyId = session.metadata?.company_id
-      const planId    = session.metadata?.plan_id
-      if (!companyId || !planId) break
+      if (!companyId) break
 
       await service.from('companies').update({
-        plan_id:                 planId,
         stripe_customer_id:      session.customer as string,
         stripe_subscription_id:  session.subscription as string,
         subscription_status:     'active',
@@ -57,26 +55,13 @@ export async function POST(request: NextRequest) {
     }
 
     case 'customer.subscription.deleted': {
-      // Subscription cancelled — revert to free plan
+      // Subscription cancelled. Access then falls back to whatever is left of the
+      // trial (usually none) -- see accessFor in lib/pricing.ts.
       const sub = event.data.object as Stripe.Subscription
-      const { data: company } = await service
-        .from('companies')
-        .select('id')
-        .eq('stripe_subscription_id', sub.id)
-        .single()
-      if (!company) break
-
-      const { data: freePlan } = await service
-        .from('plans')
-        .select('id')
-        .eq('name', 'free')
-        .single()
-
       await service.from('companies').update({
-        plan_id:                freePlan?.id ?? null,
         stripe_subscription_id: null,
         subscription_status:    'canceled',
-      }).eq('id', company.id)
+      }).eq('stripe_subscription_id', sub.id)
       break
     }
   }

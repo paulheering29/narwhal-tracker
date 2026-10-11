@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { BASE_CENTS, USER_CENTS, STATE_CENTS, TRIAL_DAYS, CONTACT_EMAIL, formatMoney, monthlyTotalCents } from '@/lib/pricing'
 
 const BLUE  = '#025CA8'
 const GREEN = '#3FAD46'
@@ -127,13 +128,14 @@ export default function HomePage() {
           <nav className="flex items-center gap-1 sm:gap-6">
             <a href="#how-it-works" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">How it works</a>
             <a href="#features" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">Features</a>
+            <a href="#pricing" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">Pricing</a>
             <a href={LOGIN_URL} className="text-sm font-medium text-gray-600 hover:text-gray-900 px-2 py-2">Sign in</a>
             <a
               href={SIGNUP_URL}
               className="text-sm font-semibold px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: BLUE }}
             >
-              Start free
+              Start free trial
             </a>
           </nav>
         </div>
@@ -163,7 +165,7 @@ export default function HomePage() {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: BLUE }}
               >
-                Start free
+                Start free trial
                 <Icon name="arrowRight" className="h-4 w-4" />
               </a>
               <a
@@ -339,6 +341,63 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Pricing ───────────────────────────────────────────────────────── */}
+      <section id="pricing" className="scroll-mt-16 bg-gray-50 border-y border-gray-200 px-4 sm:px-8 py-20 sm:py-24">
+        <div className="max-w-4xl mx-auto">
+          <div className="max-w-2xl mb-12">
+            <p className="text-sm font-semibold mb-3" style={{ color: BLUE }}>Pricing</p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">One plan. Everything included.</h2>
+            <p className="text-gray-600 text-lg">
+              Start with a {TRIAL_DAYS}-day free trial, no card needed. Then pay for the people you actually track.
+            </p>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="rounded-2xl border-2 bg-white p-8" style={{ borderColor: BLUE }}>
+              <h3 className="font-semibold text-lg mb-1">Training Loop</h3>
+              <p className="mb-1">
+                <span className="text-4xl font-extrabold" style={{ color: BLUE }}>{formatMoney(BASE_CENTS)}</span>
+                <span className="text-gray-500"> / month</span>
+              </p>
+              <p className="text-gray-600 mb-6">+ {formatMoney(USER_CENTS)} per person, every RBT and BCBA you track</p>
+              <ul className="space-y-2 text-sm text-gray-600 mb-6">
+                {[
+                  'Live and self-paced training, quizzes, and certificates',
+                  'PDU and CEU tracking for every certification cycle',
+                  'Learning paths and outside-training uploads',
+                  'State licensure tracking and renewal reminders',
+                  'Unlimited admins, trainers, and courses',
+                ].map(t => (
+                  <li key={t} className="flex gap-2"><Icon name="checklist" className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />{t}</li>
+                ))}
+              </ul>
+              <p className="text-xs text-gray-500">
+                For example, 20 people is {formatMoney(monthlyTotalCents(20, 0))} a month; 100 people is {formatMoney(monthlyTotalCents(100, 0))}.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-8">
+              <h3 className="font-semibold text-lg mb-1">Nightly license checks</h3>
+              <p className="mb-1">
+                <span className="text-4xl font-extrabold" style={{ color: BLUE }}>{formatMoney(STATE_CENTS)}</span>
+                <span className="text-gray-500"> / state / month</span>
+              </p>
+              <p className="text-gray-600 mb-6">An optional add-on, one state at a time</p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Every night we compare your BCBAs’ licenses in that state against the state’s own published list, and flag
+                anything expired, missing, or not matching. Add only the states you work in, and optionally get the results by email.
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-8 text-center text-gray-600">
+            Fewer than 10 RBTs + BCBAs, or a non-profit?{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold hover:underline" style={{ color: BLUE }}>Contact us</a>{' '}
+            for discounted plans.
+          </p>
+        </div>
+      </section>
+
       {/* ── CTA ───────────────────────────────────────────────────────────── */}
       <section className="px-4 sm:px-8 pb-24">
         <div className="max-w-6xl mx-auto rounded-3xl px-6 sm:px-12 py-14 text-center text-white" style={{ backgroundColor: BLUE }}>
@@ -346,7 +405,7 @@ export default function HomePage() {
             PDUs, CEUs, and certificates — finally in one place.
           </h2>
           <p className="text-blue-100 text-lg mb-8 max-w-xl mx-auto">
-            Free for up to 5 RBTs. No card needed.
+            Try everything free for 30 days. No card needed.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <a
@@ -354,7 +413,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold bg-white transition-opacity hover:opacity-90"
               style={{ color: BLUE }}
             >
-              Start free
+              Start free trial
               <Icon name="arrowRight" className="h-4 w-4" />
             </a>
             <a href={LOGIN_URL} className="px-5 py-3 text-sm font-semibold text-white hover:underline">

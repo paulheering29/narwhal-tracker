@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { cookies } from 'next/headers'
 import { Resend } from 'resend'
 import { EMAIL_FROM } from '@/lib/email'
+import { syncQuietly } from '@/lib/billing'
 
 export async function POST(request: NextRequest) {
   // ── Verify caller is an admin ─────────────────────────────────────────────
@@ -65,6 +66,8 @@ export async function POST(request: NextRequest) {
     await service.auth.admin.deleteUser(created.user.id)
     return NextResponse.json({ error: staffError.message }, { status: 400 })
   }
+
+  await syncQuietly(caller.company_id)
 
   // ── Send welcome email via Resend ──────────────────────────────────────────
   try {

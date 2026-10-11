@@ -56,7 +56,7 @@ export default async function WelcomePage() {
         ))}
       </ol>
       <p className="mt-6 text-sm text-gray-500">
-        Free for up to 5 RBTs. When you’re ready for more, upgrade from <Link href="/admin/users?tab=account" className="text-[#025CA8] hover:underline">Admin → Account</Link>.
+        You have 30 days to try everything, no card needed. Subscribe any time from <Link href="/admin/users?tab=account" className="text-[#025CA8] hover:underline">Admin → Account</Link>.
       </p>
     </div>
   )

@@ -48,6 +48,7 @@ import {
   Image as ImageIcon,
   Trash2,
   Eye,
+  ShieldCheck,
 } from 'lucide-react'
 import { resizeImage } from '@/lib/resize-image'
 
@@ -736,11 +737,11 @@ export default function StaffDetailPage() {
           </div>
         </section>
 
-        {/* ── Column 2: Certification Cycles ───────────────────────────────── */}
+        {/* ── Column 2: Certification and Licensure Cycles ───────────────────────────────── */}
         <section>
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Certification Cycles</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Certification and Licensure Cycles</h2>
               <p className="text-sm text-gray-500">{cycles.length} cycle{cycles.length !== 1 ? 's' : ''} on record</p>
             </div>
             <Button onClick={openAddCycle} size="sm" className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
@@ -754,13 +755,16 @@ export default function StaffDetailPage() {
             </div>
           ) : (
             <div className="space-y-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#025CA8]">
+                <ShieldCheck className="h-3.5 w-3.5" /> BACB certification
+              </p>
               {cycles.map(cycle => {
                 const isExpanded = expandedCycleId === cycle.id
                 const records = cycleRecords[cycle.id]
                 const status = getCycleStatus(cycle.start_date, cycle.end_date)
 
                 return (
-                  <div key={cycle.id} className="rounded-lg border bg-white shadow-sm overflow-hidden">
+                  <div key={cycle.id} className="rounded-lg border border-l-4 border-l-[#025CA8] bg-white shadow-sm overflow-hidden">
                     {/* Cycle header row */}
                     <div
                       className="flex items-center gap-2 px-3 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
@@ -772,9 +776,14 @@ export default function StaffDetailPage() {
                           : <ChevronRight className="h-4 w-4" />}
                       </button>
 
-                      <span className="text-sm text-gray-700 font-medium">
-                        {formatDate(cycle.start_date)} — {formatDate(cycle.end_date)}
-                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#025CA8]">
+                          BACB {cycle.certification_type} certification
+                        </p>
+                        <p className="text-sm text-gray-700 font-medium">
+                          {formatDate(cycle.start_date)} — {formatDate(cycle.end_date)}
+                        </p>
+                      </div>
 
                       <span className={`ml-auto shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${cycleStatusStyles[status]}`}>
                         {status}

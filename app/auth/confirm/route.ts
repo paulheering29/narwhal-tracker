@@ -41,6 +41,10 @@ export async function GET(request: NextRequest) {
     return fail()
   }
 
+  // Beta testers / free-access emails added in the owner portal get their plan now.
+  // Best-effort: a failure here must not block signup; it can be fixed from the portal.
+  await applyAccessGrant(service, data.user.id, data.user.email ?? '')
+
   // The session was issued before the organization existed; mint a new one so
   // its claims (company, tier, roles) are in place from the first page.
   const { error: refreshError } = await supabase.auth.refreshSession()
@@ -49,4 +53,31 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?notice=confirmed`)
   }
   return NextResponse.redirect(`${origin}/welcome`)
+}
+
+async function applyAccessGrant(service: ReturnType<typeof createServiceClient>, authId: string, email: string) {
+  try {
+    const { data: grant } = await service
+      .from('access_grants')
+      .select('id, plan_id, access_type, note')
+      .eq('email', email.toLowerCase())
+      .is('claimed_at', null)
+      .maybeSingle()
+    if (!grant) return
+
+    const { data: staff } = await service.from('staff').select('company_id').eq('auth_id', authId).single()
+    if (!staff?.company_id) return
+
+    await service.from('companies').update({
+      plan_id: grant.plan_id,
+      access_type: grant.access_type,
+      access_note: grant.note,
+    }).eq('id', staff.company_id)
+    await service.from('access_grants').update({
+      claimed_company_id: staff.company_id,
+      claimed_at: new Date().toISOString(),
+    }).eq('id', grant.id)
+  } catch (err) {
+    console.error('access grant failed', err)
+  }
 }

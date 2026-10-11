@@ -20,9 +20,10 @@ import {
 import {
   Pencil, Loader2, ShieldCheck,
   CheckCircle2, UserPlus,
-  Tag, Trash2, Plus, Building2, CreditCard,
+  Tag, Trash2, Plus, Building2, KeyRound, Sparkles,
 } from 'lucide-react'
 import { ALL_ROLES } from '@/lib/permissions'
+import { EXTRACTION_YEARLY_LIMIT } from '@/lib/certificate-extraction'
 import { BillingClient } from '@/app/(app)/billing/client'
 import type { Plan, CompanyBilling } from '@/lib/plans'
 import { resizeImage } from '@/lib/resize-image'
@@ -76,6 +77,7 @@ export function AdminUsersClient({
   billing,
   allPlans,
   credentialTypes,
+  importUsage,
 }: {
   currentAuthId: string
   currentRoles: string[]
@@ -86,16 +88,20 @@ export function AdminUsersClient({
   billing: CompanyBilling | null
   allPlans: Plan[]
   credentialTypes: { code: string; unit_label: string }[]
+  importUsage: Record<string, number>   // staff_id → certificate imports used this year
 }) {
   const supabase = createClient()
   const router   = useRouter()
   const searchParams = useSearchParams()
 
   const isAccountOwner = currentRoles.includes('Account Owner')
-  type AdminTab = 'admin' | 'topics' | 'billing' | 'company'
+  type AdminTab = 'admin' | 'topics' | 'account' | 'company'
   const initialTab: AdminTab = (() => {
     const q = searchParams.get('tab')
-    if (q === 'billing' || q === 'topics' || q === 'admin' || q === 'company') return q
+    if (q === 'topics' || q === 'admin') return q
+    // Billing moved into the Account Owner tab; Stripe still returns to ?tab=billing.
+    if ((q === 'account' || q === 'billing') && isAccountOwner) return 'account'
+    if (q === 'company' && isAccountOwner) return 'company'
     return 'admin'
   })()
   const [tab, setTab] = useState<AdminTab>(initialTab)
@@ -372,9 +378,11 @@ export function AdminUsersClient({
         {([
           { key: 'admin'   as const, label: 'Permissions', icon: ShieldCheck, count: adminStaff.length as number | undefined },
           { key: 'topics'  as const, label: 'Topics',      icon: Tag,         count: topics.length     as number | undefined },
-          { key: 'billing' as const, label: 'Billing',     icon: CreditCard,  count: undefined         as number | undefined },
           ...(isAccountOwner
-            ? [{ key: 'company' as const, label: 'Company', icon: Building2, count: undefined as number | undefined }]
+            ? [
+                { key: 'company' as const, label: 'Company', icon: Building2, count: undefined as number | undefined },
+                { key: 'account' as const, label: 'Account', icon: KeyRound,  count: undefined as number | undefined },
+              ]
             : []),
         ]).map(({ key, label, icon: Icon, count }) => (
           <button
@@ -654,17 +662,6 @@ export function AdminUsersClient({
         </div>
       )}
 
-      {/* ── Billing Tab ─────────────────────────────────────────────────────── */}
-      {tab === 'billing' && (
-        <div className="-m-8">
-          <BillingClient
-            billing={billing}
-            allPlans={allPlans}
-            rbtCount={planLimits.currentRbts}
-          />
-        </div>
-      )}
-
       {/* ── Company Tab ─────────────────────────────────────────────────────── */}
       {tab === 'company' && isAccountOwner && (
         <div>
@@ -865,6 +862,19 @@ export function AdminUsersClient({
             </div>
           </div>
 
+          </div>
+        </div>
+      )}
+
+
+      {/* ── Account Tab (Account Owner only) ────────────────────────────────── */}
+      {tab === 'account' && isAccountOwner && (
+        <div>
+          <p className="text-sm text-gray-500 mb-6">
+            Settings only the Account Owner can change: who can add outside trainings, certificate import usage, and your plan.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+
           {/* Outside Trainings */}
           <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
             <div>
@@ -933,6 +943,57 @@ export function AdminUsersClient({
               </Button>
             </div>
           </div>
+
+          {/* Certificate imports */}
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
+            <div className="flex items-start gap-2">
+              <Sparkles className="h-4 w-4 text-[#025CA8] mt-0.5 shrink-0" />
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700">Certificate imports this year</h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  People can upload a certificate and have the form filled in for them, up to {EXTRACTION_YEARLY_LIMIT} times each per calendar year.
+                  Failed reads count too. Manual entry is never limited.
+                </p>
+              </div>
+            </div>
+            {(() => {
+              const used = staff
+                .map(m => ({ m, n: importUsage[m.id] ?? 0 }))
+                .filter(x => x.n > 0)
+                .sort((a, b) => b.n - a.n)
+              const total = used.reduce((sum, x) => sum + x.n, 0)
+              return (
+                <>
+                  <p className="text-3xl font-extrabold text-gray-900 tabular-nums">
+                    {total} <span className="text-sm font-medium text-gray-500">import{total !== 1 ? 's' : ''} by {used.length} {used.length !== 1 ? 'people' : 'person'}</span>
+                  </p>
+                  {used.length > 0 && (
+                    <ul className="divide-y divide-gray-100 border-t border-gray-100">
+                      {used.map(({ m, n }) => (
+                        <li key={m.id} className="flex items-center gap-3 py-2 text-sm">
+                          <span className="flex-1 truncate text-gray-800">{getDisplayName(m)}</span>
+                          <div className="h-1.5 w-24 rounded-full bg-gray-100 overflow-hidden">
+                            <div className={`h-full rounded-full ${n >= EXTRACTION_YEARLY_LIMIT ? 'bg-rose-500' : 'bg-[#025CA8]'}`}
+                              style={{ width: `${Math.min(100, (n / EXTRACTION_YEARLY_LIMIT) * 100)}%` }} />
+                          </div>
+                          <span className="w-12 text-right text-xs tabular-nums text-gray-500">{n}/{EXTRACTION_YEARLY_LIMIT}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )
+            })()}
+          </div>
+          </div>
+
+          {/* Billing & plan */}
+          <div className="-mx-4 md:-mx-8 mt-4">
+            <BillingClient
+              billing={billing}
+              allPlans={allPlans}
+              rbtCount={planLimits.currentRbts}
+            />
           </div>
         </div>
       )}

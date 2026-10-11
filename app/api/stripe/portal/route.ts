@@ -39,7 +39,7 @@ export async function POST() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trainingloop.tech'
   const portalSession = await stripe.billingPortal.sessions.create({
     customer:   company.stripe_customer_id,
-    return_url: `${baseUrl}/admin/users?tab=billing`,
+    return_url: `${baseUrl}/admin/users?tab=account`,
   })
 
   return NextResponse.json({ url: portalSession.url })

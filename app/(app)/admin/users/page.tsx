@@ -44,6 +44,21 @@ export default async function AdminUsersPage() {
     supabase.from('credential_types').select('code, unit_label').order('sort_order'),
   ])
 
+  // How many certificate imports each person has used this year (the log is
+  // service-role only). Only the Account Owner's tab shows it.
+  const importUsage: Record<string, number> = {}
+  if ((me.roles ?? []).includes('Account Owner')) {
+    const { data: imports } = await service
+      .from('certificate_extractions')
+      .select('staff_id')
+      .eq('company_id', me.company_id)
+      .gte('created_at', `${new Date().getUTCFullYear()}-01-01T00:00:00Z`)
+    for (const row of imports ?? []) {
+      const id = row.staff_id as string
+      importUsage[id] = (importUsage[id] ?? 0) + 1
+    }
+  }
+
   const planLimits = {
     maxRbts:     billing?.plan?.max_rbts     ?? 5,
     currentRbts: rbtCount,
@@ -61,6 +76,7 @@ export default async function AdminUsersPage() {
       billing={billing}
       allPlans={allPlans}
       credentialTypes={credentialTypes ?? []}
+      importUsage={importUsage}
     />
   )
 }

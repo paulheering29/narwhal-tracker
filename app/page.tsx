@@ -384,7 +384,7 @@ export default function HomePage() {
               </p>
               <p className="text-gray-600 mb-6">An optional add-on, one state at a time</p>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Every night we compare your BCBAs’ licenses in that state against the state’s own published list, and flag
+                Every night we compare your Licensed Behavior Analysts’ licenses in that state against the state’s own published list, and flag
                 anything expired, missing, or not matching. Add only the states you work in, and optionally get the results by email.
               </p>
             </div>

@@ -1,10 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { massachusetts } from './massachusetts'
+import { connecticut, illinois, rhodeIsland, texas, washington } from './states'
 import { verifyLicense } from './verify'
 import type { StateLicense, StateSource } from './types'
 
 // Add a state here once its reader exists. Everything else is state-agnostic.
-const SOURCES: StateSource[] = [massachusetts]
+const SOURCES: StateSource[] = [massachusetts, rhodeIsland, washington, texas, illinois, connecticut]
+const NOTES = new Map(SOURCES.map(s => [s.code, s.notFoundNote ?? '']))
 
 const CHUNK = 500
 
@@ -88,7 +90,7 @@ async function verifyAll(db: SupabaseClient) {
       if (!row.staff) continue
       const v = verifyLicense(
         { firstName: row.staff.first_name, lastName: row.staff.last_name, chosenName: row.staff.display_first_name },
-        row.license_number, row.expiration_date, records, today,
+        row.license_number, row.expiration_date, records, today, NOTES.get(code),
       )
       await db.from('staff_licenses').update({
         verified_at: new Date().toISOString(), verification_result: v.result, verification_detail: v.detail,

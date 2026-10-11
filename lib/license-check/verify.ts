@@ -15,14 +15,17 @@ type Standing = 'current' | 'expired' | 'review'
 // What a state calls a license in good standing / one that has run out.
 const LIVE = new Set(['current', 'active', 'approved'])
 const EXPIRED = new Set(['expired', 'lapsed', 'not renewed'])
+// Licensed with a renewal under way (Connecticut); once its date has passed nobody can say which way it went.
+const RENEWING = new Set(['active in renewal'])
 
 /** A state's status word is not enough: the file can say Current for a date that has passed. */
 function standing(l: StateLicense, today: string): Standing {
   const status = l.status.toLowerCase()
   const judgedByDate = status === ''   // a list with no status column can only be judged by its dates
-  if (LIVE.has(status) || judgedByDate) {
+  if (LIVE.has(status) || RENEWING.has(status) || judgedByDate) {
     if (!l.expires) return judgedByDate ? 'review' : 'current'
-    return l.expires < today ? 'expired' : 'current'
+    if (l.expires < today) return RENEWING.has(status) ? 'review' : 'expired'
+    return 'current'
   }
   if (EXPIRED.has(status)) return 'expired'
   // Suspended, surrendered, revoked, deceased, a condition: never paper over with a green tick.
@@ -103,6 +106,7 @@ export function verifyLicense(
   enteredExpiration: string | null,
   licenses: StateLicense[],
   today: string,
+  notFoundNote = '',
 ): Verification {
   let found: StateLicense[] = []
   let by: 'number' | 'name' = 'name'
@@ -135,7 +139,7 @@ export function verifyLicense(
         ? { result: 'review', stateStatus: null, stateExpiration: null,
             detail: 'A similar name is on the state list, but not this exact name. Enter the license number to confirm.' }
         : { result: 'not_found', stateStatus: null, stateExpiration: null,
-            detail: 'Not found on the state list. Check the name and license number, or the state may not publish this license type.' }
+            detail: 'Not found on the state list. Check the name and license number, or the state may not publish this license type.' + (notFoundNote ? ` ${notFoundNote}` : '') }
     }
     if (hasNamesake(exact)) {
       return { result: 'review', stateStatus: null, stateExpiration: null,

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, ArrowLeft, CheckCircle2, Eye, EyeOff } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function ResetPasswordPage() {
   return (
@@ -80,6 +81,7 @@ function ResetPasswordForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <ThemeToggle className="fixed right-4 top-4" />
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="flex justify-center mb-8">

@@ -308,12 +308,10 @@ export function TopicAnalysisClient({ topics, staff, matrix, availableTrainings 
           <tbody>
             {sorted.map((s, rowIdx) => {
               const isEven = rowIdx % 2 === 0
-              const rowBg  = isEven ? '#ffffff' : '#f9fafb'
               return (
                 <tr key={s.id} className={isEven ? 'bg-white' : 'bg-gray-50/60'}>
                   {/* Name */}
-                  <td className="sticky left-0 z-10 px-5 py-3 text-sm font-medium text-gray-800 text-center border-r border-gray-100"
-                    style={{ backgroundColor: rowBg }}>
+                  <td className={`sticky left-0 z-10 px-5 py-3 text-sm font-medium text-gray-800 text-center border-r border-gray-100 ${isEven ? 'bg-white' : 'bg-gray-50'}`}>
                     {displayName(s)}
                   </td>
 

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 // Three doors, so someone whose company already uses Training Loop doesn't end
 // up creating a second, empty organization.
@@ -9,6 +10,7 @@ const base = 'block w-full rounded-lg px-4 py-3 text-center text-sm font-semibol
 export default function SignupChooserPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10">
+      <ThemeToggle className="fixed right-4 top-4" />
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Image src="/training-loop-logo.png" alt="Training Loop" width={1296} height={613} className="h-20 w-auto" priority />

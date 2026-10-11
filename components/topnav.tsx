@@ -28,6 +28,7 @@ import {
   KeyRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { showAdminNav, canManageTrainings, hasRole, rolesDisplay } from '@/lib/permissions'
 
 interface TopNavProps {
@@ -39,8 +40,6 @@ interface TopNavProps {
 }
 
 type Item = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }
-
-const BG = '#ffffff'
 
 const rbtNavItems: Item[] = [
   { href: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
@@ -154,7 +153,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
 
   return (
     <>
-      <header style={{ backgroundColor: BG }} className="w-full shrink-0 border-b border-gray-200 shadow-sm relative z-40">
+      <header className="w-full shrink-0 bg-white border-b border-gray-200 shadow-sm relative z-40">
         <div className="flex h-14 items-center px-4 md:px-6 gap-4">
 
           {/* Brand */}
@@ -207,7 +206,8 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
           </nav>
 
           {/* Desktop: account menu */}
-          <div className="hidden lg:block shrink-0 ml-auto">
+          <div className="hidden lg:flex items-center gap-1 shrink-0 ml-auto">
+            <ThemeToggle />
             <Dropdown
               align="right"
               active={isActive('/settings') || isActive('/my-courses') || isActive('/my-progress') || isActive('/change-password')}
@@ -228,14 +228,17 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
           </div>
 
           {/* Mobile: hamburger button */}
+          <div className="lg:hidden ml-auto flex items-center gap-1">
+          <ThemeToggle />
           <button
             onClick={() => setMobileOpen(o => !o)}
-            className="lg:hidden ml-auto relative flex items-center justify-center h-9 w-9 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
+            className="relative flex items-center justify-center h-9 w-9 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
             aria-label="Toggle menu"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             {!mobileOpen && pendingReviews > 0 && canReview && <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-amber-500" />}
           </button>
+          </div>
 
         </div>
       </header>
@@ -244,8 +247,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-30" onClick={() => setMobileOpen(false)}>
           <div
-            className="absolute top-14 left-0 right-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto shadow-xl"
-            style={{ backgroundColor: BG }}
+            className="absolute top-14 left-0 right-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto bg-white shadow-xl"
             onClick={e => e.stopPropagation()}
           >
             <nav className="flex flex-col py-2">

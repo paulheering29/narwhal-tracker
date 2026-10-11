@@ -1,9 +1,12 @@
 import Image from 'next/image'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { PriceCalculator } from '@/components/price-calculator'
 import { TRIAL_DAYS, CONTACT_EMAIL, formatMoney, lockInLine, monthlyTotalCents } from '@/lib/pricing'
 import { getCurrentOffer } from '@/lib/billing'
 
 const BLUE  = '#025CA8'
+// Blue used as text or an outline; lightened in dark mode (see --brand-text in globals.css). Fills keep BLUE.
+const BLUE_TEXT = 'var(--brand-text)'
 const GREEN = '#3FAD46'
 
 // The app lives on its own host (see middleware.ts), so sign-in links are absolute.
@@ -137,6 +140,7 @@ export default async function HomePage() {
             <a href="#features" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">Features</a>
             <a href="#pricing" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">Pricing</a>
             <a href={SIGNUP_URL} className="text-sm font-medium text-gray-600 hover:text-gray-900 px-2 py-2">Sign Up Your Org</a>
+            <ThemeToggle />
             <a
               href={LOGIN_URL}
               className="text-sm font-semibold px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
@@ -158,7 +162,7 @@ export default async function HomePage() {
             </p>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08] mb-6">
               Earn PDUs & CEUs.<br />
-              <span style={{ color: BLUE }}>Track your certification.</span><br />
+              <span style={{ color: BLUE_TEXT }}>Track your certification.</span><br />
               <span style={{ color: GREEN }}>Stay in the loop.</span>
             </h1>
             <p className="text-lg text-gray-600 leading-relaxed mb-10 max-w-xl">
@@ -238,7 +242,7 @@ export default async function HomePage() {
       <section id="how-it-works" className="scroll-mt-16 bg-gray-50 border-y border-gray-200 px-4 sm:px-8 py-20 sm:py-24">
         <div className="max-w-6xl mx-auto">
           <div className="max-w-2xl mb-14">
-            <p className="text-sm font-semibold mb-3" style={{ color: BLUE }}>How it works</p>
+            <p className="text-sm font-semibold mb-3" style={{ color: BLUE_TEXT }}>How it works</p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">One loop, every cycle.</h2>
             <p className="text-gray-600 text-lg">
               Set your team up once. From then on, every training feeds straight into
@@ -292,7 +296,7 @@ export default async function HomePage() {
             </ul>
           </div>
           <div className="rounded-2xl border border-gray-200 p-8">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 mb-5" style={{ color: BLUE }}>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 mb-5" style={{ color: BLUE_TEXT }}>
               <Icon name="certificate" />
             </div>
             <h3 className="text-xl font-semibold mb-3">For BCBAs</h3>
@@ -309,7 +313,7 @@ export default async function HomePage() {
             </ul>
           </div>
           <div className="rounded-2xl border border-gray-200 p-8">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 mb-5" style={{ color: BLUE }}>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 mb-5" style={{ color: BLUE_TEXT }}>
               <Icon name="school" />
             </div>
             <h3 className="text-xl font-semibold mb-3">For training coordinators</h3>
@@ -331,13 +335,13 @@ export default async function HomePage() {
       <section id="features" className="scroll-mt-16 px-4 sm:px-8 pb-20 sm:pb-24">
         <div className="max-w-6xl mx-auto">
           <div className="max-w-2xl mb-12">
-            <p className="text-sm font-semibold mb-3" style={{ color: BLUE }}>Features</p>
+            <p className="text-sm font-semibold mb-3" style={{ color: BLUE_TEXT }}>Features</p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Everything the loop needs.</h2>
           </div>
           <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
             {features.map(({ icon, title, body }) => (
               <div key={title}>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 mb-4" style={{ color: BLUE }}>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 mb-4" style={{ color: BLUE_TEXT }}>
                   <Icon name={icon} className="h-5 w-5" />
                 </div>
                 <h3 className="font-semibold mb-2">{title}</h3>
@@ -352,7 +356,7 @@ export default async function HomePage() {
       <section id="pricing" className="scroll-mt-16 bg-gray-50 border-y border-gray-200 px-4 sm:px-8 py-20 sm:py-24">
         <div className="max-w-4xl mx-auto">
           <div className="max-w-2xl mb-12">
-            <p className="text-sm font-semibold mb-3" style={{ color: BLUE }}>Pricing</p>
+            <p className="text-sm font-semibold mb-3" style={{ color: BLUE_TEXT }}>Pricing</p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">One plan. Everything included.</h2>
             <p className="text-gray-600 text-lg">
               Start with a {TRIAL_DAYS}-day free trial, no card needed. Then pay for the people you actually track.
@@ -360,15 +364,15 @@ export default async function HomePage() {
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="rounded-2xl border-2 bg-white p-8" style={{ borderColor: BLUE }}>
+            <div className="rounded-2xl border-2 bg-white p-8" style={{ borderColor: BLUE_TEXT }}>
               <h3 className="font-semibold text-lg mb-1">Training Loop</h3>
               {introductory && (
-                <p className="inline-block rounded-full px-3 py-0.5 text-xs font-semibold mb-3" style={{ backgroundColor: '#e8f1fa', color: BLUE }}>
+                <p className="inline-block rounded-full bg-[#025CA8]/10 px-3 py-0.5 text-xs font-semibold mb-3" style={{ color: BLUE_TEXT }}>
                   Introductory pricing
                 </p>
               )}
               <p className="mb-1">
-                <span className="text-4xl font-extrabold" style={{ color: BLUE }}>{formatMoney(rates.baseCents)}</span>
+                <span className="text-4xl font-extrabold" style={{ color: BLUE_TEXT }}>{formatMoney(rates.baseCents)}</span>
                 <span className="text-gray-500"> / month</span>
               </p>
               <p className="text-gray-600 mb-1">+ {formatMoney(rates.userCents)} per person</p>
@@ -376,7 +380,7 @@ export default async function HomePage() {
                 Everyone you add counts: RBTs, BCBAs, and also training coordinators, admins, and anyone else with a login.
               </p>
               {endsOn && (
-                <p className="text-sm font-medium mb-6" style={{ color: BLUE }}>
+                <p className="text-sm font-medium mb-6" style={{ color: BLUE_TEXT }}>
                   {lockInLine(endsOn, next)}
                 </p>
               )}
@@ -399,7 +403,7 @@ export default async function HomePage() {
             <div className="rounded-2xl border border-gray-200 bg-white p-8">
               <h3 className="font-semibold text-lg mb-1">Nightly license checks</h3>
               <p className="mb-1">
-                <span className="text-4xl font-extrabold" style={{ color: BLUE }}>{formatMoney(rates.stateCents)}</span>
+                <span className="text-4xl font-extrabold" style={{ color: BLUE_TEXT }}>{formatMoney(rates.stateCents)}</span>
                 <span className="text-gray-500"> / state / month</span>
               </p>
               <p className="text-gray-600 mb-6">An optional add-on, one state at a time</p>
@@ -413,11 +417,11 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <PriceCalculator color={BLUE} rates={rates} />
+          <PriceCalculator color={BLUE_TEXT} rates={rates} />
 
           <p className="mt-8 text-center text-gray-600">
             Fewer than 10 RBTs + BCBAs, or a non-profit?{' '}
-            <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold hover:underline" style={{ color: BLUE }}>Contact us</a>{' '}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold hover:underline" style={{ color: BLUE_TEXT }}>Contact us</a>{' '}
             for discounted plans.
           </p>
         </div>
@@ -436,7 +440,7 @@ export default async function HomePage() {
             <a
               href={SIGNUP_URL}
               className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold bg-white transition-opacity hover:opacity-90"
-              style={{ color: BLUE }}
+              style={{ color: BLUE_TEXT }}
             >
               Start free trial
               <Icon name="arrowRight" className="h-4 w-4" />

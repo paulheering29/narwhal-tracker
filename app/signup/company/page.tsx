@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle, Loader2, MailCheck } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 const MIN_PASSWORD = 10
 const inputCls = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
@@ -71,6 +72,7 @@ export default function SignupCompanyPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10">
+      <ThemeToggle className="fixed right-4 top-4" />
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Image src="/training-loop-logo.png" alt="Training Loop" width={1296} height={613} className="h-20 w-auto" priority />

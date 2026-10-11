@@ -135,7 +135,7 @@ function PaceChart({ rows, target, unitLabel, ethicsRequired, onOpen }: {
       <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-gray-600">
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-emerald-500" />Completed</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-300" />Scheduled, not completed</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-0.5 bg-gray-900" />Where they should be today</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-0.5 bg-gray-900 dark:bg-gray-100" />Where they should be today</span>
         <span className="ml-auto text-gray-400">Full bar = {fmtPdu(target)} {unitLabel}s</span>
       </div>
       <div className="space-y-1">
@@ -170,7 +170,7 @@ function PaceChart({ rows, target, unitLabel, ethicsRequired, onOpen }: {
                       <div className="h-full bg-amber-300" style={{ width: pct(sched) }} />
                     </div>
                     <div
-                      className="absolute -inset-y-1 w-0.5 -translate-x-1/2 bg-gray-900"
+                      className="absolute -inset-y-1 w-0.5 -translate-x-1/2 bg-gray-900 dark:bg-gray-100"
                       style={{ left: pct(s.pacingTarget) }}
                     />
                   </div>

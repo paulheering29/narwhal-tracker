@@ -25,6 +25,7 @@ const ICONS: Record<string, string[]> = {
   checklist:    ['M9.615 20h-2.615a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8', 'M14 19l2 2l4 -4', 'M9 8h4', 'M9 12h2'],
   world:        ['M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0', 'M3.6 9h16.8', 'M3.6 15h16.8', 'M11.5 3a17 17 0 0 0 0 18', 'M12.5 3a17 17 0 0 1 0 18'],
   sparkles:     ['M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6'],
+  route:        ['M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0', 'M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4', 'M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5'],
   scale:        ['M7 20l10 0', 'M6 6l6 -1l6 1', 'M12 3l0 17', 'M9 12l-3 -6l-3 6a3 3 0 0 0 6 0', 'M21 12l-3 -6l-3 6a3 3 0 0 0 6 0'],
 }
 
@@ -64,6 +65,11 @@ const features = [
     icon: 'play',
     title: 'Self-paced video courses',
     body: 'Upload a course in sections. Learners can pause and pick up where they left off, but can’t skip ahead or speed through.',
+  },
+  {
+    icon: 'route',
+    title: 'Learning paths',
+    body: 'Bundle self-paced courses into an ordered path, like New RBT Onboarding, and assign the whole thing in one click. Each course unlocks as the one before it is finished.',
   },
   {
     icon: 'clipboard',
@@ -266,6 +272,7 @@ export default function HomePage() {
               {[
                 'A personal dashboard showing exactly how many PDUs you have — and how many you need',
                 'Watch assigned courses on your own schedule, on any device',
+                'Follow a learning path one course at a time, with the next one unlocking as you finish',
                 'Download your certificates any time, without chasing anyone',
                 'Know how many days until your certification expires',
               ].map(t => (
@@ -297,7 +304,7 @@ export default function HomePage() {
             <ul className="space-y-3 text-gray-600">
               {[
                 'Schedule trainings, take attendance, and issue certificates in a few clicks',
-                'Upload video courses once and assign them to anyone who needs them',
+                'Upload video courses once, then assign them — or a whole learning path — to anyone who needs them',
                 'See every RBT’s PDUs and every BCBA’s CEUs, plus upcoming expirations, at a glance',
                 'Choose who can add outside trainings, and review them all from one queue — with name mismatches and possible duplicates flagged',
                 'Keep certification cycle documents together, ready for an audit',
@@ -316,7 +323,7 @@ export default function HomePage() {
             <p className="text-sm font-semibold mb-3" style={{ color: BLUE }}>Features</p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Everything the loop needs.</h2>
           </div>
-          <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
             {features.map(({ icon, title, body }) => (
               <div key={title}>
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 mb-4" style={{ color: BLUE }}>

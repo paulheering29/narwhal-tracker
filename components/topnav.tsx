@@ -24,6 +24,7 @@ import {
   Gauge,
   Library as TrainingIcon,
   ClipboardCheck,
+  Route as PathIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { showAdminNav, canManageTrainings, hasRole, rolesDisplay } from '@/lib/permissions'
@@ -134,6 +135,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
   const trainingItems: Item[] = [
     { href: '/trainings', label: 'Live Trainings', icon: BookOpen },
     { href: '/courses',   label: 'Video Courses',  icon: PlayCircle },
+    ...(canReview ? [{ href: '/paths', label: 'Learning Paths', icon: PathIcon }] : []),
     ...(canReview ? [{ href: '/outside-trainings', label: 'Outside Training Reviews', icon: ClipboardCheck, badge: pendingReviews }] : []),
   ]
   const myItems: Item[] = isStaff ? [

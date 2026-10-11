@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { hasWatchedAllSections } from '@/lib/course-eligibility'
+import { hasWatchedAllSections, canStartCourseInPaths } from '@/lib/course-eligibility'
 
 type SubmittedAnswer = { questionId: string; selectedOptionIndex: number }
 
@@ -47,6 +47,9 @@ export async function POST(request: NextRequest, { params }: { params: { courseI
   // answer it, but the run is scored and thrown away — no attempt recorded
   // (it would skew the insights) and no certificate issued.
   const isPreview = !isAssigned
+  if (isAssigned && !(await canStartCourseInPaths(service, course.id, caller.id))) {
+    return NextResponse.json({ error: 'Finish the earlier course in your learning path first.' }, { status: 403 })
+  }
   if (isAssigned) {
     const watchedAll = await hasWatchedAllSections(service, course.id, caller.id)
     if (!watchedAll) {
@@ -186,6 +189,11 @@ export async function POST(request: NextRequest, { params }: { params: { courseI
       }
     }
     certificateIssued = true
+
+    // Passing may finish a learning path. Never let this break the submission.
+    try {
+      await service.rpc('complete_learning_paths', { p_staff_id: caller.id })
+    } catch { /* the path is re-checked the next time anything about it changes */ }
   }
 
   return NextResponse.json({ ...result, attemptNumber, recordId, certificateIssued, preview: false })

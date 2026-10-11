@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { buildSignedEmbedUrl } from '@/lib/bunny'
-import { canAccessSection } from '@/lib/course-eligibility'
+import { canAccessSection, getPathBlocker } from '@/lib/course-eligibility'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const supabase = await createClient()
@@ -41,6 +41,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     if (!unlocked) {
       return NextResponse.json({ error: 'Finish the earlier sections first.' }, { status: 403 })
     }
+  }
+
+  // A sequential learning path can lock this whole course until an earlier one
+  // is finished. Not tied to tier: it only bites people assigned such a path, so
+  // a staff member previewing an unassigned course is unaffected.
+  const blocker = await getPathBlocker(service, video.course_id, caller.id)
+  if (blocker) {
+    return NextResponse.json({ error: `Complete “${blocker.courseName}” first (part of ${blocker.pathName}).` }, { status: 403 })
   }
 
   const { data: progress } = await service

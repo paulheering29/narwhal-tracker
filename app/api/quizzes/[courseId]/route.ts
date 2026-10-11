@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { hasWatchedAllSections } from '@/lib/course-eligibility'
+import { hasWatchedAllSections, canStartCourseInPaths } from '@/lib/course-eligibility'
 
 // Staff-facing: returns quiz questions WITHOUT correct_option_index, so the
 // answer key never reaches the browser before grading. Admin authoring
@@ -43,6 +43,9 @@ export async function GET(request: NextRequest, { params }: { params: { courseId
 
   // Assigned learners must finish the video first; an unassigned staff-tier
   // user is previewing, and their run is discarded on submit.
+  if (isAssigned && !(await canStartCourseInPaths(service, course.id, caller.id))) {
+    return NextResponse.json({ error: 'Finish the earlier course in your learning path first.' }, { status: 403 })
+  }
   if (isAssigned) {
     const watchedAll = await hasWatchedAllSections(service, course.id, caller.id)
     if (!watchedAll) {

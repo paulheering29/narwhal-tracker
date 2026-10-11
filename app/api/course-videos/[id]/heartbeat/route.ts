@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { canStartCourseInPaths } from '@/lib/course-eligibility'
 
 const COMPLETE_THRESHOLD = 0.95
 
@@ -51,6 +52,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       .eq('staff_id', caller.id)
       .maybeSingle()
     if (!assignment) return NextResponse.json({ error: 'Not assigned to this course.' }, { status: 403 })
+  }
+
+  // Same learning-path lock as playback: no progress accrues on a locked course.
+  if (!(await canStartCourseInPaths(service, video.course_id, caller.id))) {
+    return NextResponse.json({ error: 'Finish the earlier course in your learning path first.' }, { status: 403 })
   }
 
   const { data: existing } = await service

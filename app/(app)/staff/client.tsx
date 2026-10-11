@@ -951,6 +951,31 @@ export function StaffPageClient({
                 {search ? 'No staff match your search.' : `No ${credential.code}s yet. Add your first team member.`}
               </div>
             ) : (
+              <>
+              <div className="mb-3 flex items-center gap-2 text-sm text-gray-600">
+                <label htmlFor="chart-sort">Sort by</label>
+                <select
+                  id="chart-sort"
+                  value={(['name', 'cycleEnd', 'variance'] as SortKey[]).includes(sortKey) ? sortKey : ''}
+                  onChange={e => { setSortKey(e.target.value as SortKey); setSortDir('asc') }}
+                  className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700"
+                >
+                  {!(['name', 'cycleEnd', 'variance'] as SortKey[]).includes(sortKey) && <option value="">Other</option>}
+                  <option value="name">Name</option>
+                  <option value="cycleEnd">Expiration date</option>
+                  <option value="variance">Ahead / behind pace</option>
+                </select>
+                <button
+                  onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  {sortDir === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                  {sortKey === 'name' ? (sortDir === 'asc' ? 'A → Z' : 'Z → A')
+                    : sortKey === 'cycleEnd' ? (sortDir === 'asc' ? 'Soonest first' : 'Latest first')
+                    : sortKey === 'variance' ? (sortDir === 'asc' ? 'Most behind first' : 'Most ahead first')
+                    : (sortDir === 'asc' ? 'Ascending' : 'Descending')}
+                </button>
+              </div>
               <PaceChart
                 rows={filtered}
                 target={credential.units_required}
@@ -958,6 +983,7 @@ export function StaffPageClient({
                 ethicsRequired={credential.ethics_units_required}
                 onOpen={id => router.push(`/staff/${id}`)}
               />
+              </>
             )
           )}
 

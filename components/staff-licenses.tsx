@@ -18,7 +18,7 @@ import {
   type TopicCompletion, type UnitEvent,
 } from '@/lib/licensure-progress'
 import {
-  JURISDICTION_COLUMNS, LICENSE_COLUMNS, STATUS_LABEL, bacbEndsBeforeLicense, daysLabel, daysUntil,
+  JURISDICTION_COLUMNS, LICENSE_COLUMNS, STATUS_LABEL, loadCoveredStates, bacbEndsBeforeLicense, daysLabel, daysUntil,
   expiryPill, fmtLicenseDate,
   type Jurisdiction, type LicenseStatus, type RequirementTopic, type StaffLicense,
 } from '@/lib/licensure'
@@ -51,6 +51,7 @@ export function StaffLicenses({
   const [events, setEvents]             = useState<UnitEvent[]>([])
   const [completions, setCompletions]   = useState<TopicCompletion[]>([])
   const [loading, setLoading]           = useState(true)
+  const [covered, setCovered]           = useState<Set<string>>(new Set())
   const [expanded, setExpanded]         = useState<string | null>(null)
   const [canEdit, setCanEdit]           = useState(false)
 
@@ -85,6 +86,7 @@ export function StaffLicenses({
     setJurisdictions((jurRes.data ?? []) as unknown as Jurisdiction[])
     setTopics((topicRes.data ?? []) as RequirementTopic[])
     setBacbEnd(cycleRes.data?.[0]?.end_date ?? null)
+    setCovered(await loadCoveredStates(supabase))
     setLoading(false)
   }, [staffId])
 
@@ -208,7 +210,7 @@ export function StaffLicenses({
                       {l.status !== 'active' && (
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{STATUS_LABEL[l.status]}</span>
                       )}
-                      <VerificationBadge license={l} />
+                      <VerificationBadge license={l} covered={covered.has(l.jurisdiction_code)} />
                       {j?.tied_to_bacb && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">Requires active BACB</span>}
                       {progress && (
                         <span className={`rounded-full px-2 py-0.5 text-xs ${progress.complete ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>

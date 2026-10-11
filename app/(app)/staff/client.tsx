@@ -28,7 +28,7 @@ import { ALL_ROLES } from '@/lib/permissions'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { LicenseTable } from '@/components/license-table'
 import {
-  JURISDICTION_COLUMNS, LICENSE_COLUMNS, daysUntil, fmtLicenseDate,
+  JURISDICTION_COLUMNS, LICENSE_COLUMNS, daysUntil, fmtLicenseDate, loadCoveredStates,
   type Jurisdiction, type RequirementTopic, type StaffLicense,
 } from '@/lib/licensure'
 import { COMPLETION_COLUMNS, loadUnitEvents, type TopicCompletion, type UnitEvent } from '@/lib/licensure-progress'
@@ -405,6 +405,7 @@ export function StaffPageClient({
   const [licenseTopics, setLicenseTopics] = useState<RequirementTopic[]>([])
   const [completions, setCompletions]     = useState<TopicCompletion[]>([])
   const [unitEvents, setUnitEvents]       = useState<Record<string, UnitEvent[]>>({})
+  const [coveredStates, setCoveredStates] = useState<Set<string>>(new Set())
   useEffect(() => {
     async function loadLicenses() {
       const today = new Date().toISOString().split('T')[0]
@@ -419,6 +420,7 @@ export function StaffPageClient({
       setJurisdictions((jurRes.data ?? []) as unknown as Jurisdiction[])
       setLicenseTopics((topicRes.data ?? []) as RequirementTopic[])
       setCompletions((compRes.data ?? []) as TopicCompletion[])
+      setCoveredStates(await loadCoveredStates(supabase))
       const licensedIds = Array.from(new Set(((licRes.data ?? []) as StaffLicense[]).map(l => l.staff_id)))
       setUnitEvents(await loadUnitEvents(supabase, licensedIds))
       const ends: Record<string, string> = {}
@@ -1372,6 +1374,7 @@ export function StaffPageClient({
           events={unitEvents}
           topics={licenseTopics}
           completions={completions}
+          coveredStates={coveredStates}
         />
       )}
 

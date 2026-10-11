@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
+import { VerificationBadge, needsAttention } from '@/components/verification-badge'
 import {
   STATUS_LABEL, bacbEndsBeforeLicense, daysLabel, daysUntil, expiryPill, fmtLicenseDate,
   type Jurisdiction, type RequirementTopic, type StaffLicense,
@@ -17,7 +18,7 @@ type Person = { id: string; name: string; active: boolean }
  * expiry first. People with several licenses appear once for each.
  */
 export function LicenseTable({
-  people, licenses, jurisdictions, bacbEnd, events, topics, completions,
+  people, licenses, jurisdictions, bacbEnd, events, topics, completions, coveredStates,
 }: {
   people: Person[]
   licenses: StaffLicense[]
@@ -26,9 +27,10 @@ export function LicenseTable({
   events: Record<string, UnitEvent[]>
   topics: RequirementTopic[]
   completions: TopicCompletion[]
+  coveredStates: Set<string>   // states whose list we download, so a license there is auto-checked
 }) {
   const [search, setSearch] = useState('')
-  const [window, setWindow] = useState<'all' | '90' | 'expired'>('all')
+  const [window, setWindow] = useState<'all' | '90' | 'expired' | 'attention'>('all')
 
   const byCode = new Map(jurisdictions.map(j => [j.code, j]))
   const byPerson = new Map(people.map(p => [p.id, p]))
@@ -41,6 +43,7 @@ export function LicenseTable({
       if (!hay.includes(search.toLowerCase())) return false
       if (window === '90') return r.days >= 0 && r.days <= 90
       if (window === 'expired') return r.days < 0
+      if (window === 'attention') return needsAttention(r.l)
       return true
     })
     .sort((a, b) => a.l.expiration_date.localeCompare(b.l.expiration_date))
@@ -48,15 +51,17 @@ export function LicenseTable({
   const all = licenses.filter(l => byPerson.has(l.staff_id))
   const soon = all.filter(l => { const d = daysUntil(l.expiration_date); return d >= 0 && d <= 90 }).length
   const expired = all.filter(l => daysUntil(l.expiration_date) < 0).length
+  const attention = all.filter(needsAttention).length
   const withoutLicense = people.filter(p => p.active && !licenses.some(l => l.staff_id === p.id)).length
 
   return (
     <div>
-      <div className="mb-4 grid grid-cols-3 gap-3 max-w-xl">
+      <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl">
         {[
           { label: 'Licenses', value: all.length, cls: 'text-gray-900' },
           { label: 'Expiring in 90 days', value: soon, cls: soon ? 'text-amber-600' : 'text-gray-900' },
           { label: 'Expired', value: expired, cls: expired ? 'text-red-600' : 'text-gray-900' },
+          { label: 'Failed state check', value: attention, cls: attention ? 'text-red-600' : 'text-gray-900' },
         ].map(s => (
           <div key={s.label} className="rounded-lg border bg-white px-4 py-3 shadow-sm">
             <p className={`text-2xl font-bold tabular-nums ${s.cls}`}>{s.value}</p>
@@ -71,7 +76,7 @@ export function LicenseTable({
           <Input placeholder="Search by name, state or license number…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
         <div className="flex rounded-md border border-gray-200 overflow-hidden shrink-0">
-          {([['all', 'All'], ['90', 'Next 90 days'], ['expired', 'Expired']] as const).map(([key, label]) => (
+          {([['all', 'All'], ['90', 'Next 90 days'], ['expired', 'Expired'], ['attention', 'Needs attention']] as const).map(([key, label]) => (
             <button key={key} onClick={() => setWindow(key)}
               className={`px-3 py-1.5 text-sm font-medium transition-colors ${window === key ? 'bg-[#025CA8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
               {label}
@@ -89,6 +94,7 @@ export function LicenseTable({
               <th className="px-3 py-2.5">License #</th>
               <th className="px-3 py-2.5">Status</th>
               <th className="px-3 py-2.5">Expires</th>
+              <th className="px-3 py-2.5">State check</th>
               <th className="px-3 py-2.5">Time left</th>
               <th className="px-3 py-2.5">State CE</th>
               <th className="px-3 py-2.5">Topics</th>
@@ -97,7 +103,7 @@ export function LicenseTable({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 ? (
-              <tr><td colSpan={9} className="py-12 text-center text-gray-400">
+              <tr><td colSpan={10} className="py-12 text-center text-gray-400">
                 {all.length === 0 ? 'No state licenses on file yet. Add them from a BCBA’s profile.' : 'No licenses match.'}
               </td></tr>
             ) : rows.map(({ l, person, j, days }) => {
@@ -113,7 +119,13 @@ export function LicenseTable({
                   <td className="px-3 py-2.5 text-gray-800">{j?.name ?? l.jurisdiction_code}</td>
                   <td className="px-3 py-2.5 text-gray-500 tabular-nums">{l.license_number ?? '—'}</td>
                   <td className="px-3 py-2.5 text-gray-600">{STATUS_LABEL[l.status]}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-gray-600">{fmtLicenseDate(l.expiration_date)}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-gray-600">
+                    {fmtLicenseDate(l.expiration_date)}
+                    {l.verification_result && l.state_expiration && l.state_expiration !== l.expiration_date && (
+                      <span className="block text-xs font-medium text-amber-700">State: {fmtLicenseDate(l.state_expiration)}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5"><VerificationBadge license={l} covered={coveredStates.has(l.jurisdiction_code)} /></td>
                   <td className="px-3 py-2.5">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${expiryPill(days)}`}>{daysLabel(days)}</span>
                   </td>

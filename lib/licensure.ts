@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+
 // State licensure for BCBAs. Shared by server pages and client components, so
 // it must stay free of React / 'use client'.
 
@@ -111,4 +113,10 @@ export function topicFrequencyLabel(t: Pick<RequirementTopic, 'frequency' | 'eve
   if (t.frequency === 'once') return 'one time'
   if (t.frequency === 'each_renewal') return 'each renewal'
   return `every ${t.every_n_years ?? '?'} years`
+}
+
+/** The states whose license list we download nightly, so a license there is checked automatically. */
+export async function loadCoveredStates(supabase: SupabaseClient): Promise<Set<string>> {
+  const { data } = await supabase.from('state_license_sync').select('jurisdiction_code').not('last_synced_at', 'is', null)
+  return new Set((data ?? []).map(r => r.jurisdiction_code as string))
 }

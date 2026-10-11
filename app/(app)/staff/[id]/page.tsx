@@ -933,6 +933,12 @@ export default function StaffDetailPage() {
               })}
             </div>
           )}
+
+          {staff?.role?.toUpperCase() === 'BCBA' && (
+            <div className="mt-6">
+              <StaffLicenses staffId={staffId} />
+            </div>
+          )}
         </section>
 
         {/* ── Column 3: All Trainings ──────────────────────────────────────── */}
@@ -1000,12 +1006,6 @@ export default function StaffDetailPage() {
           <div className="mt-6">
             <StaffPaths staffId={staffId} />
           </div>
-
-          {staff?.role?.toUpperCase() === 'BCBA' && (
-            <div className="mt-6">
-              <StaffLicenses staffId={staffId} />
-            </div>
-          )}
 
           {staffCredential && (
             <div className="mt-6">

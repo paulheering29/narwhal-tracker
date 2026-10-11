@@ -4,7 +4,7 @@ import { OwnerClient } from './client'
 export default async function OwnerPage() {
   const service = createServiceClient()
 
-  const [plansRes, companiesRes, staffRes, grantsRes] = await Promise.all([
+  const [plansRes, companiesRes, staffRes, grantsRes, syncRes] = await Promise.all([
     service.from('plans').select('*').order('sort_order'),
     service
       .from('companies')
@@ -12,6 +12,7 @@ export default async function OwnerPage() {
       .order('created_at', { ascending: false }),
     service.from('staff').select('company_id, tier, roles, active, email, first_name, last_name'),
     service.from('access_grants').select('*').order('created_at', { ascending: false }),
+    service.from('state_license_sync').select('jurisdiction_code, last_synced_at, last_attempt_at, row_count, error').order('jurisdiction_code'),
   ])
 
   // One pass over staff gives every org's headcount and its Account Owner contact.
@@ -39,6 +40,7 @@ export default async function OwnerPage() {
       initialPlans={plansRes.data ?? []}
       initialCompanies={companies}
       initialGrants={grantsRes.data ?? []}
+      licenseSync={syncRes.data ?? []}
     />
   )
 }

@@ -11,7 +11,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Pencil, Building2, Tag, Gift, Trash2 } from 'lucide-react'
+import { Loader2, Pencil, Building2, Tag, Gift, Trash2, ShieldCheck } from 'lucide-react'
+import { LicenseLists, type LicenseSync } from './license-lists'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ type Props = {
   initialPlans: Plan[]
   initialCompanies: Company[]
   initialGrants: Grant[]
+  licenseSync: LicenseSync[]
 }
 
 const ACCESS_LABEL = { paid: 'Paid', beta: 'Beta', comp: 'Free (comp)' } as const
@@ -73,11 +75,11 @@ async function post(url: string, body: unknown): Promise<{ error?: string; appli
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function OwnerClient({ initialPlans, initialCompanies, initialGrants }: Props) {
+export function OwnerClient({ initialPlans, initialCompanies, initialGrants, licenseSync }: Props) {
   const supabase = createClient()
   const [plans, setPlans]         = useState<Plan[]>(initialPlans)
   const [companies]               = useState<Company[]>(initialCompanies)
-  const [tab, setTab]             = useState<'companies' | 'access' | 'plans'>('companies')
+  const [tab, setTab]             = useState<'companies' | 'access' | 'plans' | 'licenses'>('companies')
   const [grants, setGrants]       = useState<Grant[]>(initialGrants)
   const [grantForm, setGrantForm] = useState({ email: '', planId: '', accessType: 'beta', note: '' })
   const [grantError, setGrantError] = useState<string | null>(null)
@@ -197,6 +199,7 @@ export function OwnerClient({ initialPlans, initialCompanies, initialGrants }: P
     { key: 'companies', label: 'Organizations', Icon: Building2 },
     { key: 'access',    label: 'Free & beta access', Icon: Gift },
     { key: 'plans',     label: 'Plans', Icon: Tag },
+    { key: 'licenses',  label: 'License lists', Icon: ShieldCheck },
   ] as const
   const nonPaid = companies.filter(c => c.access_type !== 'paid').length
 
@@ -340,6 +343,8 @@ export function OwnerClient({ initialPlans, initialCompanies, initialGrants }: P
           </div>
         </div>
       )}
+
+      {tab === 'licenses' && <LicenseLists sync={licenseSync} />}
 
       {/* ── Plans Tab ── */}
       {tab === 'plans' && (

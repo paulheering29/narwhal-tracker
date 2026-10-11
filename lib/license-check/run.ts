@@ -12,6 +12,39 @@ const NOTES = new Map(SOURCES.map(s => [s.code, s.notFoundNote ?? '']))
 const CHUNK = 500
 
 /**
+ * Replace a state's stored list with `licenses`. Throws (leaving the previous list in
+ * place) if the list is empty or the database refuses it. Shared by the nightly
+ * download and the owner's manual uploads (Arizona, Ohio).
+ */
+async function saveStateList(db: SupabaseClient, code: string, licenses: StateLicense[], sourceDate: string | null, attempt: string) {
+  if (licenses.length === 0) throw new Error('The state list came back empty, so it was not used.')
+
+  // A license can appear twice under the same number+type (New Jersey: Expired, and
+  // Reinstatement Pending). Keep the pending one -- it is the one that says "look at this".
+  const unique = new Map<string, StateLicense>()
+  for (const l of licenses) {
+    const key = `${l.number}|${l.type}`
+    const have = unique.get(key)
+    if (!have || /pending/i.test(l.status) || !/pending/i.test(have.status)) unique.set(key, l)
+  }
+
+  const rows = Array.from(unique.values()).map(l => ({
+    jurisdiction_code: code, license_number: l.number, license_type: l.type, status: l.status,
+    first_name: l.firstName, middle_name: l.middleName, last_name: l.lastName,
+    city: l.city || null, state: l.state || null, expires: l.expires, refreshed_at: attempt,
+  }))
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const { error } = await db.from('state_license_records').upsert(rows.slice(i, i + CHUNK))
+    if (error) throw new Error(error.message)
+  }
+  // Anything not in tonight's list has been removed by the state.
+  const { error: delError } = await db.from('state_license_records')
+    .delete().eq('jurisdiction_code', code).lt('refreshed_at', attempt)
+  if (delError) throw new Error(delError.message)
+  return rows.length
+}
+
+/**
  * Download each state's list into state_license_records. A state that fails keeps
  * its previous list (and says why in state_license_sync) so one site being down
  * doesn't wipe out last night's good data.
@@ -22,37 +55,13 @@ async function syncStates(db: SupabaseClient) {
     const attempt = new Date().toISOString()
     try {
       const { licenses, sourceDate } = await source.fetch()
-      if (licenses.length === 0) throw new Error('The state list came back empty, so it was not used.')
-
-      // A license can appear twice under the same number+type (New Jersey: Expired, and
-      // Reinstatement Pending). Keep the pending one -- it is the one that says "look at this".
-      const unique = new Map<string, StateLicense>()
-      for (const l of licenses) {
-        const key = `${l.number}|${l.type}`
-        const have = unique.get(key)
-        if (!have || /pending/i.test(l.status) || !/pending/i.test(have.status)) unique.set(key, l)
-      }
-
-      const rows = Array.from(unique.values()).map(l => ({
-        jurisdiction_code: source.code, license_number: l.number, license_type: l.type, status: l.status,
-        first_name: l.firstName, middle_name: l.middleName, last_name: l.lastName,
-        city: l.city || null, state: l.state || null, expires: l.expires, refreshed_at: attempt,
-      }))
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        const { error } = await db.from('state_license_records').upsert(rows.slice(i, i + CHUNK))
-        if (error) throw new Error(error.message)
-      }
-      // Anything not in tonight's list has been removed by the state.
-      const { error: delError } = await db.from('state_license_records')
-        .delete().eq('jurisdiction_code', source.code).lt('refreshed_at', attempt)
-      if (delError) throw new Error(delError.message)
-
+      const count = await saveStateList(db, source.code, licenses, sourceDate, attempt)
       const { error: syncError } = await db.from('state_license_sync').upsert({
         jurisdiction_code: source.code, last_synced_at: attempt, last_attempt_at: attempt,
-        row_count: rows.length, source_date: sourceDate, error: null,
+        row_count: count, source_date: sourceDate, error: null,
       })
       if (syncError) throw new Error(syncError.message)
-      out[source.code] = `${rows.length} licenses`
+      out[source.code] = `${count} licenses`
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
       const { error: recordError } = await db.from('state_license_sync')
@@ -76,10 +85,10 @@ type Outcome = { companyId: string; name: string; state: string; number: string 
  * checked for a state when it has added that state (company_license_states) and
  * still has access (trial, subscription, or comped).
  */
-async function verifyAll(db: SupabaseClient) {
+async function verifyAll(db: SupabaseClient, only?: string[]) {
   const today = new Date().toISOString().slice(0, 10)
   const { data: syncs } = await db.from('state_license_sync').select('jurisdiction_code, last_synced_at')
-  const synced = new Set((syncs ?? []).filter(s => s.last_synced_at).map(s => s.jurisdiction_code as string))
+  const syncedAt = new Map((syncs ?? []).filter(s => s.last_synced_at).map(s => [s.jurisdiction_code as string, s.last_synced_at as string]))
 
   const [{ data: companies }, { data: chosen }] = await Promise.all([
     db.from('companies').select(`id, ${ACCESS_COLUMNS}`),
@@ -88,7 +97,7 @@ async function verifyAll(db: SupabaseClient) {
   const active = new Set((companies ?? []).filter(c => hasAccess(c as AccessRow)).map(c => c.id as string))
   const companiesByState = new Map<string, string[]>()
   for (const c of chosen ?? []) {
-    if (!active.has(c.company_id) || !synced.has(c.jurisdiction_code)) continue
+    if (!active.has(c.company_id) || !syncedAt.has(c.jurisdiction_code) || (only && !only.includes(c.jurisdiction_code))) continue
     companiesByState.set(c.jurisdiction_code, [...(companiesByState.get(c.jurisdiction_code) ?? []), c.company_id])
   }
   const ready = Array.from(companiesByState.keys())
@@ -110,6 +119,10 @@ async function verifyAll(db: SupabaseClient) {
       if (data.length < 1000) break
     }
 
+    // Lists that are uploaded by hand can be days old; the check date alone would hide that.
+    const ageDays = Math.floor((Date.now() - new Date(syncedAt.get(code) as string).getTime()) / 86400000)
+    const ageNote = ageDays >= 3 ? ` The state list this was checked against is ${ageDays} days old.` : ''
+
     const { data: licenses } = await db.from('staff_licenses')
       .select('id, company_id, jurisdiction_code, license_number, expiration_date, staff:staff_id(first_name, last_name, display_first_name)')
       .eq('jurisdiction_code', code).in('company_id', companiesByState.get(code) ?? [])
@@ -121,7 +134,7 @@ async function verifyAll(db: SupabaseClient) {
         row.license_number, row.expiration_date, records, today, NOTES.get(code),
       )
       await db.from('staff_licenses').update({
-        verified_at: new Date().toISOString(), verification_result: v.result, verification_detail: v.detail,
+        verified_at: new Date().toISOString(), verification_result: v.result, verification_detail: v.detail + ageNote,
         state_status: v.stateStatus, state_expiration: v.stateExpiration,
       }).eq('id', row.id)
       checked++
@@ -190,4 +203,26 @@ export async function runLicenseVerification(db: SupabaseClient, appUrl: string)
   const { outcomes, ...verified } = await verifyAll(db)
   const email = await sendNightlyEmails(db, outcomes, appUrl)
   return { synced, verified, email }
+}
+
+/**
+ * A list the owner supplied by hand (Arizona's upload, Ohio's pasted request): store it,
+ * then check everyone in that state straight away rather than waiting for the night.
+ * A failure is recorded against the state and rethrown so the owner sees why.
+ */
+export async function applyManualList(db: SupabaseClient, code: string, licenses: StateLicense[], sourceDate: string | null = null) {
+  const attempt = new Date().toISOString()
+  try {
+    const count = await saveStateList(db, code, licenses, sourceDate, attempt)
+    const { error } = await db.from('state_license_sync').upsert({
+      jurisdiction_code: code, last_synced_at: attempt, last_attempt_at: attempt, row_count: count, source_date: sourceDate, error: null,
+    })
+    if (error) throw new Error(error.message)
+    const { checked } = await verifyAll(db, [code])
+    return { count, checked }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    await db.from('state_license_sync').upsert({ jurisdiction_code: code, last_attempt_at: attempt, error: message })
+    throw e
+  }
 }

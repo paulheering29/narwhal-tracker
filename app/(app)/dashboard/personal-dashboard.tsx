@@ -1,9 +1,11 @@
 import { CalendarClock, Gauge } from 'lucide-react'
 import { DashboardCards, type DashboardCardData } from './dashboard-cards'
 import { OutsideTrainings } from '@/components/outside-trainings'
+import { StaffLicenses } from '@/components/staff-licenses'
 import type { OutsideTraining } from '@/lib/outside-trainings'
 
 export type PersonalDashboardData = {
+  credentialCode: string | null   // 'RBT' / 'BCBA'; null when the person holds no credential
   certType: string | null
   cycleEndDate: string | null
   daysUntilExpiry: number | null
@@ -201,6 +203,11 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
       </div>
 
       <DashboardCards cards={cards} />
+
+      {/* BCBAs: the BACB certification and every state license, in one place. Read-only here; admins enter the licenses. */}
+      {data.credentialCode === 'BCBA' && (
+        <StaffLicenses staffId={data.staffId} bacb={{ endDate: data.cycleEndDate }} />
+      )}
 
       {data.unitLabel && (
         <OutsideTrainings

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { DashboardCards, type DashboardCardData } from './dashboard-cards'
+import { DashboardCards, type DashboardCardData, type DetailItem } from './dashboard-cards'
 import { PersonalDashboard } from './personal-dashboard'
 import { getPersonalDashboardData } from './personal-data'
 import { getCredential } from '@/lib/credentials'
@@ -19,6 +19,7 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
     upcomingCourses,
     allCourses,
     recentRecords,
+    expiringLicenses,
   ] = await Promise.all([
     supabase
       .from('staff')
@@ -60,6 +61,14 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
       .eq('confirmed', true)
       .order('completed_date', { ascending: false })
       .limit(25),
+    // State licenses (BCBAs) running out in the next 30 days.
+    supabase
+      .from('staff_licenses')
+      .select('id, staff_id, expiration_date, jurisdiction_code, staff:staff_id(first_name, last_name), license_jurisdictions(name)')
+      .eq('status', 'active')
+      .gte('expiration_date', today)
+      .lte('expiration_date', in30Days)
+      .order('expiration_date'),
   ])
 
   // Drop expiring cycles whose owner already has a later cycle — we
@@ -162,6 +171,7 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
     trainersList:    trainersList.data    ?? [],
     trainersCount:   trainersList.count   ?? 0,
     expiringUnique,
+    expiringLicenses: expiringLicenses.data ?? [],
     pacingByStaff,
     credByCode,
     upcomingCourses: upcomingCourses.data  ?? [],
@@ -212,12 +222,13 @@ export default async function DashboardPage() {
   const cards: DashboardCardData[] = [
     {
       title:          'Expiring Soon',
-      value:          data.expiringUnique.length,
-      description:    'Certifications expiring in the next 30 days',
+      value:          data.expiringUnique.length + data.expiringLicenses.length,
+      description:    'Certifications and state licenses expiring in the next 30 days',
       icon:           'alert',
       color:          'rose',
       alwaysExpanded: true,
-      items: data.expiringUnique.slice(0, 25).map(c => {
+      items: [
+        ...data.expiringUnique.slice(0, 25).map((c): DetailItem => {
         const staff = Array.isArray(c.staff) ? c.staff[0] : c.staff
         const name  = staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown'
         const pacing = data.pacingByStaff.get(c.staff_id as string) ?? { done: 0, scheduled: 0, ethics: 0, supervision: 0 }
@@ -247,7 +258,18 @@ export default async function DashboardPage() {
           progress: { pct, status },
           badge:    complete ? { label: 'All requirements met' } : undefined,
         }
-      }),
+        }),
+        ...data.expiringLicenses.slice(0, Math.max(0, 25 - data.expiringUnique.length)).map((l): DetailItem => {
+        const staff = Array.isArray(l.staff) ? l.staff[0] : l.staff
+        const state = Array.isArray(l.license_jurisdictions) ? l.license_jurisdictions[0] : l.license_jurisdictions
+        return {
+          id:       `license-${l.id}`,
+          label:    staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown',
+          sublabel: `${state?.name ?? l.jurisdiction_code} license expires ${formatDate(l.expiration_date)}`,
+          href:     `/staff/${l.staff_id}`,
+        }
+        }),
+      ],
     },
     {
       title:          'Upcoming Trainings',

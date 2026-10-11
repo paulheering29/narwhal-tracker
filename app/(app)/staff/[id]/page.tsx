@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog'
 import { OutsideTrainings } from '@/components/outside-trainings'
 import { StaffPaths } from '@/components/staff-paths'
+import { StaffLicenses } from '@/components/staff-licenses'
 import { OUTSIDE_TRAINING_COLUMNS, toOutsideTraining, type OutsideTraining } from '@/lib/outside-trainings'
 import { getCompanyId } from '@/lib/get-company-id'
 import { getDisplayName, getLegalName, hasPreferredName } from '@/lib/display-name'
@@ -999,6 +1000,12 @@ export default function StaffDetailPage() {
           <div className="mt-6">
             <StaffPaths staffId={staffId} />
           </div>
+
+          {staff?.role?.toUpperCase() === 'BCBA' && (
+            <div className="mt-6">
+              <StaffLicenses staffId={staffId} />
+            </div>
+          )}
 
           {staffCredential && (
             <div className="mt-6">

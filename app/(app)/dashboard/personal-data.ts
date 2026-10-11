@@ -170,6 +170,7 @@ export async function getPersonalDashboardData(
   const pacingTarget = activeCycle && unitsTarget > 0 ? computePacingTarget(activeCycle.start_date, activeCycle.end_date, unitsTarget) : 0
 
   return {
+    credentialCode:   credential?.code ?? null,
     certType:         activeCycle?.certification_type ?? null,
     cycleEndDate:      activeCycle?.end_date ?? null,
     daysUntilExpiry,

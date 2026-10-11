@@ -22,10 +22,15 @@ import {
 import {
   Loader2, Search, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown,
   UserPlus, Pencil, Upload, Download, CheckCircle2, XCircle,
-  UserX, UserCheck, Users, ShieldCheck,
+  UserX, UserCheck, Users, ShieldCheck, Award,
 } from 'lucide-react'
 import { ALL_ROLES } from '@/lib/permissions'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
+import { LicenseTable } from '@/components/license-table'
+import {
+  JURISDICTION_COLUMNS, LICENSE_COLUMNS, daysUntil, fmtLicenseDate,
+  type Jurisdiction, type StaffLicense,
+} from '@/lib/licensure'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -321,6 +326,45 @@ export function StaffPageClient({
 
   // ── All staff (live, refreshable) ────────────────────────────────────────────
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff)
+
+  // ── State licenses (BCBAs). Loaded once; drives the State Licensure tab and the chip on BCBA rows ──
+  const [licenses, setLicenses]           = useState<StaffLicense[]>([])
+  const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([])
+  const [bacbEnd, setBacbEnd]             = useState<Record<string, string>>({})
+  useEffect(() => {
+    async function loadLicenses() {
+      const today = new Date().toISOString().split('T')[0]
+      const [licRes, jurRes, cycleRes] = await Promise.all([
+        supabase.from('staff_licenses').select(LICENSE_COLUMNS),
+        supabase.from('license_jurisdictions').select(JURISDICTION_COLUMNS),
+        supabase.from('certification_cycles').select('staff_id, end_date').eq('certification_type', 'BCBA').gte('end_date', today),
+      ])
+      setLicenses((licRes.data ?? []) as StaffLicense[])
+      setJurisdictions((jurRes.data ?? []) as unknown as Jurisdiction[])
+      const ends: Record<string, string> = {}
+      for (const c of cycleRes.data ?? []) {
+        const id = c.staff_id as string
+        if (!ends[id] || c.end_date < ends[id]) ends[id] = c.end_date as string   // the cycle that's current now
+      }
+      setBacbEnd(ends)
+    }
+    loadLicenses()
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A small "2 states · next Mar 3" chip on a BCBA's row.
+  function licenseChip(staffId: string) {
+    const mine = licenses.filter(l => l.staff_id === staffId).sort((a, b) => a.expiration_date.localeCompare(b.expiration_date))
+    if (mine.length === 0) return null
+    const next = mine[0]
+    const days = daysUntil(next.expiration_date)
+    const tone = days < 0 ? 'bg-red-100 text-red-700' : days <= 90 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+    return (
+      <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}
+        title="State licenses. Open the State Licensure tab for details.">
+        {mine.length} state{mine.length !== 1 ? 's' : ''} · {days < 0 ? 'expired' : `next ${fmtLicenseDate(next.expiration_date).slice(0, 5)}`}
+      </span>
+    )
+  }
 
   const credentialCodes = credentialTypes.map(c => c.code)
   const staffWithRole = (code: string) => staff.filter(s => s.role?.toUpperCase() === code)
@@ -748,6 +792,9 @@ export function StaffPageClient({
       <div className="flex border-b border-gray-200 mb-6">
         {([
           ...credentialTypes.map(c => ({ key: c.code, label: c.code, icon: Users, count: staffWithRole(c.code).length })),
+          ...(credentialTypes.some(c => c.code === 'BCBA')
+            ? [{ key: 'licensure', label: 'State Licensure', icon: Award, count: licenses.length }]
+            : []),
           { key: 'trainers', label: 'Trainers & Admin', icon: ShieldCheck, count: adminStaff.length },
         ]).map(({ key, label, icon: Icon, count }) => (
           <button
@@ -820,7 +867,7 @@ export function StaffPageClient({
                   {/* Name row */}
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div>
-                      <p className="font-semibold text-blue-600 text-base leading-tight">{getDisplayName(s)}</p>
+                      <p className="font-semibold text-blue-600 text-base leading-tight">{getDisplayName(s)}{credential?.code === 'BCBA' && licenseChip(s.id)}</p>
                       <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${s.active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
                         {s.active ? 'Active' : 'Inactive'}
                       </span>
@@ -983,6 +1030,7 @@ export function StaffPageClient({
                     >
                       <td className="text-center px-3 py-3 border-r border-gray-200">
                         <span className="font-semibold text-blue-600 hover:underline">{getDisplayName(s)}</span>
+                        {credential?.code === 'BCBA' && licenseChip(s.id)}
                       </td>
                       <td className="text-center tabular-nums text-gray-500 px-3 py-3">
                         {hasCycle ? fmtCycleDate(s.cycleStart!) : <span className="text-gray-300">—</span>}
@@ -1200,6 +1248,16 @@ export function StaffPageClient({
             </SheetContent>
           </Sheet>
         </>
+      )}
+
+      {/* ── State Licensure Tab (BCBAs) ──────────────────────────────────────── */}
+      {tab === 'licensure' && (
+        <LicenseTable
+          people={staffWithRole('BCBA').map(s => ({ id: s.id, name: getDisplayName(s), active: s.active }))}
+          licenses={licenses}
+          jurisdictions={jurisdictions}
+          bacbEnd={bacbEnd}
+        />
       )}
 
       {/* ── Trainers & Admin Tab ─────────────────────────────────────────────── */}

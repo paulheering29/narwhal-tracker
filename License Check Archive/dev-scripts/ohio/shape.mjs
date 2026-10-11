@@ -1,0 +1,14 @@
+import { readFileSync } from 'node:fs';
+import { resolveRefs, ohioRow, toOhLicenseRecords, OH_CSV_HEADERS } from '/Users/paul/Desktop/System Review/packages/core/src/licensure/ohio.js';
+const all = resolveRefs(JSON.parse(readFileSync('/private/tmp/claude-501/-Users-paul-Desktop-System-Review/f8a2a5ab-5d85-4291-a341-ba55fd5da45b/scratchpad/oh2/all-states.json','utf8')));
+const rows = all.map(ohioRow);
+const count = (f) => Object.entries(rows.reduce((m, r) => ((m[f(r)] = (m[f(r)] ?? 0) + 1), m), {})).sort();
+console.log('records', rows.length);
+console.log('number shapes', count((r) => r['License Number'].replace(/\d/g, '#')));
+console.log('blank first', rows.filter((r) => !r['First Name']).length, 'blank last', rows.filter((r) => !r['Last Name']).length);
+console.log('status/sub', count((r) => r.Status + '/' + r['Sub Status']));
+console.log('expiry shapes', count((r) => r['Expiration Date'].replace(/\d/g, '#')));
+console.log('unique numbers', new Set(rows.map((r) => r['License Number'])).size);
+const recs = toOhLicenseRecords(rows);
+console.log('licence records', recs.length, 'with expiry', recs.filter((r) => r.expires).length);
+console.log(Object.keys(recs[0]));

@@ -1,0 +1,13 @@
+import { writeFileSync } from 'node:fs';
+import { clientsFileType } from '/Users/paul/Desktop/System Review/packages/core/src/files/types.js';
+import { stageLicenseFiles, licenseCheckResults, describeLicenseFiles, fetchLicenseFilesFromState, clearLicenseFiles } from '/Users/paul/Desktop/System Review/packages/desktop/src/main/license-check.js';
+const dir = process.argv[2];
+const people = [['Lindsay','Abbott'],['Jeannie','Aguilar'],['Hannah','Abinuman Perez'],['Aundrea','Abernathy'],['Quinn','Marsh'],['Pat','Vale'],['Test','Person'],['Zed','Nobody']];
+writeFileSync(`${dir}/staff-az.csv`, [clientsFileType.signature.join(','), ...people.map(([f, l], i) => clientsFileType.signature.map((c) => JSON.stringify({ Id: String(100 + i), TypeId: '572', Type: 'employee', FirstName: f, LastName: l, Credentials: 'BCBA', IsActive: 'True' }[c] ?? '')).join(','))].join('\n'));
+const r = await stageLicenseFiles([`${dir}/../az/Export.csv`, `${dir}/staff-az.csv`]);
+console.log('files:', JSON.stringify(r.files.licenses.map((f) => [f.jurisdiction, f.name, f.rowCount, f.ignored, f.exportDate])), '| failed:', JSON.stringify(r.failed));
+const rep = licenseCheckResults('2026-09-20');
+console.log('licenseCounts:', JSON.stringify(rep.licenseCounts));
+rep.people.forEach((p, i) => console.log(' ', people[i].join(' ').padEnd(24), p.outcome.padEnd(9), p.matches.map((m) => `${m.number}:${m.status}`).join(',') || '-'));
+console.log('-- unknown state / AZ fetch:', (await fetchLicenseFilesFromState('AZ')).failed[0].reason.slice(0, 60));
+clearLicenseFiles();

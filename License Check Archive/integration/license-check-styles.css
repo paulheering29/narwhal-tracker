@@ -1,0 +1,55 @@
+/* License Check ---------------------------------------------------------- */
+.lc-howto { font-size: 13px; margin: 0 0 0.6rem; max-width: 46rem; }
+.lc-howto a { color: var(--accent); }
+.lc-summary { font-size: 13px; margin: 0 0 0.75rem; }
+.lc-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.25rem, 1fr)); gap: 0.6rem; margin-bottom: 1rem; }
+.lc-tile {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem;
+  padding: 0.7rem 0.85rem 0.75rem; text-align: left;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.lc-tile:hover { border-color: #c7d4f0; }
+.lc-tile.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.lc-tile.none-here { opacity: 0.55; }
+.lc-tile-icon { position: absolute; top: 0.7rem; right: 0.75rem; }
+.lc-tile-count { font-size: 1.9rem; font-weight: 600; line-height: 1.15; }
+.lc-tile-label { font-size: 12px; color: var(--muted); }
+.lc-tile.good .lc-tile-icon { color: var(--pass); }
+.lc-tile.warn .lc-tile-icon { color: var(--warning); }
+.lc-tile.bad .lc-tile-icon { color: var(--error); }
+.lc-tile.info .lc-tile-icon { color: var(--info); }
+/* The words stay in the text colour; only the icon carries the tone. */
+.lc-result { display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+.lc-result svg { flex: none; }
+.lc-result.good svg { color: var(--pass); }
+.lc-result.warn svg { color: var(--warning); }
+.lc-result.bad svg { color: var(--error); }
+.lc-result.info svg { color: var(--info); }
+.lc-why { font-size: 12px; }
+.lc-table td { vertical-align: top; }
+.lc-fetch { display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.lc-fetch .muted { font-size: 13px; max-width: 34rem; }
+.lc-state { margin-bottom: 0.9rem; }
+.lc-tag { display: inline-block; padding: 0 0.4rem; margin-right: 0.3rem; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
+
+/* License Check: which states to fetch and which to fetch by hand --------- */
+.lc-sources { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1rem; align-items: start; margin-bottom: 1rem; }
+@media (max-width: 900px) { .lc-sources { grid-template-columns: minmax(0, 1fr); } }
+.lc-source-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.9rem 1.1rem 1rem; }
+.lc-source-card h3 { margin: 0 0 0.25rem; font-size: 1rem; font-weight: 600; }
+.lc-source-card > .muted { font-size: 13px; margin: 0 0 0.7rem; }
+.lc-checks, .lc-manual { list-style: none; margin: 0; padding: 0; }
+.lc-checks > li { padding: 0.55rem 0; border-top: 1px solid var(--border); }
+.lc-check { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.6rem; align-items: start; cursor: pointer; }
+.lc-check input { margin-top: 0.2rem; }
+.lc-check-what { display: block; font-size: 12.5px; margin-top: 0.1rem; }
+.lc-byhand { margin: 0.25rem 0 0 1.5rem; font-size: 12.5px; }
+.lc-byhand summary { cursor: pointer; color: var(--muted); }
+.lc-byhand p { margin: 0.3rem 0 0; }
+.lc-byhand a, .lc-manual a { color: var(--accent); }
+.lc-source-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--border); }
+.lc-manual > li { padding: 0.55rem 0; border-top: 1px solid var(--border); }
+.lc-paste ol { margin: 0.35rem 0 0.6rem; padding-left: 1.2rem; }
+.lc-paste li { margin-bottom: 0.3rem; }
+.lc-paste textarea { display: block; width: 100%; box-sizing: border-box; margin-bottom: 0.6rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; resize: vertical; }
+.lc-manual p { margin: 0.2rem 0 0; font-size: 12.5px; }

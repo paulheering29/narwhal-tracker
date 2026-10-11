@@ -1,0 +1,14 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { OH_CSV_HEADERS, toOhLicenseRecords } from '/Users/paul/Desktop/System Review/packages/core/src/licensure/ohio.js';
+import { toCsv } from '/Users/paul/Desktop/System Review/packages/core/src/csv/write.js';
+const rows = JSON.parse(readFileSync('/private/tmp/claude-501/-Users-paul-Desktop-System-Review/f8a2a5ab-5d85-4291-a341-ba55fd5da45b/scratchpad/oh2/ohio-sweep-rows.json', 'utf8'));
+const csv = toCsv(OH_CSV_HEADERS, rows.map((r) => OH_CSV_HEADERS.map((h) => r[h])));
+writeFileSync('/private/tmp/claude-501/-Users-paul-Desktop-System-Review/f8a2a5ab-5d85-4291-a341-ba55fd5da45b/scratchpad/oh2/Ohio.csv', '﻿' + csv);
+const nums = rows.map((r) => r['License Number']);
+console.log('unique numbers', new Set(nums).size, 'of', nums.length);
+const coba = nums.filter((n) => n.startsWith('COBA.')).map((n) => Number(n.slice(5))).sort((a, b) => a - b);
+console.log('COBA count', coba.length, 'min', coba[0], 'max', coba.at(-1), 'gaps', coba.at(-1) - coba.length);
+const recs = toOhLicenseRecords(rows);
+console.log('licence records', recs.length, 'lines in csv', csv.split('\r\n').length - 1);
+console.log('address states', Object.entries(rows.reduce((m, r) => ((m[r.State] = (m[r.State] ?? 0) + 1), m), {})).sort((a, b) => b[1] - a[1]).slice(0, 8));
+console.log('csv header', csv.split('\r\n')[0]);

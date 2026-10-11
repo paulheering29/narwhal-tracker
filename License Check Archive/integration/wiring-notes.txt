@@ -1,0 +1,25 @@
+// packages/core/src/modules.js -- the entry in MODULES
+28:  { id: 'license-check', name: 'License Check', built: true },
+
+// packages/core/src/index.js
+73:export * from './licensure/index.js';
+
+// packages/desktop/src/renderer/src/App.jsx
+24:import LicenseCheckModule, { LICENSE_CHECK_TABS } from './components/license-check/LicenseCheckModule.jsx';
+42:const LICENSE_CHECK = 'license-check';
+367:                    : moduleId === LICENSE_CHECK
+368:                      ? LICENSE_CHECK_TABS
+587:              {current.id === LICENSE_CHECK && (
+588:                <LicenseCheckModule tab={place.tab} onTab={(tab) => navigate({ module: LICENSE_CHECK, tab })} />
+              {current.id === LICENSE_CHECK && (
+                <LicenseCheckModule tab={place.tab} onTab={(tab) => navigate({ module: LICENSE_CHECK, tab })} />
+              )}
+
+// packages/desktop/src/renderer/src/components/Sidebar.jsx (icon: IconCertificate from @tabler/icons-react)
+11:  IconCertificate,
+29:  'license-check': IconCertificate,
+
+// packages/desktop/package.json dependency
+27:    "jszip": "^3.10.1",
+
+// packages/core/test/modules.test.js: 'License Check' in the name list and 'license-check:locked' in the sidebar lists

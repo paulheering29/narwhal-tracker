@@ -1,0 +1,14 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { sweepOhio } from '/Users/paul/Desktop/System Review/packages/desktop/src/main/ohio-sweep.js';
+import { OH_CSV_HEADERS, readOhioTokens, ohioTokensExpire } from '/Users/paul/Desktop/System Review/packages/core/src/licensure/ohio.js';
+import { toCsv } from '/Users/paul/Desktop/System Review/packages/core/src/csv/write.js';
+const text = readFileSync('/private/tmp/claude-501/-Users-paul-Desktop-System-Review/f8a2a5ab-5d85-4291-a341-ba55fd5da45b/scratchpad/oh2/body.json', 'utf8');
+console.log('token expires', ohioTokensExpire(readOhioTokens(text)));
+const t0 = Date.now();
+const rows = await sweepOhio(text, (done, state) => { if (done % 10 === 0 || state === 'OH') console.log('  states done', done, state, ((Date.now() - t0) / 1000).toFixed(0) + 's'); });
+console.log('rows', rows.length);
+const by = {};
+for (const r of rows) by[r.Status] = (by[r.Status] ?? 0) + 1;
+console.log(by, 'Ohio addresses', rows.filter((r) => r.State === 'OH').length);
+writeFileSync('/private/tmp/claude-501/-Users-paul-Desktop-System-Review/f8a2a5ab-5d85-4291-a341-ba55fd5da45b/scratchpad/oh2/ohio-sweep-rows.json', JSON.stringify(rows));
+writeFileSync('/private/tmp/claude-501/-Users-paul-Desktop-System-Review/f8a2a5ab-5d85-4291-a341-ba55fd5da45b/scratchpad/oh2/Ohio.csv', toCsv({ headers: OH_CSV_HEADERS, rows: rows.map((r) => OH_CSV_HEADERS.map((h) => r[h])) }));

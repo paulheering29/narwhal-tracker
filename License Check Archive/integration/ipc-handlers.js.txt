@@ -1,0 +1,90 @@
+// packages/desktop/src/main/ipc.js -- the import (add to the imports at the top), then the handlers (inside the function that registers them, after the Documented During Session ones)
+
+import {
+  stageLicenseFiles,
+  fetchLicenseFilesFromState,
+  fetchOhioLicenseFiles,
+  describeLicenseFiles,
+  removeLicenseFile,
+  clearLicenseFiles,
+  licenseCheckResults,
+  exportLicenseCsv,
+} from './license-check.js';
+
+  // License Check -------------------------------------------------------------
+  const licenseCheck = (fn) => (...args) => {
+    requireModule('license-check', 'License Check');
+    return fn(...args);
+  };
+  // The day is the person's own, not UTC: a license expiring today is good until it ends.
+  const today = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+  const licenseState = () => ({ files: describeLicenseFiles(), report: licenseCheckResults(today()) });
+
+  handle('licenseCheck:get', licenseCheck(() => licenseState()));
+  handle(
+    'licenseCheck:pick',
+    licenseCheck(async () => {
+      const result = await dialog.showOpenDialog(BrowserWindow.getFocusedWindow(), {
+        title: 'Choose the staff download and the license download',
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'CSV, text or ZIP', extensions: ['csv', 'txt', 'zip'] }],
+      });
+      if (result.canceled || result.filePaths.length === 0) return { ...licenseState(), failed: [] };
+      const { failed } = await stageLicenseFiles(result.filePaths);
+      return { ...licenseState(), failed };
+    }),
+  );
+  // Drag-and-drop hands us paths from the renderer; each file is identified
+  // from its own headers, the same as picking them does.
+  handle(
+    'licenseCheck:open',
+    licenseCheck(async (paths) => {
+      const { failed } = await stageLicenseFiles(paths);
+      return { ...licenseState(), failed };
+    }),
+  );
+  // Asked for by pressing a button, never on a timer.
+  handle(
+    'licenseCheck:fetchFromState',
+    licenseCheck(async (code) => {
+      const { failed } = await fetchLicenseFilesFromState(String(code));
+      return { ...licenseState(), failed };
+    }),
+  );
+  // The copied request holds the person's own short-lived tokens; it is read, used and dropped, never stored.
+  handle(
+    'licenseCheck:fetchOhio',
+    licenseCheck(async (copiedRequest) => {
+      const { failed } = await fetchOhioLicenseFiles(copiedRequest);
+      return { ...licenseState(), failed };
+    }),
+  );
+  handle(
+    'licenseCheck:remove',
+    licenseCheck((kind, name) => {
+      removeLicenseFile(kind, name);
+      return licenseState();
+    }),
+  );
+  handle(
+    'licenseCheck:clear',
+    licenseCheck(() => {
+      clearLicenseFiles();
+      return licenseState();
+    }),
+  );
+  handle(
+    'licenseCheck:exportCsv',
+    licenseCheck(async (sheet) => {
+      const result = await dialog.showSaveDialog(BrowserWindow.getFocusedWindow(), {
+        title: 'Save the License Check report',
+        defaultPath: 'License Check.csv',
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+      });
+      if (result.canceled || !result.filePath) return { saved: false };
+      return exportLicenseCsv(sheet, result.filePath);
+    }),
+  );

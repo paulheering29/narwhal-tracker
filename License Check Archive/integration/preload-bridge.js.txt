@@ -1,0 +1,11 @@
+// packages/desktop/src/preload/index.js -- inside the object exposed as window.systemReview
+  licenseCheck: {
+    get: () => ipcRenderer.invoke('licenseCheck:get'),
+    pick: () => ipcRenderer.invoke('licenseCheck:pick'),
+    open: (paths) => ipcRenderer.invoke('licenseCheck:open', paths),
+    fetchFromState: (code) => ipcRenderer.invoke('licenseCheck:fetchFromState', code),
+    fetchOhio: (copiedRequest) => ipcRenderer.invoke('licenseCheck:fetchOhio', copiedRequest),
+    remove: (kind, name) => ipcRenderer.invoke('licenseCheck:remove', kind, name),
+    clear: () => ipcRenderer.invoke('licenseCheck:clear'),
+    exportCsv: (sheet) => ipcRenderer.invoke('licenseCheck:exportCsv', sheet),
+  },

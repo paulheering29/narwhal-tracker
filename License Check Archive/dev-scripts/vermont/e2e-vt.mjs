@@ -1,0 +1,12 @@
+import { writeFileSync } from 'node:fs';
+import { sweepVermont } from '/Users/paul/Desktop/System Review/packages/desktop/src/main/vermont-sweep.js';
+import { VT_CSV_HEADERS } from '/Users/paul/Desktop/System Review/packages/core/src/licensure/vermont.js';
+import { toCsv } from '/Users/paul/Desktop/System Review/packages/core/src/csv/write.js';
+const t0 = Date.now();
+const rows = await sweepVermont();
+console.log('rows', rows.length, ((Date.now() - t0) / 1000).toFixed(0) + 's');
+const count = (f) => Object.entries(rows.reduce((m, r) => ((m[f(r)] = (m[f(r)] ?? 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
+console.log(count((r) => r['License Type'] + ' | ' + r.Status));
+console.log('number shapes', count((r) => r['License Number'].replace(/\d/g, '#')));
+console.log('expiry shapes', count((r) => r.Expires.replace(/\d/g, '#')));
+writeFileSync('/private/tmp/claude-501/-Users-paul-Desktop-System-Review/f8a2a5ab-5d85-4291-a341-ba55fd5da45b/scratchpad/vt/Vermont.csv', '﻿' + toCsv(VT_CSV_HEADERS, rows.map((r) => VT_CSV_HEADERS.map((h) => r[h]))));

@@ -50,10 +50,11 @@ export type StaffLicense = {
   verified_at: string | null
   verification_result: 'verified' | 'expired' | 'not_found' | 'review' | null
   verification_detail: string | null
+  state_expiration: string | null
 }
 
 export const LICENSE_COLUMNS =
-  'id, staff_id, jurisdiction_code, license_number, status, issued_date, expiration_date, notes, ce_exempt_this_cycle, ce_hours_override, ce_period_end, verified_at, verification_result, verification_detail'
+  'id, staff_id, jurisdiction_code, license_number, status, issued_date, expiration_date, notes, ce_exempt_this_cycle, ce_hours_override, ce_period_end, verified_at, verification_result, verification_detail, state_expiration'
 
 export const JURISDICTION_COLUMNS =
   'code, name, regulation_status, cycle_years, ce_basis, ce_hours_required, ce_period_years, ethics_hours_required, ce_met_by_bacb, tied_to_bacb, needs_verification, ce_summary, ethics_summary, supervision_summary, other_requirements, renewal_notes, sources, last_reviewed'

@@ -220,6 +220,11 @@ export function StaffLicenses({
                     <p className="text-xs text-gray-500">
                       {l.license_number ? `#${l.license_number} · ` : ''}Expires {fmtLicenseDate(l.expiration_date)}
                     </p>
+                    {l.verification_result && l.state_expiration && l.state_expiration !== l.expiration_date && (
+                      <p className="text-xs font-medium text-amber-700">
+                        The state list shows this expiring {fmtLicenseDate(l.state_expiration)}. Update the date if that&apos;s right.
+                      </p>
+                    )}
                   </div>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${expiryPill(days)}`}>{daysLabel(days)}</span>
                   {canEdit && (

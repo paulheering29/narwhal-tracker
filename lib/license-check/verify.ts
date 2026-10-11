@@ -150,10 +150,12 @@ export function verifyLicense(
   const via = by === 'number' ? 'by license number' : 'by name'
 
   if (s === 'current') {
-    const differs = enteredExpiration && l.expires && enteredExpiration !== l.expires
-    return { ...base, result: 'verified',
-      detail: `Active on the state list (${via}); expires ${fmt(l.expires)}.` +
-        (differs ? ` The date entered here is ${fmt(enteredExpiration)}.` : '') }
+    // A wrong date here means reminders go out on the wrong day, so it is not a green tick.
+    if (enteredExpiration && l.expires && enteredExpiration !== l.expires) {
+      return { ...base, result: 'review',
+        detail: `Active on the state list (${via}), but the state shows it expiring ${fmt(l.expires)} and the date entered here is ${fmt(enteredExpiration)}. Update the date.` }
+    }
+    return { ...base, result: 'verified', detail: `Active on the state list (${via}); expires ${fmt(l.expires)}.` }
   }
   if (s === 'expired') {
     return { ...base, result: 'expired',

@@ -10,6 +10,7 @@ import { getDisplayName } from '@/lib/display-name'
 import { isHtmlEmpty, sanitizeHtml } from '@/lib/sanitize-html'
 import { RichTextEditor } from '@/components/rich-text-editor'
 import { RichText } from '@/components/rich-text'
+import { CourseLicenseTopics } from '@/components/course-license-topics'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -1102,6 +1103,8 @@ export default function CourseDetailPage() {
           </div>
         </div>
       </div>
+
+      <CourseLicenseTopics courseId={courseId} />
 
       {/* ── Edit Course Sheet ─────────────────────────────────────────────────── */}
       <Sheet open={editOpen} onOpenChange={setEditOpen}>

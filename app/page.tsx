@@ -94,8 +94,8 @@ const features = [
   },
   {
     icon: 'calendar',
-    title: 'Renewals you see coming',
-    body: 'Expiring certifications and cycle deadlines surface on the dashboard well before they become a problem.',
+    title: 'State licensure tracking',
+    body: 'Track BCBA state licenses next to the BACB certification: renewal dates, state CE hours, and required topics, with email reminders before anything expires.',
   },
   {
     icon: 'checklist',
@@ -292,6 +292,7 @@ export default function HomePage() {
                 'Earn CEUs through live trainings and self-paced courses',
                 'See your total, ethics, and supervision CEUs against what recertification requires',
                 'Add CEUs you earned elsewhere, like a conference — upload the certificate and the details are filled in for you',
+                'Keep your BACB certification and every state license in one place, with a reminder before each renewal',
                 'Know how many days until your certification renews',
               ].map(t => (
                 <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>

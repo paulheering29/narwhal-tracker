@@ -59,6 +59,7 @@ export async function middleware(request: NextRequest) {
   // Signup / password-reset endpoints and the emailed link are used before anyone has a session.
   const isSignupFlow  = pathname.startsWith('/api/signup') || pathname === '/auth/confirm'
                      || pathname === '/api/auth/forgot-password'
+                     || pathname.startsWith('/api/cron/')
 
   // Always allow the public landing page, Stripe webhook and signup flow through
   if (isHomePage || isStripeHook || isSignupFlow) return supabaseResponse

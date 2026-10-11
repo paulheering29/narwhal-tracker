@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getCompanyId } from '@/lib/get-company-id'
 import { getDisplayName } from '@/lib/display-name'
+import { CourseLicenseTopics } from '@/components/course-license-topics'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -953,6 +954,8 @@ export default function TrainingDetailPage() {
           </Table>
         </div>
       )}
+
+      <CourseLicenseTopics courseId={trainingId} />
 
       {/* ── Edit Training Sheet ───────────────────────────────────────────────── */}
       <Sheet open={editOpen} onOpenChange={setEditOpen}>

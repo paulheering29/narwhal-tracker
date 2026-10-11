@@ -137,6 +137,7 @@ export function TopicChecklist({
                 {s.last && <> · {s.done ? 'done' : 'last done'} {fmtLicenseDate(s.last.completed_date)}</>}
               </p>
               {s.topic.note && <p className="text-xs text-gray-400">{s.topic.note}</p>}
+              {s.last?.notes && <p className="text-xs text-blue-600">{s.last.notes}</p>}
             </div>
             {s.last?.certificate_path && (
               <button onClick={() => viewCertificate(s.last!.certificate_path!, s.last!.id)} title="View certificate" className="rounded p-1.5 hover:bg-gray-100">

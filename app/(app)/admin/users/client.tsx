@@ -65,6 +65,7 @@ type Company = {
   id: string; name: string; logo_url?: string | null; org_contact_staff_id?: string | null
   preferred_cert_template?: string | null; enabled_cert_templates?: string[] | null
   external_training_credentials?: string[] | null; external_training_review?: boolean | null
+  license_reminders_enabled?: boolean | null
 }
 
 export function AdminUsersClient({
@@ -208,6 +209,22 @@ export function AdminUsersClient({
     setOutsideSaving(false)
     if (!res.ok) { setOutsideStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
     setOutsideStatus({ type: 'success', msg: 'Outside training settings saved.' })
+  }
+
+  // ── Renewal reminders ──
+  const [remindersOn, setRemindersOn] = useState<boolean>(initialCompany.license_reminders_enabled ?? true)
+  const [remindersSaving, setRemindersSaving] = useState(false)
+  const [remindersStatus, setRemindersStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+
+  async function handleToggleReminders(next: boolean) {
+    setRemindersOn(next); setRemindersSaving(true); setRemindersStatus(null)
+    const res = await fetch('/api/company/update-reminders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: next }),
+    })
+    const json = await res.json().catch(() => ({}))
+    setRemindersSaving(false)
+    if (!res.ok) { setRemindersOn(!next); setRemindersStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
+    setRemindersStatus({ type: 'success', msg: next ? 'Renewal reminders are on.' : 'Renewal reminders are off.' })
   }
 
   async function handleSaveOrgContact() {
@@ -942,6 +959,28 @@ export function AdminUsersClient({
                   : 'Save Settings'}
               </Button>
             </div>
+          </div>
+
+          {/* Renewal reminders */}
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Renewal reminders</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Email BCBAs, and your admins in a daily summary, 90, 60 and 30 days before a state license or BACB certification expires.
+                Only people with a login get emails.
+              </p>
+            </div>
+            <label className="flex items-center gap-3 cursor-pointer text-sm">
+              <input type="checkbox" checked={remindersOn} disabled={remindersSaving}
+                onChange={e => handleToggleReminders(e.target.checked)} className="accent-[#025CA8]" />
+              Send renewal reminder emails
+              {remindersSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
+            </label>
+            {remindersStatus && (
+              <p className={`text-sm rounded px-3 py-2 ${remindersStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                {remindersStatus.msg}
+              </p>
+            )}
           </div>
 
           {/* Certificate imports */}

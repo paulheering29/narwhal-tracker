@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { PriceCalculator } from '@/components/price-calculator'
 import { BASE_CENTS, USER_CENTS, STATE_CENTS, TRIAL_DAYS, CONTACT_EMAIL, formatMoney, monthlyTotalCents } from '@/lib/pricing'
 
 const BLUE  = '#025CA8'
@@ -389,6 +390,8 @@ export default function HomePage() {
               </p>
             </div>
           </div>
+
+          <PriceCalculator color={BLUE} />
 
           <p className="mt-8 text-center text-gray-600">
             Fewer than 10 RBTs + BCBAs, or a non-profit?{' '}

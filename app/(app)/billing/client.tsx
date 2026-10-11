@@ -152,7 +152,7 @@ export function BillingClient({ billing, supportedStates }: Props) {
           </div>
         </dl>
         <p className="mt-3 text-xs text-gray-400">
-          People are everyone marked active on your Staff page, RBTs and BCBAs alike. Changes are prorated on your next invoice.
+          People are everyone marked active in Training Loop: RBTs, BCBAs, training coordinators, and admins alike. Changes are prorated on your next invoice.
         </p>
         <p className="mt-2 text-xs text-gray-400">
           Fewer than 10 RBTs and BCBAs, or a non-profit?{' '}

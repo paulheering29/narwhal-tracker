@@ -360,7 +360,10 @@ export default function HomePage() {
                 <span className="text-4xl font-extrabold" style={{ color: BLUE }}>{formatMoney(BASE_CENTS)}</span>
                 <span className="text-gray-500"> / month</span>
               </p>
-              <p className="text-gray-600 mb-6">+ {formatMoney(USER_CENTS)} per person, every RBT and BCBA you track</p>
+              <p className="text-gray-600 mb-1">+ {formatMoney(USER_CENTS)} per person</p>
+              <p className="text-sm text-gray-500 mb-6">
+                Everyone you add counts: RBTs, BCBAs, and also training coordinators, admins, and anyone else with a login.
+              </p>
               <ul className="space-y-2 text-sm text-gray-600 mb-6">
                 {[
                   'Live and self-paced training, quizzes, and certificates',

@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { createServiceClient } from '@/lib/supabase/service'
 import { EMAIL_FROM } from '@/lib/email'
 import { emailDomain } from '@/lib/email-domains'
+import { checkEmailRequest } from '@/lib/rate-limit'
 
 const MIN_PASSWORD = 10
 // A person can't fill this in faster than this; a script usually can.
@@ -39,6 +40,14 @@ export async function POST(request: NextRequest) {
   if (password.length < MIN_PASSWORD) return NextResponse.json({ error: `Password must be at least ${MIN_PASSWORD} characters.` }, { status: 400 })
 
   const service = createServiceClient()
+
+  // Same throttle as password resets: this endpoint also emails whatever address it's given.
+  const limit = await checkEmailRequest(service, request, 'signup', email)
+  if (limit === 'ip_limited') {
+    return NextResponse.json({ error: 'Too many sign-up attempts. Please try again in a little while.' }, { status: 429 })
+  }
+  if (limit === 'email_limited') return NextResponse.json({ success: true })
+
   const { data, error } = await service.auth.admin.generateLink({
     type: 'signup',
     email,

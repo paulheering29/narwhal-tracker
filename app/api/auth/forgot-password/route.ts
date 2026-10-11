@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { createServiceClient } from '@/lib/supabase/service'
 import { EMAIL_FROM } from '@/lib/email'
 import { emailDomain } from '@/lib/email-domains'
+import { checkEmailRequest } from '@/lib/rate-limit'
 
 /**
  * Send a password-reset link through Resend (same sender as everything else).
@@ -19,6 +20,15 @@ export async function POST(request: NextRequest) {
   if (!emailDomain(email)) return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 })
 
   const service = createServiceClient()
+
+  // Limit how many reset emails one address (or one IP) can trigger. An address
+  // that's had its share still gets the normal "check your email" answer.
+  const limit = await checkEmailRequest(service, request, 'password-reset', email)
+  if (limit === 'ip_limited') {
+    return NextResponse.json({ error: 'Too many requests. Please try again in a little while.' }, { status: 429 })
+  }
+  if (limit === 'email_limited') return NextResponse.json({ success: true })
+
   const { data, error } = await service.auth.admin.generateLink({ type: 'recovery', email })
 
   if (!error && data?.properties?.hashed_token) {

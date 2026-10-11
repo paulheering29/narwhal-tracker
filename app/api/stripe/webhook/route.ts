@@ -31,10 +31,13 @@ export async function POST(request: NextRequest) {
       const companyId = session.metadata?.company_id
       if (!companyId) break
 
+      // The tier the checkout was priced at is claimed now that payment succeeded.
+      const priceTier = Number(session.metadata?.price_tier)
       await service.from('companies').update({
         stripe_customer_id:      session.customer as string,
         stripe_subscription_id:  session.subscription as string,
         subscription_status:     'active',
+        ...(priceTier ? { price_tier: priceTier } : {}),
       }).eq('id', companyId)
       break
     }

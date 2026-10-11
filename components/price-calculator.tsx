@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { BASE_CENTS, USER_CENTS, STATE_CENTS, formatMoney, monthlyTotalCents } from '@/lib/pricing'
+import { formatMoney, monthlyTotalCents, type Rates } from '@/lib/pricing'
 
 // Empty is allowed while typing, so the field can be cleared and retyped; it counts as 0.
 const toCount = (v: string, max: number) => Math.min(max, Math.max(0, parseInt(v, 10) || 0))
 
-export function PriceCalculator({ color }: { color: string }) {
+export function PriceCalculator({ color, rates }: { color: string; rates: Rates }) {
   const [people, setPeople] = useState('20')
   const [states, setStates] = useState('0')
 
@@ -41,12 +41,12 @@ export function PriceCalculator({ color }: { color: string }) {
 
         <div className="rounded-xl bg-gray-50 p-6" aria-live="polite">
           <dl className="space-y-1.5 text-sm text-gray-600 mb-4">
-            <Row label="Training Loop" amount={BASE_CENTS} />
-            <Row label={`${p} ${p === 1 ? 'person' : 'people'} × ${formatMoney(USER_CENTS)}`} amount={p * USER_CENTS} />
-            {s > 0 && <Row label={`${s} ${s === 1 ? 'state' : 'states'} × ${formatMoney(STATE_CENTS)}`} amount={s * STATE_CENTS} />}
+            <Row label="Training Loop" amount={rates.baseCents} />
+            <Row label={`${p} ${p === 1 ? 'person' : 'people'} × ${formatMoney(rates.userCents)}`} amount={p * rates.userCents} />
+            {s > 0 && <Row label={`${s} ${s === 1 ? 'state' : 'states'} × ${formatMoney(rates.stateCents)}`} amount={s * rates.stateCents} />}
           </dl>
           <p className="border-t border-gray-200 pt-4">
-            <span className="text-4xl font-extrabold tabular-nums" style={{ color }}>{formatMoney(monthlyTotalCents(p, s))}</span>
+            <span className="text-4xl font-extrabold tabular-nums" style={{ color }}>{formatMoney(monthlyTotalCents(p, s, rates))}</span>
             <span className="text-gray-500"> / month</span>
           </p>
         </div>

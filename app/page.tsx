@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { PriceCalculator } from '@/components/price-calculator'
-import { BASE_CENTS, USER_CENTS, STATE_CENTS, TRIAL_DAYS, CONTACT_EMAIL, formatMoney, monthlyTotalCents } from '@/lib/pricing'
+import { TRIAL_DAYS, CONTACT_EMAIL, formatMoney, lockInLine, monthlyTotalCents } from '@/lib/pricing'
+import { getCurrentOffer } from '@/lib/billing'
 
 const BLUE  = '#025CA8'
 const GREEN = '#3FAD46'
@@ -111,7 +112,12 @@ const features = [
   },
 ] as const
 
-export default function HomePage() {
+// Prices come from the database, so refresh now and then rather than building once.
+export const revalidate = 60
+
+export default async function HomePage() {
+  const { rates, endsOn, next } = await getCurrentOffer()
+  const introductory = endsOn != null
   return (
     <div className="min-h-screen bg-white text-gray-900">
 
@@ -356,14 +362,24 @@ export default function HomePage() {
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="rounded-2xl border-2 bg-white p-8" style={{ borderColor: BLUE }}>
               <h3 className="font-semibold text-lg mb-1">Training Loop</h3>
+              {introductory && (
+                <p className="inline-block rounded-full px-3 py-0.5 text-xs font-semibold mb-3" style={{ backgroundColor: '#e8f1fa', color: BLUE }}>
+                  Introductory pricing
+                </p>
+              )}
               <p className="mb-1">
-                <span className="text-4xl font-extrabold" style={{ color: BLUE }}>{formatMoney(BASE_CENTS)}</span>
+                <span className="text-4xl font-extrabold" style={{ color: BLUE }}>{formatMoney(rates.baseCents)}</span>
                 <span className="text-gray-500"> / month</span>
               </p>
-              <p className="text-gray-600 mb-1">+ {formatMoney(USER_CENTS)} per person</p>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-gray-600 mb-1">+ {formatMoney(rates.userCents)} per person</p>
+              <p className={`text-sm text-gray-500 ${introductory ? 'mb-1' : 'mb-6'}`}>
                 Everyone you add counts: RBTs, BCBAs, and also training coordinators, admins, and anyone else with a login.
               </p>
+              {endsOn && (
+                <p className="text-sm font-medium mb-6" style={{ color: BLUE }}>
+                  {lockInLine(endsOn, next)}
+                </p>
+              )}
               <ul className="space-y-2 text-sm text-gray-600 mb-6">
                 {[
                   'Live and self-paced training, quizzes, and certificates',
@@ -376,14 +392,14 @@ export default function HomePage() {
                 ))}
               </ul>
               <p className="text-xs text-gray-500">
-                For example, 20 people is {formatMoney(monthlyTotalCents(20, 0))} a month; 100 people is {formatMoney(monthlyTotalCents(100, 0))}.
+                For example, 20 people is {formatMoney(monthlyTotalCents(20, 0, rates))} a month; 100 people is {formatMoney(monthlyTotalCents(100, 0, rates))}.
               </p>
             </div>
 
             <div className="rounded-2xl border border-gray-200 bg-white p-8">
               <h3 className="font-semibold text-lg mb-1">Nightly license checks</h3>
               <p className="mb-1">
-                <span className="text-4xl font-extrabold" style={{ color: BLUE }}>{formatMoney(STATE_CENTS)}</span>
+                <span className="text-4xl font-extrabold" style={{ color: BLUE }}>{formatMoney(rates.stateCents)}</span>
                 <span className="text-gray-500"> / state / month</span>
               </p>
               <p className="text-gray-600 mb-6">An optional add-on, one state at a time</p>
@@ -391,10 +407,13 @@ export default function HomePage() {
                 Every night we compare your Licensed Behavior Analysts’ licenses in that state against the state’s own published list, and flag
                 anything expired, missing, or not matching. Add only the states you work in, and optionally get the results by email.
               </p>
+              <p className="text-sm text-gray-500 leading-relaxed mt-3">
+                Not available in every state — it depends on whether the state publishes a license list we can check.
+              </p>
             </div>
           </div>
 
-          <PriceCalculator color={BLUE} />
+          <PriceCalculator color={BLUE} rates={rates} />
 
           <p className="mt-8 text-center text-gray-600">
             Fewer than 10 RBTs + BCBAs, or a non-profit?{' '}

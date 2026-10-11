@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { countUsers, getPriceIds, getStripe } from '@/lib/billing'
+import { countUsers, getPriceIds, getStripe, tierForCompany, type PricingTier } from '@/lib/billing'
 
 export async function POST() {
   const supabase = await createClient()
@@ -18,7 +18,7 @@ export async function POST() {
 
   const { data: company } = await service
     .from('companies')
-    .select('id, name, stripe_customer_id, stripe_subscription_id, subscription_status')
+    .select('id, name, stripe_customer_id, stripe_subscription_id, subscription_status, price_tier')
     .eq('id', staff.company_id)
     .single()
   if (!company) return NextResponse.json({ error: 'Company not found' }, { status: 400 })
@@ -26,9 +26,13 @@ export async function POST() {
     return NextResponse.json({ error: 'You already have a subscription. Use Manage billing to change it.' }, { status: 400 })
   }
 
-  let prices
+  let tier: PricingTier
+  let prices: Awaited<ReturnType<typeof getPriceIds>>
   try {
-    prices = await getPriceIds()
+    // The tier is only claimed when payment succeeds (see the webhook); a company that
+    // already has one, from an earlier subscription, keeps it.
+    tier = (await tierForCompany(company.price_tier)).tier
+    prices = await getPriceIds(tier)
   } catch (err) {
     console.error('stripe prices missing', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'Billing is not set up yet. Please contact support.' }, { status: 500 })
@@ -66,8 +70,8 @@ export async function POST() {
     line_items,
     success_url: `${baseUrl}/admin/users?tab=account&success=true`,
     cancel_url:  `${baseUrl}/admin/users?tab=account`,
-    metadata: { company_id: company.id },
-    subscription_data: { metadata: { company_id: company.id } },
+    metadata: { company_id: company.id, price_tier: String(tier.tier) },
+    subscription_data: { metadata: { company_id: company.id, price_tier: String(tier.tier) } },
   })
 
   return NextResponse.json({ url: session.url })

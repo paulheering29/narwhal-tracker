@@ -1,26 +1,35 @@
 // Pricing and access rules. Pure (no Stripe, no database) so client components can import it.
 
 // ─── Pricing ──────────────────────────────────────────────────────────────────
-// One plan. These numbers are display-only: what is actually charged is the
-// Stripe prices found by the lookup keys below, so change a price in Stripe
-// (new price, same lookup key) and update these to match.
+// Prices live in the pricing_tiers table (migration 037) and in Stripe, one set of
+// three prices per tier. A company keeps the tier it started paying under.
+// INTRO_RATES is only the fallback shown if the table can't be read.
 
-export const BASE_CENTS  = 5000   // per organization per month
-export const USER_CENTS  = 50     // per active person per month
-export const STATE_CENTS = 1000   // per state checked nightly, per month
-export const TRIAL_DAYS  = 30
+export type Rates = { baseCents: number; userCents: number; stateCents: number }
+
+export const INTRO_RATES: Rates = { baseCents: 5000, userCents: 50, stateCents: 1000 }
+export const TRIAL_DAYS = 30
 
 // Where "contact us for a discounted plan" goes.
 export const CONTACT_EMAIL = 'hello@trainingloop.tech'
 
-export const PRICE_LOOKUP = { base: 'trainingloop_base_monthly', user: 'trainingloop_user_monthly', state: 'trainingloop_state_monthly' } as const
-
-export function monthlyTotalCents(users: number, states: number): number {
-  return BASE_CENTS + users * USER_CENTS + states * STATE_CENTS
+export function monthlyTotalCents(users: number, states: number, rates: Rates = INTRO_RATES): number {
+  return rates.baseCents + users * rates.userCents + states * rates.stateCents
 }
 
 export function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`
+}
+
+/** 'YYYY-MM-DD' -> 'October 31'. Parsed as UTC so the day never shifts with the viewer's timezone. */
+export function formatDeadline(ymd: string): string {
+  return new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+}
+
+/** The "subscribe before it goes up" sentence, shared by the marketing page and the billing tab. */
+export function lockInLine(endsOn: string, next: Rates | null): string {
+  const after = next ? ` After that it's ${formatMoney(next.baseCents)} a month plus ${formatMoney(next.userCents)} per person.` : ''
+  return `Subscribe by ${formatDeadline(endsOn)} and keep this rate for as long as you stay.${after}`
 }
 
 // ─── Access ───────────────────────────────────────────────────────────────────

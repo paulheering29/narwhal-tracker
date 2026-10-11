@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, CheckCheck } from 'lucide-react'
 import type { BillingSummary } from '@/lib/billing'
 import {
-  BASE_CENTS, USER_CENTS, STATE_CENTS, CONTACT_EMAIL, TRIAL_DAYS, formatMoney, monthlyTotalCents,
+  INTRO_RATES, CONTACT_EMAIL, lockInLine, TRIAL_DAYS, formatMoney, monthlyTotalCents,
 } from '@/lib/pricing'
 
 type StateOption = { code: string; name: string }
@@ -34,7 +34,8 @@ export function BillingClient({ billing, supportedStates, licenseEmailCard }: Pr
 
   const users = billing?.users ?? 0
   const access = billing?.access ?? 'trial'
-  const total = monthlyTotalCents(users, chosen.length)
+  const rates = billing?.rates ?? INTRO_RATES
+  const total = monthlyTotalCents(users, chosen.length, rates)
   const dirty = chosen.slice().sort().join() !== (billing?.states ?? []).slice().sort().join()
 
   async function go(kind: 'checkout' | 'portal') {
@@ -64,7 +65,7 @@ export function BillingClient({ billing, supportedStates, licenseEmailCard }: Pr
       <section>
         <h2 className="text-lg font-semibold text-gray-900">Plan &amp; billing</h2>
         <p className="mt-1 mb-4 text-sm text-gray-500">
-          One plan: {formatMoney(BASE_CENTS)} a month plus {formatMoney(USER_CENTS)} per person.
+          One plan: {formatMoney(rates.baseCents)} a month plus {formatMoney(rates.userCents)} per person.
         </p>
 
         {justPaid && (
@@ -86,6 +87,9 @@ export function BillingClient({ billing, supportedStates, licenseEmailCard }: Pr
                 <p className="mt-1 text-sm text-gray-500">
                   {billing?.daysLeft} {billing?.daysLeft === 1 ? 'day' : 'days'} left of your {TRIAL_DAYS}-day trial. No card needed until you subscribe.
                 </p>
+                {billing?.offerEndsOn && (
+                  <p className="mt-2 text-sm font-medium text-[#025CA8]">{lockInLine(billing.offerEndsOn, billing.nextRates)}</p>
+                )}
               </>
             )}
             {billing?.subscriptionStatus === 'past_due' && (
@@ -107,10 +111,10 @@ export function BillingClient({ billing, supportedStates, licenseEmailCard }: Pr
           <div className="rounded-lg border bg-white shadow-sm p-6">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Your monthly total</h3>
             <dl className="space-y-2 text-sm">
-              <Line label="Training Loop" amount={BASE_CENTS} />
-              <Line label={`${users} ${users === 1 ? 'person' : 'people'} × ${formatMoney(USER_CENTS)}`} amount={users * USER_CENTS} />
+              <Line label="Training Loop" amount={rates.baseCents} />
+              <Line label={`${users} ${users === 1 ? 'person' : 'people'} × ${formatMoney(rates.userCents)}`} amount={users * rates.userCents} />
               {chosen.length > 0 && (
-                <Line label={`${chosen.length} ${chosen.length === 1 ? 'state' : 'states'} checked nightly × ${formatMoney(STATE_CENTS)}`} amount={chosen.length * STATE_CENTS} />
+                <Line label={`${chosen.length} ${chosen.length === 1 ? 'state' : 'states'} checked nightly × ${formatMoney(rates.stateCents)}`} amount={chosen.length * rates.stateCents} />
               )}
               <div className="flex justify-between border-t pt-3 text-base font-semibold text-gray-900">
                 <dt>Total</dt><dd className="tabular-nums">{formatMoney(total)}/mo</dd>
@@ -131,7 +135,7 @@ export function BillingClient({ billing, supportedStates, licenseEmailCard }: Pr
       <section>
         <h2 className="text-lg font-semibold text-gray-900">Nightly license checks</h2>
         <p className="mt-1 mb-4 text-sm text-gray-500">
-          {formatMoney(STATE_CENTS)} a month for each state. Every night we compare your people&apos;s licenses in that state
+          {formatMoney(rates.stateCents)} a month for each state. Every night we compare your people&apos;s licenses in that state
           against the state&apos;s published list. Other states can still be tracked by hand.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">

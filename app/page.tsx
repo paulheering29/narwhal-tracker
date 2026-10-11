@@ -24,6 +24,7 @@ const ICONS: Record<string, string[]> = {
   userCheck:    ['M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0', 'M6 21v-2a4 4 0 0 1 4 -4h4', 'M15 19l2 2l4 -4'],
   checklist:    ['M9.615 20h-2.615a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8', 'M14 19l2 2l4 -4', 'M9 8h4', 'M9 12h2'],
   world:        ['M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0', 'M3.6 9h16.8', 'M3.6 15h16.8', 'M11.5 3a17 17 0 0 0 0 18', 'M12.5 3a17 17 0 0 1 0 18'],
+  sparkles:     ['M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6'],
   scale:        ['M7 20l10 0', 'M6 6l6 -1l6 1', 'M12 3l0 17', 'M9 12l-3 -6l-3 6a3 3 0 0 0 6 0', 'M21 12l-3 -6l-3 6a3 3 0 0 0 6 0'],
 }
 
@@ -80,9 +81,9 @@ const features = [
     body: 'BCBA CEUs are tracked by type, so ethics and supervision requirements show up alongside the total — not as a surprise at recertification.',
   },
   {
-    icon: 'world',
-    title: 'Training from anywhere',
-    body: 'Conference sessions and outside courses can be added with the certificate attached, with an optional review step for your team.',
+    icon: 'sparkles',
+    title: 'Outside trainings, filled in for you',
+    body: 'Upload a PDF or a photo of a certificate and AI reads the details into the form. You check it and save — no retyping, and an optional review step for your team.',
   },
   {
     icon: 'calendar',
@@ -281,7 +282,7 @@ export default function HomePage() {
               {[
                 'Earn CEUs through live trainings and self-paced courses',
                 'See your total, ethics, and supervision CEUs against what recertification requires',
-                'Add CEUs you earned elsewhere, like a conference, with the certificate attached',
+                'Add CEUs you earned elsewhere, like a conference — upload the certificate and the details are filled in for you',
                 'Know how many days until your certification renews',
               ].map(t => (
                 <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>
@@ -298,7 +299,7 @@ export default function HomePage() {
                 'Schedule trainings, take attendance, and issue certificates in a few clicks',
                 'Upload video courses once and assign them to anyone who needs them',
                 'See every RBT’s PDUs and every BCBA’s CEUs, plus upcoming expirations, at a glance',
-                'Choose who can add outside trainings, and review them all from one queue',
+                'Choose who can add outside trainings, and review them all from one queue — with name mismatches and possible duplicates flagged',
                 'Keep certification cycle documents together, ready for an audit',
               ].map(t => (
                 <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>

@@ -56,8 +56,9 @@ export async function middleware(request: NextRequest) {
                      || pathname === '/reset-password'
   const isHomePage    = pathname === '/'
   const isStripeHook  = pathname === '/api/stripe/webhook'
-  // Signup endpoints and the email-confirmation link are used before anyone has a session.
+  // Signup / password-reset endpoints and the emailed link are used before anyone has a session.
   const isSignupFlow  = pathname.startsWith('/api/signup') || pathname === '/auth/confirm'
+                     || pathname === '/api/auth/forgot-password'
 
   // Always allow the public landing page, Stripe webhook and signup flow through
   if (isHomePage || isStripeHook || isSignupFlow) return supabaseResponse
@@ -68,7 +69,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (user && isAuthPage) {
+  // A reset link signs the person in first, then lands them on /reset-password.
+  if (user && isAuthPage && pathname !== '/reset-password') {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

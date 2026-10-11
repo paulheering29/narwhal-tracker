@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
 /**
- * Landing point for the signup confirmation email: confirms the address, creates
+ * Landing point for emailed links. type=recovery: password reset (see above).
+ * type=signup: the signup confirmation email: confirms the address, creates
  * the organization (provision_company_owner is idempotent, so a second click is
  * harmless), refreshes the session so it carries the new organization claims,
  * and sends them to the getting-started page.
@@ -11,10 +12,18 @@ import { createServiceClient } from '@/lib/supabase/service'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
   const tokenHash = searchParams.get('token_hash')
-  const fail = () => NextResponse.redirect(`${origin}/login?notice=confirm-failed`)
-  if (!tokenHash || searchParams.get('type') !== 'signup') return fail()
+  const type = searchParams.get('type')
+  const fail = () => NextResponse.redirect(`${origin}/login?notice=${type === 'recovery' ? 'reset-failed' : 'confirm-failed'}`)
+  if (!tokenHash || (type !== 'signup' && type !== 'recovery')) return fail()
 
   const supabase = await createClient()
+
+  // Password reset: the one-time token signs them in, then they pick a new password.
+  if (type === 'recovery') {
+    const { error } = await supabase.auth.verifyOtp({ type: 'recovery', token_hash: tokenHash })
+    return error ? fail() : NextResponse.redirect(`${origin}/reset-password`)
+  }
+
   const { data, error } = await supabase.auth.verifyOtp({ type: 'signup', token_hash: tokenHash })
   if (error || !data.user) return fail()
 

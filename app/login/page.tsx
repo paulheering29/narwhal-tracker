@@ -23,6 +23,7 @@ export default function LoginPage() {
   useEffect(() => {
     const n = new URLSearchParams(window.location.search).get('notice')
     if (n === 'confirmed')      setNotice('Your email is confirmed. Sign in to get started.')
+    if (n === 'reset-failed')   setNotice('That reset link has expired or was already used. Choose “Forgot password?” to get a new one.')
     if (n === 'confirm-failed') setNotice('That confirmation link didn’t work. It may have expired or already been used. Try signing in, or sign up again.')
   }, [])
 

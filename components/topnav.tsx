@@ -25,6 +25,7 @@ import {
   Library as TrainingIcon,
   ClipboardCheck,
   Route as PathIcon,
+  KeyRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { showAdminNav, canManageTrainings, hasRole, rolesDisplay } from '@/lib/permissions'
@@ -146,6 +147,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
   const accountItems: Item[] = [
     ...myItems,
     ...(isStaff && hasRole(userRoles, 'Trainer') ? [{ href: '/settings', label: 'Signature', icon: UserCircle }] : []),
+    { href: '/change-password', label: 'Change password', icon: KeyRound },
   ]
 
   const trainingActive = trainingItems.some(i => isActive(i.href))
@@ -208,7 +210,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
           <div className="hidden lg:block shrink-0 ml-auto">
             <Dropdown
               align="right"
-              active={isActive('/settings') || isActive('/my-courses') || isActive('/my-progress')}
+              active={isActive('/settings') || isActive('/my-courses') || isActive('/my-progress') || isActive('/change-password')}
               trigger={<><UserCircle className="h-4 w-4 shrink-0" /><span className="max-w-[10rem] truncate">{userName}</span></>}
             >
               <div className="px-3 py-2 border-b border-gray-100 mb-1">

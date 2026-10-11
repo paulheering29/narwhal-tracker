@@ -22,7 +22,7 @@ import {
 import {
   Loader2, Search, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown,
   UserPlus, Pencil, Upload, Download, CheckCircle2, XCircle,
-  UserX, UserCheck, Users, ShieldCheck, Award,
+  UserX, UserCheck, Users, ShieldCheck, Award, LayoutList, ChartBar,
 } from 'lucide-react'
 import { ALL_ROLES } from '@/lib/permissions'
 import { UpgradeDialog } from '@/components/upgrade-dialog'
@@ -115,6 +115,76 @@ function fmtCycleDate(d: string) {
   const m  = String(dt.getMonth() + 1).padStart(2, '0')
   const dd = String(dt.getDate()).padStart(2, '0')
   return `${m}/${dd}/${dt.getFullYear()}`
+}
+
+// ─── Chart view ───────────────────────────────────────────────────────────────
+
+// One stacked bar per person against the cycle's unit requirement: green is
+// completed, yellow is scheduled-but-not-yet-completed, and the dark tick marks
+// where they should be today.
+function PaceChart({ rows, target, unitLabel, ethicsRequired, onOpen }: {
+  rows: StaffRow[]
+  target: number
+  unitLabel: string
+  ethicsRequired: number
+  onOpen: (id: string) => void
+}) {
+  const pct = (n: number) => `${Math.max(0, Math.min(1, n / target)) * 100}%`
+  return (
+    <div className="rounded-lg border bg-white shadow-sm p-4 md:p-6">
+      <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-gray-600">
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-emerald-500" />Completed</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-300" />Scheduled, not completed</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-0.5 bg-gray-900" />Where they should be today</span>
+        <span className="ml-auto text-gray-400">Full bar = {fmtPdu(target)} {unitLabel}s</span>
+      </div>
+      <div className="space-y-1">
+        {rows.map(s => {
+          const hasCycle = !!s.cycleStart
+          const complete = isComplete(s, ethicsRequired)
+          const done = Math.min(s.pduDone, target)
+          const sched = Math.min(s.pduScheduled, Math.max(0, target - done))
+          return (
+            <div
+              key={s.id}
+              onClick={() => onOpen(s.id)}
+              className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-2 py-2 cursor-pointer transition-colors ${complete ? 'bg-emerald-50 hover:bg-emerald-100' : 'hover:bg-gray-50'} ${!s.active ? 'opacity-50' : ''}`}
+            >
+              <div className="w-full md:w-48 shrink-0">
+                <p className="font-semibold text-blue-600 text-sm leading-tight truncate">{getDisplayName(s)}</p>
+                {hasCycle && (
+                  <p className="text-xs text-gray-500 tabular-nums">
+                    {fmtPdu(s.pduDone)} done{s.pduScheduled > 0 && <> · {fmtPdu(s.pduScheduled)} scheduled</>} · pace {fmtPdu(s.pacingTarget)}
+                  </p>
+                )}
+              </div>
+              {hasCycle ? (
+                <>
+                  <span className="w-20 shrink-0 text-xs tabular-nums text-gray-500 text-right">{fmtCycleDate(s.cycleStart!)}</span>
+                  <div
+                    className="relative h-6 flex-1 min-w-[160px] rounded bg-gray-100"
+                    title={`${fmtPdu(s.pduDone)} completed, ${fmtPdu(s.pduScheduled)} scheduled, should be at ${fmtPdu(s.pacingTarget)} today`}
+                  >
+                    <div className="absolute inset-y-0 left-0 flex w-full overflow-hidden rounded">
+                      <div className="h-full bg-emerald-500" style={{ width: pct(done) }} />
+                      <div className="h-full bg-amber-300" style={{ width: pct(sched) }} />
+                    </div>
+                    <div
+                      className="absolute -inset-y-1 w-0.5 -translate-x-1/2 bg-gray-900"
+                      style={{ left: pct(s.pacingTarget) }}
+                    />
+                  </div>
+                  <span className="w-20 shrink-0 text-xs tabular-nums text-gray-500">{fmtCycleDate(s.cycleEnd!)}</span>
+                </>
+              ) : (
+                <span className="text-xs text-gray-400 italic">No active cycle</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 // ─── Sorting ──────────────────────────────────────────────────────────────────
@@ -399,6 +469,7 @@ export function StaffPageClient({
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('active')
   const [sortKey, setSortKey]       = useState<SortKey>('name')
   const [sortDir, setSortDir]       = useState<SortDir>('asc')
+  const [view, setView]             = useState<'grid' | 'chart'>('grid')
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -849,6 +920,19 @@ export function StaffPageClient({
                 </button>
               ))}
             </div>
+            <div className="flex rounded-md border border-gray-200 overflow-hidden shrink-0">
+              {([['grid', 'Grid', LayoutList], ['chart', 'Chart', ChartBar]] as const).map(([key, label, Icon]) => (
+                <button
+                  key={key}
+                  onClick={() => setView(key)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${
+                    view === key ? 'bg-[#025CA8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" /> {label}
+                </button>
+              ))}
+            </div>
             <Button variant="outline" onClick={openImport} className="shrink-0">
               <Upload className="mr-2 h-4 w-4" /> Import CSV
             </Button>
@@ -857,8 +941,26 @@ export function StaffPageClient({
             </Button>
           </div>
 
+          {view === 'chart' && (
+            loading ? (
+              <div className="py-12 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+            ) : filtered.length === 0 ? (
+              <div className="py-12 text-center text-sm text-gray-400">
+                {search ? 'No staff match your search.' : `No ${credential.code}s yet. Add your first team member.`}
+              </div>
+            ) : (
+              <PaceChart
+                rows={filtered}
+                target={credential.units_required}
+                unitLabel={credential.unit_label}
+                ethicsRequired={credential.ethics_units_required}
+                onOpen={id => router.push(`/staff/${id}`)}
+              />
+            )
+          )}
+
           {/* ── Mobile card list (hidden on md+) ─────────────────────────── */}
-          <div className="md:hidden space-y-3">
+          <div className={`md:hidden space-y-3 ${view === 'chart' ? 'hidden' : ''}`}>
             {loading ? (
               <div className="py-12 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
             ) : filtered.length === 0 ? (
@@ -931,7 +1033,7 @@ export function StaffPageClient({
           </div>
 
           {/* ── Desktop table (hidden below md) ──────────────────────────── */}
-          <div className="hidden md:block rounded-lg border bg-white shadow-sm overflow-x-auto">
+          <div className={`hidden rounded-lg border bg-white shadow-sm overflow-x-auto ${view === 'chart' ? '' : 'md:block'}`}>
             <table className="w-full table-fixed border-collapse text-base">
               {showMinimums ? (
                 <colgroup>

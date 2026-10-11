@@ -16,6 +16,7 @@ export default function SignupPage() {
   const [lastName, setLastName]   = useState('')
   const [email, setEmail]         = useState('')
   const [password, setPassword]   = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [website, setWebsite]     = useState('')           // honeypot: people never see or fill this
   const startedAt = useRef(Date.now())
 
@@ -50,6 +51,7 @@ export default function SignupPage() {
     e.preventDefault()
     setError(null)
     if (password.length < MIN_PASSWORD) { setError(`Password must be at least ${MIN_PASSWORD} characters.`); return }
+    if (password !== confirmPassword)   { setError('The passwords don’t match.'); return }
 
     if (!bypassed && (await checkDomain())) return   // the heads-up is now showing
 
@@ -97,6 +99,13 @@ export default function SignupPage() {
               <CardDescription>Set up your organization. Free for up to 5 RBTs, no card needed.</CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50 p-3.5 text-sm text-blue-900">
+                <p className="font-medium">This page is for signing up a new company.</p>
+                <p className="mt-1 text-blue-800">
+                  If you work for a company that already uses Training Loop, don’t sign up here. Ask an admin at your
+                  company to add your account, and you’ll get an email to sign in.
+                </p>
+              </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <label htmlFor="org" className="text-sm font-medium text-gray-700">Organization name</label>
@@ -148,6 +157,16 @@ export default function SignupPage() {
                   <input id="password" type="password" required minLength={MIN_PASSWORD} value={password}
                     onChange={e => setPassword(e.target.value)} autoComplete="new-password" className={inputCls}
                     placeholder={`At least ${MIN_PASSWORD} characters`} />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="confirm-password" className="text-sm font-medium text-gray-700">Confirm password</label>
+                  <input id="confirm-password" type="password" required value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password" className={inputCls}
+                    placeholder="Type it again" />
+                  {confirmPassword && password !== confirmPassword && (
+                    <p className="text-xs text-red-600">Passwords don’t match yet.</p>
+                  )}
                 </div>
 
                 {/* Honeypot: off-screen, skipped by keyboard and assistive tech. */}

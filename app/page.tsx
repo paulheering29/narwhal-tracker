@@ -120,7 +120,8 @@ export const revalidate = 60
 
 export default async function HomePage() {
   const { rates, endsOn, next } = await getCurrentOffer()
-  const introductory = endsOn != null
+  // Introductory means a higher tier is waiting, whether or not its start date is set yet.
+  const introductory = next != null
   return (
     <div className="min-h-screen overflow-x-clip bg-white text-gray-900">
 

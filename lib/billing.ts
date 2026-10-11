@@ -106,7 +106,7 @@ export async function tierForCompany(priceTier: number | null): Promise<{ tier: 
 export async function getCurrentOffer(): Promise<{ rates: Rates; endsOn: string | null; next: Rates | null }> {
   try {
     const { tier, next } = await tierForCompany(null)
-    return { rates: tier, endsOn: tier.endsOn, next: tier.endsOn ? next : null }
+    return { rates: tier, endsOn: tier.endsOn, next }
   } catch {
     return { rates: INTRO_RATES, endsOn: null, next: null }
   }

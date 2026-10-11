@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/com
 import { LicenseDetails } from '@/components/license-details'
 import { CeProgressView, TopicChecklist } from '@/components/license-progress'
 import { LicenseDocuments } from '@/components/license-documents'
+import { VerificationBadge } from '@/components/verification-badge'
 import {
   COMPLETION_COLUMNS, computeCeProgress, computeTopicStatuses, loadUnitEvents,
   type TopicCompletion, type UnitEvent,
@@ -207,6 +208,7 @@ export function StaffLicenses({
                       {l.status !== 'active' && (
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{STATUS_LABEL[l.status]}</span>
                       )}
+                      <VerificationBadge license={l} />
                       {j?.tied_to_bacb && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">Requires active BACB</span>}
                       {progress && (
                         <span className={`rounded-full px-2 py-0.5 text-xs ${progress.complete ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>

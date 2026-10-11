@@ -115,7 +115,7 @@ export default function LoginPage() {
               </Button>
             </form>
             <p className="mt-4 text-center text-sm text-gray-500">
-              New to Training Loop? <Link href="/signup" className="text-[#025CA8] hover:underline">Start free</Link>
+              New to Training Loop? <Link href="/signup" className="text-[#025CA8] hover:underline">Sign up</Link>
             </p>
           </CardContent>
         </Card>

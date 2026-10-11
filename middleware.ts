@@ -73,7 +73,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const isAuthPage    = pathname === '/login'
-                     || pathname === '/signup'
+                     || pathname === '/signup' || pathname.startsWith('/signup/')
                      || pathname === '/forgot-password'
                      || pathname === '/reset-password'
   const isHomePage    = pathname === '/'

@@ -10,6 +10,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { LicenseDetails } from '@/components/license-details'
+import { CeProgressView, TopicChecklist } from '@/components/license-progress'
+import {
+  COMPLETION_COLUMNS, computeCeProgress, computeTopicStatuses, loadUnitEvents,
+  type TopicCompletion, type UnitEvent,
+} from '@/lib/licensure-progress'
 import {
   JURISDICTION_COLUMNS, LICENSE_COLUMNS, STATUS_LABEL, bacbEndsBeforeLicense, daysLabel, daysUntil,
   expiryPill, fmtLicenseDate,
@@ -20,6 +25,7 @@ import { AlertTriangle, ChevronDown, Loader2, Pencil, Plus, Trash2 } from 'lucid
 const emptyForm = {
   jurisdiction_code: '', license_number: '', status: 'active' as LicenseStatus,
   issued_date: '', expiration_date: '', notes: '',
+  ce_exempt_this_cycle: false, ce_hours_override: '', ce_period_end: '',
 }
 
 /**
@@ -40,6 +46,8 @@ export function StaffLicenses({
   const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([])
   const [topics, setTopics]             = useState<RequirementTopic[]>([])
   const [bacbEnd, setBacbEnd]           = useState<string | null>(null)
+  const [events, setEvents]             = useState<UnitEvent[]>([])
+  const [completions, setCompletions]   = useState<TopicCompletion[]>([])
   const [loading, setLoading]           = useState(true)
   const [expanded, setExpanded]         = useState<string | null>(null)
   const [canEdit, setCanEdit]           = useState(false)
@@ -62,7 +70,16 @@ export function StaffLicenses({
       supabase.from('certification_cycles').select('end_date').eq('staff_id', staffId).eq('certification_type', 'BCBA')
         .gte('end_date', today).order('end_date').limit(1),
     ])
-    setLicenses((licRes.data ?? []) as StaffLicense[])
+    const lics = (licRes.data ?? []) as StaffLicense[]
+    setLicenses(lics)
+    const [eventMap, compRes] = await Promise.all([
+      loadUnitEvents(supabase, [staffId]),
+      lics.length
+        ? supabase.from('staff_license_topic_completions').select(COMPLETION_COLUMNS).in('license_id', lics.map(l => l.id))
+        : Promise.resolve({ data: [] }),
+    ])
+    setEvents(eventMap[staffId] ?? [])
+    setCompletions((compRes.data ?? []) as TopicCompletion[])
     setJurisdictions((jurRes.data ?? []) as unknown as Jurisdiction[])
     setTopics((topicRes.data ?? []) as RequirementTopic[])
     setBacbEnd(cycleRes.data?.[0]?.end_date ?? null)
@@ -83,6 +100,8 @@ export function StaffLicenses({
     setForm({
       jurisdiction_code: l.jurisdiction_code, license_number: l.license_number ?? '', status: l.status,
       issued_date: l.issued_date ?? '', expiration_date: l.expiration_date, notes: l.notes ?? '',
+      ce_exempt_this_cycle: l.ce_exempt_this_cycle, ce_hours_override: l.ce_hours_override != null ? String(l.ce_hours_override) : '',
+      ce_period_end: l.ce_period_end ?? '',
     })
     setError(null); setOpen(true)
   }
@@ -98,6 +117,9 @@ export function StaffLicenses({
       issued_date:     form.issued_date || null,
       expiration_date: form.expiration_date,
       notes:           form.notes.trim() || null,
+      ce_exempt_this_cycle: form.ce_exempt_this_cycle,
+      ce_hours_override:    form.ce_hours_override === '' ? null : Number(form.ce_hours_override),
+      ce_period_end:        form.ce_period_end || null,
     }
     let err: { message: string } | null
     if (editing) {
@@ -164,6 +186,10 @@ export function StaffLicenses({
             const days = daysUntil(l.expiration_date)
             const bacbShort = bacbEndsBeforeLicense(l, j, bacbEnd)
             const isOpen = expanded === l.id
+            const jTopics = topics.filter(t => t.jurisdiction_code === l.jurisdiction_code)
+            const progress = computeCeProgress(l, j, events, !!bacbEnd)
+            const statuses = computeTopicStatuses(l, j, jTopics, completions)
+            const topicsDue = statuses.filter(t => !t.done).length
             return (
               <li key={l.id} className="px-5 py-3">
                 <div className="flex items-center gap-3">
@@ -174,6 +200,12 @@ export function StaffLicenses({
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{STATUS_LABEL[l.status]}</span>
                       )}
                       {j?.tied_to_bacb && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">Requires active BACB</span>}
+                      {progress && (
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${progress.complete ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                          CE {progress.exempt ? 'exempt' : progress.metByBacb ? 'met via BACB' : `${Number(progress.done.toFixed(2))}/${Number(progress.required.toFixed(2))}`}
+                        </span>
+                      )}
+                      {topicsDue > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">{topicsDue} topic{topicsDue !== 1 ? 's' : ''} due</span>}
                     </div>
                     <p className="text-xs text-gray-500">
                       {l.license_number ? `#${l.license_number} · ` : ''}Expires {fmtLicenseDate(l.expiration_date)}
@@ -198,8 +230,10 @@ export function StaffLicenses({
                 )}
                 {l.notes && <p className="mt-1 text-xs italic text-gray-500">{l.notes}</p>}
                 {isOpen && j && (
-                  <div className="mt-3 rounded-lg bg-gray-50 p-4">
-                    <LicenseDetails jurisdiction={j} topics={topics.filter(t => t.jurisdiction_code === j.code)} />
+                  <div className="mt-3 space-y-4 rounded-lg bg-gray-50 p-4">
+                    {progress && <CeProgressView progress={progress} />}
+                    <TopicChecklist license={l} statuses={statuses} canEdit={canEdit} onChanged={load} />
+                    <LicenseDetails jurisdiction={j} topics={jTopics} hideTopics />
                   </div>
                 )}
               </li>
@@ -241,6 +275,34 @@ export function StaffLicenses({
             </div>
             {formJurisdiction?.renewal_notes && (
               <p className="text-xs text-gray-500 bg-gray-50 rounded px-3 py-2">{formJurisdiction.renewal_notes}</p>
+            )}
+            {formJurisdiction?.ce_basis === 'state_hours' && (
+              <div className="space-y-3 rounded-lg border border-gray-200 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-400">State CE hours</p>
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" checked={form.ce_exempt_this_cycle} className="mt-0.5 accent-[#025CA8]"
+                    onChange={e => setForm(f => ({ ...f, ce_exempt_this_cycle: e.target.checked }))} />
+                  <span>No CE required this cycle <span className="text-gray-400">(for example a first renewal)</span></span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Hours owed, if not the standard {formJurisdiction.ce_hours_required != null ? Number(formJurisdiction.ce_hours_required) : ''}</Label>
+                    <Input type="number" min="0" step="0.5" value={form.ce_hours_override}
+                      onChange={e => setForm(f => ({ ...f, ce_hours_override: e.target.value }))} placeholder="Standard" />
+                  </div>
+                  {formJurisdiction.ce_period_years != null && formJurisdiction.cycle_years != null && formJurisdiction.ce_period_years !== formJurisdiction.cycle_years && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">CE period ends</Label>
+                      <Input type="date" value={form.ce_period_end} onChange={e => setForm(f => ({ ...f, ce_period_end: e.target.value }))} />
+                    </div>
+                  )}
+                </div>
+                {formJurisdiction.ce_period_years != null && formJurisdiction.cycle_years != null && formJurisdiction.ce_period_years !== formJurisdiction.cycle_years && (
+                  <p className="text-xs text-gray-400">
+                    {formJurisdiction.name} renews every {formJurisdiction.cycle_years} year{formJurisdiction.cycle_years === 1 ? '' : 's'} but reports CE every {formJurisdiction.ce_period_years}. Enter where the current CE period ends if it isn’t the expiration date.
+                  </p>
+                )}
+              </div>
             )}
             <div className="space-y-2">
               <Label>Status</Label>

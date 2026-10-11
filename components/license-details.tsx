@@ -8,8 +8,8 @@ import { AlertTriangle } from 'lucide-react'
 
 /** What a state requires, in plain terms. Shown when adding a license and on each license card. */
 export function LicenseDetails({
-  jurisdiction, topics,
-}: { jurisdiction: Jurisdiction; topics: RequirementTopic[] }) {
+  jurisdiction, topics, hideTopics = false,
+}: { jurisdiction: Jurisdiction; topics: RequirementTopic[]; hideTopics?: boolean }) {
   const rows: [string, string | null][] = [
     ['Type',            REGULATION_LABEL[jurisdiction.regulation_status]],
     ['Renewal cycle',   jurisdiction.cycle_years != null ? `${jurisdiction.cycle_years} year${jurisdiction.cycle_years === 1 ? '' : 's'}` : 'Not yet set'],
@@ -35,7 +35,7 @@ export function LicenseDetails({
           </div>
         ))}
       </dl>
-      {topics.length > 0 && (
+      {!hideTopics && topics.length > 0 && (
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-1">Required topics</p>
           <ul className="space-y-1">

@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import {
   STATUS_LABEL, bacbEndsBeforeLicense, daysLabel, daysUntil, expiryPill, fmtLicenseDate,
-  type Jurisdiction, type StaffLicense,
+  type Jurisdiction, type RequirementTopic, type StaffLicense,
 } from '@/lib/licensure'
+import { computeCeProgress, computeTopicStatuses, type TopicCompletion, type UnitEvent } from '@/lib/licensure-progress'
 import { AlertTriangle, Search } from 'lucide-react'
 
 type Person = { id: string; name: string; active: boolean }
@@ -16,12 +17,15 @@ type Person = { id: string; name: string; active: boolean }
  * expiry first. People with several licenses appear once for each.
  */
 export function LicenseTable({
-  people, licenses, jurisdictions, bacbEnd,
+  people, licenses, jurisdictions, bacbEnd, events, topics, completions,
 }: {
   people: Person[]
   licenses: StaffLicense[]
   jurisdictions: Jurisdiction[]
   bacbEnd: Record<string, string>   // staff_id → end of their current BACB cycle
+  events: Record<string, UnitEvent[]>
+  topics: RequirementTopic[]
+  completions: TopicCompletion[]
 }) {
   const [search, setSearch] = useState('')
   const [window, setWindow] = useState<'all' | '90' | 'expired'>('all')
@@ -86,16 +90,21 @@ export function LicenseTable({
               <th className="px-3 py-2.5">Status</th>
               <th className="px-3 py-2.5">Expires</th>
               <th className="px-3 py-2.5">Time left</th>
+              <th className="px-3 py-2.5">State CE</th>
+              <th className="px-3 py-2.5">Topics</th>
               <th className="px-3 py-2.5">BACB</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 ? (
-              <tr><td colSpan={7} className="py-12 text-center text-gray-400">
+              <tr><td colSpan={9} className="py-12 text-center text-gray-400">
                 {all.length === 0 ? 'No state licenses on file yet. Add them from a BCBA’s profile.' : 'No licenses match.'}
               </td></tr>
             ) : rows.map(({ l, person, j, days }) => {
               const bacbShort = bacbEndsBeforeLicense(l, j, bacbEnd[l.staff_id])
+              const progress = computeCeProgress(l, j, events[l.staff_id] ?? [], !!bacbEnd[l.staff_id])
+              const statuses = computeTopicStatuses(l, j, topics.filter(t => t.jurisdiction_code === l.jurisdiction_code), completions)
+              const due = statuses.filter(t => !t.done).length
               return (
                 <tr key={l.id} className={!person.active ? 'opacity-50' : ''}>
                   <td className="px-4 py-2.5">
@@ -107,6 +116,19 @@ export function LicenseTable({
                   <td className="px-3 py-2.5 tabular-nums text-gray-600">{fmtLicenseDate(l.expiration_date)}</td>
                   <td className="px-3 py-2.5">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${expiryPill(days)}`}>{daysLabel(days)}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                    {progress ? (
+                      <span className={`tabular-nums font-medium ${progress.complete ? 'text-emerald-600' : 'text-gray-700'}`}>
+                        {progress.exempt ? 'Exempt' : progress.metByBacb ? 'Met via BACB'
+                          : <>{Number(progress.done.toFixed(2))} / {Number(progress.required.toFixed(2))}{progress.ethicsRequired > 0 && <span className="text-gray-400"> · ethics {Number(progress.ethicsDone.toFixed(2))}/{Number(progress.ethicsRequired.toFixed(2))}</span>}</>}
+                      </span>
+                    ) : <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                    {statuses.length === 0 ? <span className="text-gray-300">—</span>
+                      : due > 0 ? <span className="font-medium text-amber-700">{due} due</span>
+                      : <span className="text-emerald-600">All done</span>}
                   </td>
                   <td className="px-3 py-2.5 text-xs">
                     {bacbShort ? (

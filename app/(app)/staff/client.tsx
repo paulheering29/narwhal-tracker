@@ -29,8 +29,9 @@ import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { LicenseTable } from '@/components/license-table'
 import {
   JURISDICTION_COLUMNS, LICENSE_COLUMNS, daysUntil, fmtLicenseDate,
-  type Jurisdiction, type StaffLicense,
+  type Jurisdiction, type RequirementTopic, type StaffLicense,
 } from '@/lib/licensure'
+import { COMPLETION_COLUMNS, loadUnitEvents, type TopicCompletion, type UnitEvent } from '@/lib/licensure-progress'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -331,16 +332,25 @@ export function StaffPageClient({
   const [licenses, setLicenses]           = useState<StaffLicense[]>([])
   const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([])
   const [bacbEnd, setBacbEnd]             = useState<Record<string, string>>({})
+  const [licenseTopics, setLicenseTopics] = useState<RequirementTopic[]>([])
+  const [completions, setCompletions]     = useState<TopicCompletion[]>([])
+  const [unitEvents, setUnitEvents]       = useState<Record<string, UnitEvent[]>>({})
   useEffect(() => {
     async function loadLicenses() {
       const today = new Date().toISOString().split('T')[0]
-      const [licRes, jurRes, cycleRes] = await Promise.all([
+      const [licRes, jurRes, topicRes, compRes, cycleRes] = await Promise.all([
         supabase.from('staff_licenses').select(LICENSE_COLUMNS),
         supabase.from('license_jurisdictions').select(JURISDICTION_COLUMNS),
+        supabase.from('license_requirement_topics').select('*'),
+        supabase.from('staff_license_topic_completions').select(COMPLETION_COLUMNS),
         supabase.from('certification_cycles').select('staff_id, end_date').eq('certification_type', 'BCBA').gte('end_date', today),
       ])
       setLicenses((licRes.data ?? []) as StaffLicense[])
       setJurisdictions((jurRes.data ?? []) as unknown as Jurisdiction[])
+      setLicenseTopics((topicRes.data ?? []) as RequirementTopic[])
+      setCompletions((compRes.data ?? []) as TopicCompletion[])
+      const licensedIds = Array.from(new Set(((licRes.data ?? []) as StaffLicense[]).map(l => l.staff_id)))
+      setUnitEvents(await loadUnitEvents(supabase, licensedIds))
       const ends: Record<string, string> = {}
       for (const c of cycleRes.data ?? []) {
         const id = c.staff_id as string
@@ -1257,6 +1267,9 @@ export function StaffPageClient({
           licenses={licenses}
           jurisdictions={jurisdictions}
           bacbEnd={bacbEnd}
+          events={unitEvents}
+          topics={licenseTopics}
+          completions={completions}
         />
       )}
 

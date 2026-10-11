@@ -51,7 +51,7 @@ const steps = [
   },
   {
     icon: 'certificate',
-    title: 'Certify automatically',
+    title: 'Generate certificates',
     body: 'PDU and CEU certificates are generated with your trainer’s signature and logo. Download, email, or grab the whole class as a ZIP.',
   },
   {
@@ -308,7 +308,6 @@ export default function HomePage() {
                 'Schedule trainings, take attendance, and issue certificates in a few clicks',
                 'Upload video courses once, then assign them — or a whole learning path — to anyone who needs them',
                 'See every RBT’s PDUs and every BCBA’s CEUs, plus upcoming expirations, at a glance',
-                'Choose who can add outside trainings, and review them all from one queue — with name mismatches and possible duplicates flagged',
                 'Keep certification cycle documents together, ready for an audit',
               ].map(t => (
                 <li key={t} className="flex gap-3"><Icon name="checklist" className="h-5 w-5 shrink-0 text-gray-400 mt-0.5" />{t}</li>

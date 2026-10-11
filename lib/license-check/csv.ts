@@ -1,5 +1,5 @@
-/** Minimal CSV reader (quotes, doubled quotes, CRLF) -- the state files need nothing more. */
-export function parseCsv(text: string): { headers: string[]; rows: Record<string, string>[] } {
+/** Minimal CSV reader (any single-character delimiter; New Jersey's file uses |) (quotes, doubled quotes, CRLF) -- the state files need nothing more. */
+export function parseCsv(text: string, delimiter = ','): { headers: string[]; rows: Record<string, string>[] } {
   const records: string[][] = []
   let field = ''
   let record: string[] = []
@@ -13,7 +13,7 @@ export function parseCsv(text: string): { headers: string[]; rows: Record<string
         if (src[i + 1] === '"') { field += '"'; i++ } else quoted = false
       } else field += c
     } else if (c === '"') quoted = true
-    else if (c === ',') { record.push(field); field = '' }
+    else if (c === delimiter) { record.push(field); field = '' }
     else if (c === '\n' || c === '\r') {
       if (c === '\r' && src[i + 1] === '\n') i++
       record.push(field); field = ''

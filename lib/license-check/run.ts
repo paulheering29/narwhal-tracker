@@ -1,11 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { massachusetts } from './massachusetts'
 import { connecticut, illinois, rhodeIsland, texas, washington } from './states'
+import { newJersey } from './newJersey'
+import { pennsylvania } from './pennsylvania'
+import { vermont } from './vermont'
 import { verifyLicense } from './verify'
 import type { StateLicense, StateSource } from './types'
 
 // Add a state here once its reader exists. Everything else is state-agnostic.
-const SOURCES: StateSource[] = [massachusetts, rhodeIsland, washington, texas, illinois, connecticut]
+const SOURCES: StateSource[] = [massachusetts, rhodeIsland, washington, texas, illinois, connecticut, newJersey, pennsylvania, vermont]
 const NOTES = new Map(SOURCES.map(s => [s.code, s.notFoundNote ?? '']))
 
 const CHUNK = 500
@@ -23,9 +26,14 @@ async function syncStates(db: SupabaseClient) {
       const { licenses, sourceDate } = await source.fetch()
       if (licenses.length === 0) throw new Error('The state list came back empty, so it was not used.')
 
-      // A license can appear twice under the same number+type; keep the last.
+      // A license can appear twice under the same number+type (New Jersey: Expired, and
+      // Reinstatement Pending). Keep the pending one -- it is the one that says "look at this".
       const unique = new Map<string, StateLicense>()
-      for (const l of licenses) unique.set(`${l.number}|${l.type}`, l)
+      for (const l of licenses) {
+        const key = `${l.number}|${l.type}`
+        const have = unique.get(key)
+        if (!have || /pending/i.test(l.status) || !/pending/i.test(have.status)) unique.set(key, l)
+      }
 
       const rows = Array.from(unique.values()).map(l => ({
         jurisdiction_code: source.code, license_number: l.number, license_type: l.type, status: l.status,

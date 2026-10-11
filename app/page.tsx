@@ -4,7 +4,8 @@ const BLUE  = '#025CA8'
 const GREEN = '#3FAD46'
 
 // The app lives on its own host (see middleware.ts), so sign-in links are absolute.
-const LOGIN_URL = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/login`
+const LOGIN_URL  = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/login`
+const SIGNUP_URL = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/signup`
 
 // Tabler icon outlines (tabler.io/icons), inlined as path data so the
 // landing page doesn't pull in an icon package the rest of the app doesn't use.
@@ -126,12 +127,13 @@ export default function HomePage() {
           <nav className="flex items-center gap-1 sm:gap-6">
             <a href="#how-it-works" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">How it works</a>
             <a href="#features" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">Features</a>
+            <a href={LOGIN_URL} className="text-sm font-medium text-gray-600 hover:text-gray-900 px-2 py-2">Sign in</a>
             <a
-              href={LOGIN_URL}
+              href={SIGNUP_URL}
               className="text-sm font-semibold px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: BLUE }}
             >
-              Sign in
+              Start free
             </a>
           </nav>
         </div>
@@ -157,11 +159,11 @@ export default function HomePage() {
             </p>
             <div className="flex flex-wrap gap-3">
               <a
-                href={LOGIN_URL}
+                href={SIGNUP_URL}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: BLUE }}
               >
-                Sign in
+                Start free
                 <Icon name="arrowRight" className="h-4 w-4" />
               </a>
               <a
@@ -344,16 +346,21 @@ export default function HomePage() {
             PDUs, CEUs, and certificates — finally in one place.
           </h2>
           <p className="text-blue-100 text-lg mb-8 max-w-xl mx-auto">
-            Sign in to pick up where you left off.
+            Free for up to 5 RBTs. No card needed.
           </p>
-          <a
-            href={LOGIN_URL}
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold bg-white transition-opacity hover:opacity-90"
-            style={{ color: BLUE }}
-          >
-            Sign in to Training Loop
-            <Icon name="arrowRight" className="h-4 w-4" />
-          </a>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a
+              href={SIGNUP_URL}
+              className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold bg-white transition-opacity hover:opacity-90"
+              style={{ color: BLUE }}
+            >
+              Start free
+              <Icon name="arrowRight" className="h-4 w-4" />
+            </a>
+            <a href={LOGIN_URL} className="px-5 py-3 text-sm font-semibold text-white hover:underline">
+              Sign in
+            </a>
+          </div>
         </div>
       </section>
 

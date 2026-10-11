@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createServiceClient } from '@/lib/supabase/service'
 import { cookies } from 'next/headers'
 import { Resend } from 'resend'
+import { EMAIL_FROM } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   // ── Verify caller is an admin ─────────────────────────────────────────────
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     const appUrl   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://trainingloop.tech'
 
     await resend.emails.send({
-      from:    'Training Loop <noreply@narwhaltracker.com>',
+      from:    EMAIL_FROM,
       to:      email,
       subject: 'Your Training Loop account is ready',
       html: `

@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createServiceClient } from '@/lib/supabase/service'
 import { cookies } from 'next/headers'
 import { Resend } from 'resend'
+import { EMAIL_FROM } from '@/lib/email'
 import {
   buildCertData,
   certFilename,
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
 
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error: sendError } = await resend.emails.send({
-    from: 'Training Loop <noreply@narwhaltracker.com>',
+    from: EMAIL_FROM,
     to:   staff.email,
     subject: `Your ${certTitle} — ${cert.trainingName}`,
     html: `

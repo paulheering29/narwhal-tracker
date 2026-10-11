@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -17,6 +17,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  // Read from the URL after mount so this page can stay statically rendered.
+  useEffect(() => {
+    const n = new URLSearchParams(window.location.search).get('notice')
+    if (n === 'confirmed')      setNotice('Your email is confirmed. Sign in to get started.')
+    if (n === 'confirm-failed') setNotice('That confirmation link didn’t work. It may have expired or already been used. Try signing in, or sign up again.')
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -86,6 +94,10 @@ export default function LoginPage() {
                 />
               </div>
 
+              {notice && (
+                <p className="text-sm text-blue-800 bg-blue-50 rounded-md px-3 py-2">{notice}</p>
+              )}
+
               {error && (
                 <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">{error}</p>
               )}
@@ -101,6 +113,9 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+            <p className="mt-4 text-center text-sm text-gray-500">
+              New to Training Loop? <Link href="/signup" className="text-[#025CA8] hover:underline">Start free</Link>
+            </p>
           </CardContent>
         </Card>
       </div>

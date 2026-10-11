@@ -51,13 +51,16 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const isAuthPage    = pathname === '/login'
+                     || pathname === '/signup'
                      || pathname === '/forgot-password'
                      || pathname === '/reset-password'
   const isHomePage    = pathname === '/'
   const isStripeHook  = pathname === '/api/stripe/webhook'
+  // Signup endpoints and the email-confirmation link are used before anyone has a session.
+  const isSignupFlow  = pathname.startsWith('/api/signup') || pathname === '/auth/confirm'
 
-  // Always allow the public landing page and Stripe webhook through
-  if (isHomePage || isStripeHook) return supabaseResponse
+  // Always allow the public landing page, Stripe webhook and signup flow through
+  if (isHomePage || isStripeHook || isSignupFlow) return supabaseResponse
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone()

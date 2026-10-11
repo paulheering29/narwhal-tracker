@@ -129,20 +129,13 @@ export default function HomePage() {
             <a href="#how-it-works" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">How it works</a>
             <a href="#features" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">Features</a>
             <a href="#pricing" className="hidden sm:inline text-sm font-medium text-gray-600 hover:text-gray-900">Pricing</a>
-            <a href={LOGIN_URL} className="text-sm font-medium text-gray-600 hover:text-gray-900 px-2 py-2">Sign in</a>
+            <a href={SIGNUP_URL} className="text-sm font-medium text-gray-600 hover:text-gray-900 px-2 py-2">Sign Up Your Org</a>
             <a
-              href={SIGNUP_URL}
-              className="hidden sm:inline text-sm font-semibold px-4 py-2 rounded-lg bg-white border border-gray-200 transition-colors hover:bg-gray-50"
-              style={{ color: BLUE }}
-            >
-              Start free trial
-            </a>
-            <a
-              href={SIGNUP_URL}
+              href={LOGIN_URL}
               className="text-sm font-semibold px-4 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: BLUE }}
             >
-              Sign Up Your Org
+              Sign In
             </a>
           </nav>
         </div>

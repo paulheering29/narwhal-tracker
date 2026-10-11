@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { LicenseDetails } from '@/components/license-details'
 import { CeProgressView, TopicChecklist } from '@/components/license-progress'
+import { LicenseDocuments } from '@/components/license-documents'
 import {
   COMPLETION_COLUMNS, computeCeProgress, computeTopicStatuses, loadUnitEvents,
   type TopicCompletion, type UnitEvent,
@@ -139,7 +140,14 @@ export function StaffLicenses({
 
   async function handleDelete(l: StaffLicense) {
     const name = byCode.get(l.jurisdiction_code)?.name ?? l.jurisdiction_code
-    if (!confirm(`Remove the ${name} license?`)) return
+    if (!confirm(`Remove the ${name} license? Its documents and topic records are removed too.`)) return
+    // The database removes the rows; the files in storage and topic certificates need removing here.
+    const [{ data: docs }, { data: comps }] = await Promise.all([
+      supabase.from('staff_license_documents').select('file_path').eq('license_id', l.id),
+      supabase.from('staff_license_topic_completions').select('certificate_path').eq('license_id', l.id),
+    ])
+    const paths = [...(docs ?? []).map(d => d.file_path as string), ...(comps ?? []).map(c => c.certificate_path as string | null).filter((p): p is string => !!p)]
+    if (paths.length) await supabase.storage.from('cert-cycle-documents').remove(paths)
     await supabase.from('staff_licenses').delete().eq('id', l.id)
     load()
   }
@@ -233,6 +241,7 @@ export function StaffLicenses({
                   <div className="mt-3 space-y-4 rounded-lg bg-gray-50 p-4">
                     {progress && <CeProgressView progress={progress} />}
                     <TopicChecklist license={l} statuses={statuses} canEdit={canEdit} onChanged={load} />
+                    <LicenseDocuments licenseId={l.id} canEdit={canEdit} />
                     <LicenseDetails jurisdiction={j} topics={jTopics} hideTopics />
                   </div>
                 )}

@@ -34,12 +34,12 @@ import { OUTSIDE_TRAINING_COLUMNS, toOutsideTraining, type OutsideTraining } fro
 import { getCompanyId } from '@/lib/get-company-id'
 import { getDisplayName, getLegalName, hasPreferredName } from '@/lib/display-name'
 import { getCycleStatus, isActiveCycle, cycleStatusStyles } from '@/lib/cycle-status'
+import { daysLabel, daysUntil, expiryPill } from '@/lib/licensure'
 import {
   ArrowLeft,
   Pencil,
   Plus,
   ChevronDown,
-  ChevronRight,
   Loader2,
   AlertTriangle,
   RefreshCw,
@@ -48,7 +48,6 @@ import {
   Image as ImageIcon,
   Trash2,
   Eye,
-  ShieldCheck,
 } from 'lucide-react'
 import { resizeImage } from '@/lib/resize-image'
 
@@ -739,55 +738,56 @@ export default function StaffDetailPage() {
 
         {/* ── Column 2: Certification and Licensure Cycles ───────────────────────────────── */}
         <section>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Certification and Licensure Cycles</h2>
-              <p className="text-sm text-gray-500">{cycles.length} cycle{cycles.length !== 1 ? 's' : ''} on record</p>
-            </div>
-            <Button onClick={openAddCycle} size="sm" className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
-              <Plus className="mr-1.5 h-4 w-4" /> Add
-            </Button>
+          <div className="mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">Certification and Licensure Cycles</h2>
           </div>
 
-          {cycles.length === 0 ? (
-            <div className="rounded-lg border border-dashed bg-white p-8 text-center text-sm text-gray-400 shadow-sm">
-              No certification cycles yet.
+          {/* Same card style as State Licenses below */}
+          <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">BACB Certification</p>
+                <p className="text-xs text-gray-500">
+                  {cycles.length} cycle{cycles.length !== 1 ? 's' : ''} on record · open one for its trainings and documents
+                </p>
+              </div>
+              <Button onClick={openAddCycle} size="sm" className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
+                <Plus className="mr-1 h-4 w-4" /> Add
+              </Button>
             </div>
+
+          {cycles.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-gray-400 text-center">No certification cycles yet.</p>
           ) : (
-            <div className="space-y-3">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#025CA8]">
-                <ShieldCheck className="h-3.5 w-3.5" /> BACB certification
-              </p>
+            <ul className="divide-y divide-gray-100">
               {cycles.map(cycle => {
                 const isExpanded = expandedCycleId === cycle.id
                 const records = cycleRecords[cycle.id]
                 const status = getCycleStatus(cycle.start_date, cycle.end_date)
 
                 return (
-                  <div key={cycle.id} className="rounded-lg border border-l-4 border-l-[#025CA8] bg-white shadow-sm overflow-hidden">
+                  <li key={cycle.id}>
                     {/* Cycle header row */}
                     <div
-                      className="flex items-center gap-2 px-3 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                      className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
                       onClick={() => toggleCycle(cycle)}
                     >
-                      <button className="text-gray-400 shrink-0">
-                        {isExpanded
-                          ? <ChevronDown className="h-4 w-4" />
-                          : <ChevronRight className="h-4 w-4" />}
-                      </button>
-
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#025CA8]">
-                          BACB {cycle.certification_type} certification
-                        </p>
-                        <p className="text-sm text-gray-700 font-medium">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900">BACB {cycle.certification_type} certification</p>
+                        <p className="text-xs text-gray-500">
                           {formatDate(cycle.start_date)} — {formatDate(cycle.end_date)}
                         </p>
                       </div>
 
-                      <span className={`ml-auto shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${cycleStatusStyles[status]}`}>
-                        {status}
-                      </span>
+                      {status === 'active' ? (
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${expiryPill(daysUntil(cycle.end_date))}`}>
+                          {daysLabel(daysUntil(cycle.end_date))}
+                        </span>
+                      ) : (
+                        <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${cycleStatusStyles[status]}`}>
+                          {status}
+                        </span>
+                      )}
 
                       <Button
                         size="sm"
@@ -795,13 +795,15 @@ export default function StaffDetailPage() {
                         className="shrink-0 h-7 w-7 p-0"
                         onClick={e => { e.stopPropagation(); openEditCycle(cycle) }}
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-4 w-4 text-gray-400" />
                       </Button>
+
+                      <ChevronDown className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
 
                     {/* Expanded: training records */}
                     {isExpanded && (
-                      <div className="border-t bg-gray-50 px-3 py-3">
+                      <div className="border-t border-gray-100 bg-gray-50 px-5 py-3">
                         {cycle.notes && (
                           <p className="mb-3 text-xs text-gray-500 italic">{cycle.notes}</p>
                         )}
@@ -937,11 +939,12 @@ export default function StaffDetailPage() {
                         </div>
                       </div>
                     )}
-                  </div>
+                  </li>
                 )
               })}
-            </div>
+            </ul>
           )}
+          </div>
 
           {staff?.role?.toUpperCase() === 'BCBA' && (
             <div className="mt-6">

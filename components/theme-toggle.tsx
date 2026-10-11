@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from 'react'
 
-// Until someone picks a side, the site follows the operating system. Picking one is
-// remembered in localStorage and wins from then on. The matching no-flash script in
-// app/layout.tsx applies the same rule before first paint.
+// Until someone picks a side, the site follows the operating system (on a Mac, System
+// Settings > Appearance, including Auto). Picking a mode that differs from the system's
+// is remembered in localStorage and wins from then on; picking the same one as the
+// system clears it, so the site goes back to following the system rather than getting
+// stuck. The matching no-flash script in app/layout.tsx applies the same rule before
+// first paint.
 const KEY = 'theme'
 
 function apply(dark: boolean) {
@@ -27,14 +30,26 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       setDark(media.matches)
     }
     media.addEventListener('change', onSystemChange)
-    return () => media.removeEventListener('change', onSystemChange)
+    // Also re-check when the tab comes back to the front: a Mac on Auto appearance can flip
+    // at sunset while a tab sits in the background.
+    document.addEventListener('visibilitychange', onSystemChange)
+    window.addEventListener('focus', onSystemChange)
+    return () => {
+      media.removeEventListener('change', onSystemChange)
+      document.removeEventListener('visibilitychange', onSystemChange)
+      window.removeEventListener('focus', onSystemChange)
+    }
   }, [])
 
   function toggle() {
     const next = !dark
     apply(next)
     setDark(next)
-    try { localStorage.setItem(KEY, next ? 'dark' : 'light') } catch {}
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    try {
+      if (next === systemDark) localStorage.removeItem(KEY)
+      else localStorage.setItem(KEY, next ? 'dark' : 'light')
+    } catch {}
   }
 
   if (dark === null) return <span className={`inline-block h-9 w-9 ${className}`} aria-hidden />

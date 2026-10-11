@@ -6,13 +6,32 @@ import { NextResponse, type NextRequest } from 'next/server'
 // signs in on one origin and gets one session cookie.
 const MARKETING_HOSTS = ['trainingloop.tech', 'www.trainingloop.tech']
 
+// Temporary gate on the marketing page while it isn't ready for the public.
+// Active only while MARKETING_PASSWORD is set; delete the variable to open the page.
+// Any username works; the browser's own sign-in prompt asks for it.
+function marketingGate(request: NextRequest): NextResponse | null {
+  const password = process.env.MARKETING_PASSWORD
+  if (!password) return null
+  const header = request.headers.get('authorization') ?? ''
+  if (header.startsWith('Basic ')) {
+    try {
+      const given = atob(header.slice(6)).split(':').slice(1).join(':')
+      if (given === password) return null
+    } catch { /* malformed header: fall through to the prompt */ }
+  }
+  return new NextResponse('Password required', {
+    status: 401,
+    headers: { 'WWW-Authenticate': 'Basic realm="Training Loop", charset="UTF-8"' },
+  })
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl
   const host   = request.headers.get('host') ?? ''
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
 
   if (MARKETING_HOSTS.includes(host)) {
-    if (pathname === '/') return NextResponse.next()
+    if (pathname === '/') return marketingGate(request) ?? NextResponse.next()
     // API routes stay put: a redirect would break POSTs like the Stripe webhook.
     // The host check prevents a redirect loop while the app URL is still www.
     if (appUrl && !pathname.startsWith('/api/') && new URL(appUrl).host !== host) {
@@ -22,6 +41,9 @@ export async function middleware(request: NextRequest) {
     // On the app host, the root is the sign-in page (which forwards signed-in
     // users to their dashboard). Local dev keeps "/" so the landing page can be previewed.
     return NextResponse.redirect(new URL('/login', request.url))
+  } else if (pathname === '/') {
+    const blocked = marketingGate(request)
+    if (blocked) return blocked
   }
 
   let supabaseResponse = NextResponse.next({ request })

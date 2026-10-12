@@ -152,13 +152,13 @@ export function LicenseLists({ sync }: { sync: LicenseSync[] }) {
           </li>
           <li>
             On the page choose <em>Individual</em>, Board <strong>Psychology Board</strong>, License Type <strong>Certified Ohio Behavior Analyst</strong>,
-            State <strong>OH</strong>. Pass the CAPTCHA if it asks, then press <strong>Search</strong>.
+            State <strong>OH</strong>. <strong>Pick the State</strong>: Ohio refuses the search as &ldquo;too broad&rdquo; without one. Pass the CAPTCHA if it asks, then press <strong>Search</strong>.
           </li>
           <li>
             In the Network list, find the request named <code>apexremote</code>. Right-click it, choose <strong>Copy</strong>, then <strong>Copy as cURL</strong>.
           </li>
           <li>
-            Paste it into the box below and click <strong>Get Ohio&apos;s list</strong>. Keep this page open until it finishes (about two minutes).
+            Paste it into the box below and click <strong>Get Ohio&apos;s list</strong>. You only need to search Ohio: Training Loop searches every other state&apos;s addresses itself. Keep this page open until it finishes (about two minutes).
           </li>
         </ol>
         <p className="text-xs text-gray-500">

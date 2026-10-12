@@ -49,6 +49,7 @@ import {
   Image as ImageIcon,
   Trash2,
   Eye,
+  UserRound,
 } from 'lucide-react'
 import { resizeImage } from '@/lib/resize-image'
 
@@ -211,6 +212,7 @@ export default function StaffDetailPage() {
 
   // Edit staff dialog
   const [editStaffOpen, setEditStaffOpen] = useState(false)
+  const [basicsOpen, setBasicsOpen] = useState(false)
   const [staffForm, setStaffForm] = useState({ first_name: '', last_name: '', display_first_name: '', display_last_name: '', email: '', role: '', ehr_id: '', certification_number: '', original_certification_date: '', credentials: '', is_supervisor: false })
   const [savingStaff, setSavingStaff] = useState(false)
   const [staffError, setStaffError] = useState<string | null>(null)
@@ -692,6 +694,9 @@ export default function StaffDetailPage() {
               <p className="text-sm text-gray-400">Legal name: {getLegalName(staff)}</p>
             )}
             <div className="mt-1 flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setBasicsOpen(true)} className="h-6 text-xs px-2">
+                <UserRound className="mr-1 h-3 w-3" /> Basics
+              </Button>
               <Badge variant={staff.active ? 'default' : 'secondary'}>
                 {staff.active ? 'Active' : 'Inactive'}
               </Badge>
@@ -711,31 +716,8 @@ export default function StaffDetailPage() {
         </div>
       </div>
 
-      {/* 3-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-        {/* ── Column 1: Basics ─────────────────────────────────────────────── */}
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Basics</h2>
-              <p className="text-sm text-gray-500">Staff details</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={openEditStaff}>
-              <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Info
-            </Button>
-          </div>
-          <div className="rounded-lg border bg-white shadow-sm divide-y divide-gray-100">
-            {basicsRows.map(row => (
-              <div key={row.label} className="px-4 py-3">
-                <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">{row.label}</dt>
-                <dd className={`mt-1 text-sm text-gray-900 break-words ${row.mono ? 'font-mono' : ''}`}>
-                  {row.value}
-                </dd>
-              </div>
-            ))}
-          </div>
-        </section>
+      {/* 2-column layout; Basics lives in a side sheet to leave room for the rest */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
         {/* ── Column 2: Certification and Licensure Cycles ───────────────────────────────── */}
         <section>
@@ -1092,6 +1074,28 @@ export default function StaffDetailPage() {
                 })}
               </ul>
             )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Basics Sheet (read-only view; Edit Info hands off to the edit sheet) ── */}
+      <Sheet open={basicsOpen} onOpenChange={setBasicsOpen}>
+        <SheetContent side="left">
+          <SheetHeader><SheetTitle>Basics</SheetTitle></SheetHeader>
+          <div className="px-6 py-5 space-y-4">
+            <Button variant="outline" size="sm" onClick={() => { setBasicsOpen(false); openEditStaff() }}>
+              <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Info
+            </Button>
+            <div className="rounded-lg border bg-white shadow-sm divide-y divide-gray-100">
+              {basicsRows.map(row => (
+                <div key={row.label} className="px-4 py-3">
+                  <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">{row.label}</dt>
+                  <dd className={`mt-1 text-sm text-gray-900 break-words ${row.mono ? 'font-mono' : ''}`}>
+                    {row.value}
+                  </dd>
+                </div>
+              ))}
+            </div>
           </div>
         </SheetContent>
       </Sheet>

@@ -4,10 +4,14 @@ import { EMAIL_FROM } from '@/lib/email'
 import { esc, shell } from '@/lib/renewal-reminders'
 import { ACCESS_COLUMNS, hasAccess, type AccessRow } from '@/lib/pricing'
 import { SOURCES } from './sources'
+import { MANUAL_NOT_FOUND_NOTES } from './uploads'
 import { verifyLicense, type VerificationResult } from './verify'
 import type { StateLicense } from './types'
 
-const NOTES = new Map(SOURCES.map(s => [s.code, s.notFoundNote ?? '']))
+const NOTES = new Map([
+  ...SOURCES.map(s => [s.code, s.notFoundNote ?? ''] as [string, string]),
+  ...Object.entries(MANUAL_NOT_FOUND_NOTES),
+])
 
 const CHUNK = 500
 

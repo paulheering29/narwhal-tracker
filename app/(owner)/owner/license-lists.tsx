@@ -15,9 +15,9 @@ export type LicenseSync = {
 
 const NAMES: Record<string, string> = {
   MA: 'Massachusetts', RI: 'Rhode Island', WA: 'Washington', TX: 'Texas', IL: 'Illinois', CT: 'Connecticut',
-  NJ: 'New Jersey', PA: 'Pennsylvania', VT: 'Vermont', AZ: 'Arizona', OH: 'Ohio',
+  NJ: 'New Jersey', PA: 'Pennsylvania', VT: 'Vermont', AZ: 'Arizona', OH: 'Ohio', MO: 'Missouri',
 }
-const MANUAL = ['AZ', 'OH']
+const MANUAL = ['AZ', 'MO', 'OH']
 /** A hand-supplied list older than this is worth a nudge. The nightly check also notes the age on each license. */
 const STALE_DAYS = 7
 
@@ -36,26 +36,9 @@ export function LicenseLists({ sync }: { sync: LicenseSync[] }) {
   const router = useRouter()
   const byCode = new Map(sync.map(s => [s.jurisdiction_code, s]))
 
-  const [file, setFile] = useState<File | null>(null)
-  const [azBusy, setAzBusy] = useState(false)
-  const [azResult, setAzResult] = useState<Result>(null)
-
   const [ohRequest, setOhRequest] = useState('')
   const [ohBusy, setOhBusy] = useState(false)
   const [ohResult, setOhResult] = useState<Result>(null)
-
-  async function uploadArizona() {
-    if (!file) return
-    setAzBusy(true); setAzResult(null)
-    const form = new FormData()
-    form.set('state', 'AZ'); form.set('file', file)
-    const res = await fetch('/api/owner/license-lists', { method: 'POST', body: form })
-    const json = await res.json().catch(() => ({}))
-    setAzBusy(false)
-    if (!res.ok) { setAzResult({ type: 'error', msg: json.error ?? 'Upload failed.' }); return }
-    setAzResult({ type: 'success', msg: `Arizona updated: ${json.count} licenses on the list, ${json.checked} staff licenses re-checked.` })
-    setFile(null); router.refresh()
-  }
 
   async function sweepOhio() {
     setOhBusy(true); setOhResult(null)
@@ -80,7 +63,7 @@ export function LicenseLists({ sync }: { sync: LicenseSync[] }) {
       <div className="rounded-lg border bg-white shadow-sm p-6 space-y-2">
         <h2 className="text-sm font-semibold text-gray-700">How this works</h2>
         <p className="text-sm text-gray-600">
-          Seven states&apos; lists are downloaded automatically every night. <strong>Arizona</strong> and <strong>Ohio</strong> can&apos;t be:
+          Nine states&apos; lists are downloaded automatically every night. <strong>Arizona</strong>, <strong>Missouri</strong> and <strong>Ohio</strong> can&apos;t be:
           their sites make a person pass a bot check. So you do that part, about once a week, and Training Loop does the rest.
           Each time you update one, everyone licensed in that state is re-checked immediately, and the nightly check keeps using
           that list until you update it again. A license checked against a list more than 3 days old says so.
@@ -93,7 +76,7 @@ export function LicenseLists({ sync }: { sync: LicenseSync[] }) {
             <tr><th className={th}>State</th><th className={th}>How</th><th className={th}>Licenses on list</th><th className={th}>Last updated</th><th className={th}>Status</th></tr>
           </thead>
           <tbody className="divide-y">
-            {['AZ', 'OH', 'MA', 'RI', 'WA', 'TX', 'IL', 'CT', 'NJ', 'PA', 'VT'].map(code => {
+            {['AZ', 'MO', 'OH', 'MA', 'RI', 'WA', 'TX', 'IL', 'CT', 'NJ', 'PA', 'VT'].map(code => {
               const s = byCode.get(code)
               const manual = MANUAL.includes(code)
               const d = ageDays(s?.last_synced_at ?? null)
@@ -116,28 +99,25 @@ export function LicenseLists({ sync }: { sync: LicenseSync[] }) {
         </table>
       </div>
 
-      {/* Arizona */}
-      <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">Arizona: upload the file</h2>
-          <p className="text-xs text-gray-400 mt-0.5">About a minute. Do it weekly.</p>
-        </div>
-        <ol className="list-decimal pl-5 space-y-1.5 text-sm text-gray-700">
+      <UploadCard
+        code="AZ" title="Arizona: upload the file" duration="About a minute. Do it weekly." onDone={() => router.refresh()}
+        steps={<>
           <li>Open Arizona&apos;s <a className={link} href="https://abpe.portalus.thentiacloud.net/webs/portal/register/" target="_blank" rel="noreferrer">public registry</a>.</li>
           <li>Set <em>License Type</em> to <strong>Behavior Analyst</strong> and press <strong>Search</strong>. Pass the CAPTCHA if it asks.</li>
           <li>Click <strong>Download (.csv)</strong>. It saves a file called <code>Export.csv</code>.</li>
           <li>Choose that file below and click <strong>Upload</strong>.</li>
-        </ol>
-        <div className="flex flex-wrap items-center gap-3">
-          <input type="file" accept=".csv,text/csv" disabled={azBusy}
-            onChange={e => { setFile(e.target.files?.[0] ?? null); setAzResult(null) }}
-            className="text-sm text-gray-700 file:mr-3 file:rounded-md file:border file:border-gray-300 file:bg-white file:px-3 file:py-1.5 file:text-sm" />
-          <Button onClick={uploadArizona} disabled={!file || azBusy} className="bg-[#025CA8] hover:bg-[#024A87]">
-            {azBusy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading…</> : 'Upload'}
-          </Button>
-        </div>
-        {banner(azResult)}
-      </div>
+        </>}
+      />
+
+      <UploadCard
+        code="MO" title="Missouri: upload the file" duration="About a minute. Do it weekly." accept=".txt,.tsv,text/plain" onDone={() => router.refresh()}
+        steps={<>
+          <li>Open the <a className={link} href="https://pr.mo.gov/" target="_blank" rel="noreferrer">Missouri Division of Professional Registration</a> and click <strong>Downloadable Listings</strong> in the top menu.</li>
+          <li>Find the behavior analyst list, pass the CAPTCHA, and download it. It is a text file called <code>BAN.TXT</code>. (Ignore <code>FILEDESC.TXT</code>; it only describes the columns.)</li>
+          <li>Choose <code>BAN.TXT</code> below and click <strong>Upload</strong>.</li>
+        </>}
+        note="Missouri lists only people who are currently licensed, so anyone whose license has lapsed shows as not found rather than expired."
+      />
 
       {/* Ohio */}
       <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
@@ -176,6 +156,50 @@ export function LicenseLists({ sync }: { sync: LicenseSync[] }) {
         </Button>
         {banner(ohResult)}
       </div>
+    </div>
+  )
+}
+
+/** One state whose list is a file the owner downloads and uploads. */
+function UploadCard({ code, title, duration, steps, accept = '.csv,text/csv', note, onDone }: {
+  code: string; title: string; duration: string; steps: React.ReactNode; accept?: string; note?: string; onDone: () => void
+}) {
+  const [file, setFile] = useState<File | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<Result>(null)
+
+  async function upload() {
+    if (!file) return
+    setBusy(true); setResult(null)
+    const form = new FormData()
+    form.set('state', code); form.set('file', file)
+    const res = await fetch('/api/owner/license-lists', { method: 'POST', body: form })
+    const json = await res.json().catch(() => ({}))
+    setBusy(false)
+    if (!res.ok) { setResult({ type: 'error', msg: json.error ?? 'Upload failed.' }); return }
+    setResult({ type: 'success', msg: `${NAMES[code]} updated: ${json.count} licenses on the list, ${json.checked} staff licenses re-checked.` })
+    setFile(null); onDone()
+  }
+
+  return (
+    <div className="rounded-lg border bg-white shadow-sm p-6 space-y-4">
+      <div>
+        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+        <p className="text-xs text-gray-400 mt-0.5">{duration}</p>
+      </div>
+      <ol className="list-decimal pl-5 space-y-1.5 text-sm text-gray-700">{steps}</ol>
+      {note && <p className="text-xs text-gray-500">{note}</p>}
+      <div className="flex flex-wrap items-center gap-3">
+        <input type="file" accept={accept} disabled={busy}
+          onChange={e => { setFile(e.target.files?.[0] ?? null); setResult(null) }}
+          className="text-sm text-gray-700 file:mr-3 file:rounded-md file:border file:border-gray-300 file:bg-white file:px-3 file:py-1.5 file:text-sm" />
+        <Button onClick={upload} disabled={!file || busy} className="bg-[#025CA8] hover:bg-[#024A87]">
+          {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading…</> : 'Upload'}
+        </Button>
+      </div>
+      {result && (
+        <p className={`text-sm rounded px-3 py-2 ${result.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>{result.msg}</p>
+      )}
     </div>
   )
 }

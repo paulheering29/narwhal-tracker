@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
   if (limit === 'email_limited') return NextResponse.json({ success: true })
 
   const { data, error } = await service.auth.admin.generateLink({ type: 'recovery', email })
+  // Unknown addresses fail here too, and must still look like success -- but a real outage shouldn't be silent.
+  if (error) console.error('password reset link failed', error.status ?? '', error.code ?? '', error.message)
 
   if (!error && data?.properties?.hashed_token) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin

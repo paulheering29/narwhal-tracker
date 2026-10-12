@@ -58,9 +58,13 @@ export default function ForgotPasswordPage() {
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
                   <MailCheck className="h-7 w-7 text-emerald-600" />
                 </div>
+                {/* We can't say whether an account exists, so the wording can't promise an email was sent. */}
                 <p className="text-sm text-center text-gray-600">
-                  We sent a password reset link to <strong>{email}</strong>. Check your spam folder if you don&apos;t see it within a minute.
+                  If there&apos;s an account for <strong>{email}</strong>, we&apos;ve sent it a password reset link. Check your spam folder if you don&apos;t see it within a minute.
                 </p>
+                <button type="button" onClick={() => setSent(false)} className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2">
+                  Wrong address? Fix it and try again
+                </button>
                 <Link
                   href="/login"
                   className="text-sm font-medium text-[#025CA8] hover:underline flex items-center gap-1"

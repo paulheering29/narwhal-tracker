@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { IDLE_COOKIE, parseIdleCookie } from '@/lib/idle'
 
 // The bare domain and www serve only the marketing page; the app itself lives
 // on the host in NEXT_PUBLIC_APP_URL (app.trainingloop.tech) so everyone
@@ -86,10 +87,27 @@ export async function middleware(request: NextRequest) {
   // Always allow the public landing page, Stripe webhook and signup flow through
   if (isHomePage || isStripeHook || isSignupFlow) return supabaseResponse
 
+  // Idle too long (closed tab, sleeping laptop): end the session here, since no browser timer ran.
+  const idle = parseIdleCookie(request.cookies.get(IDLE_COOKIE)?.value)
+  if (user && idle && Date.now() - idle.last >= idle.minutes * 60_000) {
+    await supabase.auth.signOut({ scope: 'local' })   // local: don't sign out the person's other devices
+    const expired = pathname.startsWith('/api/')
+      ? NextResponse.json({ error: 'Session expired' }, { status: 401 })
+      : NextResponse.redirect(new URL('/login?notice=idle', request.url))
+    supabaseResponse.cookies.getAll().forEach(c => expired.cookies.set(c))   // carries the cleared auth cookies
+    expired.cookies.delete(IDLE_COOKIE)
+    return expired
+  }
+
+  // Signed out: drop the activity stamp so the next sign-in doesn't inherit an old one.
+  if (!user && request.cookies.has(IDLE_COOKIE)) supabaseResponse.cookies.delete(IDLE_COOKIE)
+
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    const redirect = NextResponse.redirect(url)
+    redirect.cookies.delete(IDLE_COOKIE)
+    return redirect
   }
 
   // A reset link signs the person in first, then lands them on /reset-password.

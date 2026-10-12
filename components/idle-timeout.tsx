@@ -1,85 +1,89 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { IDLE_COOKIE, parseIdleCookie } from '@/lib/idle'
 
-const IDLE_MS      = 60 * 60 * 1000  // 1 hour
-const WARN_BEFORE  = 5  * 60 * 1000  // warn 5 minutes before logout
-const WARN_MS      = IDLE_MS - WARN_BEFORE
+const WARN_BEFORE_MS = 2 * 60 * 1000   // show the "stay logged in" prompt this long before sign-out
+const CHECK_EVERY_MS = 5 * 1000
+const WRITE_EVERY_MS = 5 * 1000        // activity events fire constantly; don't rewrite the cookie on each one
 
-const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'] as const
+// Embedded players (course videos) swallow mouse and key events, so they announce themselves with this.
+export const ACTIVITY_EVENT = 'tl:activity'
 
-export function IdleTimeout() {
-  const supabase     = createClient()
-  const idleTimer    = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const warnTimer    = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [warning, setWarning] = useState(false)
-  const [countdown, setCountdown] = useState(WARN_BEFORE / 1000)
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click', ACTIVITY_EVENT] as const
 
-  async function signOut() {
-    await supabase.auth.signOut()
-    window.location.href = '/login'
-  }
+function readLast(): number | null {
+  const match = document.cookie.split('; ').find(c => c.startsWith(`${IDLE_COOKIE}=`))
+  return parseIdleCookie(match?.slice(IDLE_COOKIE.length + 1))?.last ?? null
+}
 
-  function resetTimers() {
-    // Cancel existing timers
-    if (idleTimer.current)   clearTimeout(idleTimer.current)
-    if (warnTimer.current)   clearTimeout(warnTimer.current)
-    if (countdownRef.current) clearInterval(countdownRef.current)
-    setWarning(false)
+export function IdleTimeout({ minutes }: { minutes: number }) {
+  const supabase = createClient()
+  const idleMs   = minutes * 60 * 1000
+  const lastWrite = useRef(0)
+  const [remaining, setRemaining] = useState<number | null>(null)   // ms left, only set inside the warning window
 
-    // Warn at WARN_MS
-    warnTimer.current = setTimeout(() => {
-      setWarning(true)
-      setCountdown(WARN_BEFORE / 1000)
-      countdownRef.current = setInterval(() => {
-        setCountdown(c => {
-          if (c <= 1) {
-            if (countdownRef.current) clearInterval(countdownRef.current)
-            return 0
-          }
-          return c - 1
-        })
-      }, 1000)
-    }, WARN_MS)
+  // The cookie is the source of truth so every tab, and the middleware, agree on when you were last active.
+  const touch = useCallback(() => {
+    lastWrite.current = Date.now()
+    const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+    document.cookie = `${IDLE_COOKIE}=${Date.now()}:${minutes}; path=/; max-age=31536000; SameSite=Lax${secure}`
+  }, [minutes])
 
-    // Sign out at IDLE_MS
-    idleTimer.current = setTimeout(signOut, IDLE_MS)
-  }
-
-  function handleActivity() {
-    // Only reset if we're not already in the warning window
-    if (!warning) resetTimers()
-  }
-
-  useEffect(() => {
-    resetTimers()
-    ACTIVITY_EVENTS.forEach(e => window.addEventListener(e, handleActivity, { passive: true }))
-    return () => {
-      if (idleTimer.current)    clearTimeout(idleTimer.current)
-      if (warnTimer.current)    clearTimeout(warnTimer.current)
-      if (countdownRef.current) clearInterval(countdownRef.current)
-      ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, handleActivity))
-    }
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut({ scope: 'local' })
+    document.cookie = `${IDLE_COOKIE}=; path=/; max-age=0`
+    window.location.href = '/login?notice=idle'
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Keep handleActivity up to date with warning state
+  const check = useCallback(() => {
+    const left = (readLast() ?? Date.now()) + idleMs - Date.now()
+    if (left <= 0) { signOut(); return }
+    setRemaining(left <= WARN_BEFORE_MS ? left : null)
+  }, [idleMs, signOut])
+
   useEffect(() => {
-    ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, handleActivity))
-    ACTIVITY_EVENTS.forEach(e => window.addEventListener(e, handleActivity, { passive: true }))
-    return () => ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, handleActivity))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [warning])
+    // Coming back to a laptop that slept: if the window has passed, sign out before anything else runs.
+    const last = readLast()
+    if (last !== null && Date.now() - last >= idleMs) { signOut(); return }
+    touch()
 
-  if (!warning) return null
+    // Once the warning is up, activity must not silently extend the session; only the button does.
+    function onActivity() {
+      if (Date.now() - lastWrite.current < WRITE_EVERY_MS) return
+      const left = (readLast() ?? Date.now()) + idleMs - Date.now()
+      if (left > WARN_BEFORE_MS) touch()
+    }
 
-  const mins = Math.floor(countdown / 60)
-  const secs = countdown % 60
-  const timeLabel = mins > 0
-    ? `${mins}:${String(secs).padStart(2, '0')}`
-    : `${secs}s`
+    const timer = setInterval(check, CHECK_EVERY_MS)
+    ACTIVITY_EVENTS.forEach(e => window.addEventListener(e, onActivity, { passive: true }))
+    document.addEventListener('visibilitychange', check)
+    return () => {
+      clearInterval(timer)
+      ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, onActivity))
+      document.removeEventListener('visibilitychange', check)
+    }
+  }, [idleMs, touch, check, signOut])
+
+  if (remaining === null) return null
+
+  // Counts down between the 5s checks.
+  return <Warning remaining={remaining} onStay={() => { touch(); setRemaining(null) }} onLogout={signOut} />
+}
+
+function Warning({ remaining, onStay, onLogout }: { remaining: number; onStay: () => void; onLogout: () => void }) {
+  const [secondsLeft, setSecondsLeft] = useState(Math.ceil(remaining / 1000))
+  useEffect(() => {
+    setSecondsLeft(Math.ceil(remaining / 1000))
+    const t = setInterval(() => setSecondsLeft(s => Math.max(0, s - 1)), 1000)
+    return () => clearInterval(t)
+  }, [remaining])
+
+  const mins = Math.floor(secondsLeft / 60)
+  const secs = secondsLeft % 60
+  const timeLabel = mins > 0 ? `${mins}:${String(secs).padStart(2, '0')}` : `${secs}s`
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
@@ -92,13 +96,13 @@ export function IdleTimeout() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => { resetTimers() }}
+            onClick={onStay}
             className="flex-1 rounded-lg bg-white text-[#025CA8] text-sm font-semibold py-2 hover:bg-white/90 transition-colors"
           >
             Stay logged in
           </button>
           <button
-            onClick={signOut}
+            onClick={onLogout}
             className="rounded-lg bg-white/10 text-white text-sm font-medium py-2 px-4 hover:bg-white/20 transition-colors"
           >
             Log out

@@ -1,5 +1,6 @@
 'use client'
 
+import { SESSION_TIMEOUT_OPTIONS, DEFAULT_SESSION_TIMEOUT } from '@/lib/idle'
 import { useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -68,6 +69,7 @@ type Company = {
   external_training_credentials?: string[] | null; external_training_review?: boolean | null
   license_reminders_enabled?: boolean | null
   license_check_email_enabled?: boolean | null
+  session_timeout_minutes?: number | null
 }
 
 export function AdminUsersClient({
@@ -225,6 +227,23 @@ export function AdminUsersClient({
     setRemindersSaving(false)
     if (!res.ok) { setRemindersOn(!next); setRemindersStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
     setRemindersStatus({ type: 'success', msg: next ? 'Renewal reminders are on.' : 'Renewal reminders are off.' })
+  }
+
+  // ── Automatic sign-out after inactivity ──
+  const [timeoutMins, setTimeoutMins] = useState<number>(initialCompany.session_timeout_minutes ?? DEFAULT_SESSION_TIMEOUT)
+  const [timeoutSaving, setTimeoutSaving] = useState(false)
+  const [timeoutStatus, setTimeoutStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+
+  async function handleChangeTimeout(next: number) {
+    const prev = timeoutMins
+    setTimeoutMins(next); setTimeoutSaving(true); setTimeoutStatus(null)
+    const res = await fetch('/api/company/update-session-timeout', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ minutes: next }),
+    })
+    const json = await res.json().catch(() => ({}))
+    setTimeoutSaving(false)
+    if (!res.ok) { setTimeoutMins(prev); setTimeoutStatus({ type: 'error', msg: json.error ?? 'Failed to save.' }); return }
+    setTimeoutStatus({ type: 'success', msg: 'Saved. It applies the next time each person loads a page.' })
   }
 
   // ── Nightly license check email ──
@@ -1069,6 +1088,31 @@ export function AdminUsersClient({
             {remindersStatus && (
               <p className={`text-sm rounded px-3 py-2 ${remindersStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
                 {remindersStatus.msg}
+              </p>
+            )}
+          </div>
+
+          {/* Automatic sign-out */}
+          <div className="rounded-lg border bg-white shadow-sm p-6 space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">Automatic sign-out</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Everyone in your organization is signed out after this long without activity. Watching a course video counts as activity.
+              </p>
+            </div>
+            <label className="flex items-center gap-3 text-sm">
+              <select value={timeoutMins} disabled={timeoutSaving}
+                onChange={e => handleChangeTimeout(Number(e.target.value))}
+                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm">
+                {SESSION_TIMEOUT_OPTIONS.map(m => (
+                  <option key={m} value={m}>{m < 60 ? `${m} minutes` : `${m / 60} ${m === 60 ? 'hour' : 'hours'}`}</option>
+                ))}
+              </select>
+              {timeoutSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
+            </label>
+            {timeoutStatus && (
+              <p className={`text-sm rounded px-3 py-2 ${timeoutStatus.type === 'success' ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                {timeoutStatus.msg}
               </p>
             )}
           </div>

@@ -9,6 +9,7 @@ import { AccessGate } from '@/components/access-gate'
 import { TrialBanner } from '@/components/trial-banner'
 import { createServiceClient } from '@/lib/supabase/service'
 import { ACCESS_COLUMNS, accessFor } from '@/lib/pricing'
+import { DEFAULT_SESSION_TIMEOUT } from '@/lib/idle'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -42,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Trial / subscription state. Companies has no user-facing RLS, hence the service client.
   const { data: company } = staff?.company_id
-    ? await createServiceClient().from('companies').select(ACCESS_COLUMNS).eq('id', staff.company_id).single()
+    ? await createServiceClient().from('companies').select(`${ACCESS_COLUMNS}, session_timeout_minutes`).eq('id', staff.company_id).single()
     : { data: null }
   const access = company ? accessFor(company) : 'comped'
   const isAccountOwner = userRoles.includes('Account Owner')
@@ -57,7 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="flex-1 overflow-y-auto">
         {access === 'expired' ? <AccessGate isAccountOwner={isAccountOwner} /> : children}
       </main>
-      <IdleTimeout />
+      <IdleTimeout minutes={company?.session_timeout_minutes ?? DEFAULT_SESSION_TIMEOUT} />
     </div>
   )
 }

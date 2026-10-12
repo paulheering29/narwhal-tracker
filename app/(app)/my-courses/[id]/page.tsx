@@ -134,6 +134,8 @@ export default function MyCoursePlayerPage() {
   }, [activePart, viewMode])
 
   const sendHeartbeat = useCallback((videoId: string, currentTime: number) => {
+    // The player is an iframe, so watching a video produces no mouse or key events; don't sign out mid-video.
+    window.dispatchEvent(new Event('tl:activity'))
     fetch(`/api/course-videos/${videoId}/heartbeat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

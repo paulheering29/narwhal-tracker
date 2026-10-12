@@ -1,5 +1,6 @@
 'use client'
 
+import { SectionHeader } from '@/components/section-header'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -76,14 +77,13 @@ export function StaffPaths({ staffId }: { staffId: string }) {
   }
 
   return (
+    <div>
+      <SectionHeader
+        title="Learning Paths"
+        subtitle="Self-paced courses assigned together, in order"
+        action={<Link href="/paths" className="text-xs text-blue-600 hover:underline shrink-0 pt-2">Manage paths</Link>}
+      />
     <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white">
-      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">Learning Paths</p>
-          <p className="text-xs text-gray-500">Self-paced courses assigned together, in order</p>
-        </div>
-        <Link href="/paths" className="text-xs text-blue-600 hover:underline shrink-0">Manage paths</Link>
-      </div>
 
       {loading ? (
         <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>
@@ -125,6 +125,7 @@ export function StaffPaths({ staffId }: { staffId: string }) {
         </div>
       )}
       {error && <p className="mx-5 mb-3 text-sm text-red-600 bg-red-50 rounded px-3 py-2">{error}</p>}
+    </div>
     </div>
   )
 }

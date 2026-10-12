@@ -1,5 +1,6 @@
 'use client'
 
+import { SectionHeader } from '@/components/section-header'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCompanyId } from '@/lib/get-company-id'
@@ -36,9 +37,11 @@ const emptyForm = {
  * BCBA themselves, sees them read-only.
  */
 export function StaffLicenses({
-  staffId, bacb,
+  staffId, bacb, titleOutside = false,
 }: {
   staffId: string
+  /** Show the title above the card (the staff page) instead of inside it (the dashboard). */
+  titleOutside?: boolean
   /** When given (a BCBA viewing their own certifications), the BACB certification is listed alongside the licenses. */
   bacb?: { endDate: string | null }
 }) {
@@ -155,21 +158,29 @@ export function StaffLicenses({
     load()
   }
 
+  const title = bacb ? 'My Certifications' : 'State Licenses'
+  const subtitle = bacb ? 'Your BACB certification first, then each state license by renewal date' : 'Where this BCBA holds a state license, and when each renews'
+  const addButton = canEdit && (
+    <Button size="sm" onClick={openAdd} className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
+      <Plus className="mr-1 h-4 w-4" /> Add
+    </Button>
+  )
+
   return (
+    <div>
+      {titleOutside
+        ? <SectionHeader title={title} subtitle={subtitle} action={addButton} />
+        : null}
     <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white">
-      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">{bacb ? 'My Certifications' : 'State Licenses'}</p>
-          <p className="text-xs text-gray-500">
-            {bacb ? 'Your BACB certification first, then each state license by renewal date' : 'Where this BCBA holds a state license, and when each renews'}
-          </p>
+      {!titleOutside && (
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">{title}</p>
+            <p className="text-xs text-gray-500">{subtitle}</p>
+          </div>
+          {addButton}
         </div>
-        {canEdit && (
-          <Button size="sm" onClick={openAdd} className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
-            <Plus className="mr-1 h-4 w-4" /> Add
-          </Button>
-        )}
-      </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>
@@ -349,6 +360,7 @@ export function StaffLicenses({
           </SheetFooter>
         </SheetContent>
       </Sheet>
+    </div>
     </div>
   )
 }

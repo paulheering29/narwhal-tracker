@@ -1,5 +1,6 @@
 'use client'
 
+import { SectionHeader } from '@/components/section-header'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -370,27 +371,37 @@ export function OutsideTrainings({
     return [...ext, ...int].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
   }, [items, internalRows])
 
+  const addButton = (canAdd || (combined && onAddInternal)) && (
+    <Button size="sm" onClick={() => (combined ? setChooseOpen(true) : openAdd())} className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
+      <Plus className="mr-1 h-4 w-4" /> Add
+    </Button>
+  )
+
   // Nothing to show someone whose company doesn't let them add these.
   if (!canAdd && rows.length === 0) return null
 
   return (
+    <div>
+      {combined && (
+        <SectionHeader
+          title="Trainings"
+          subtitle={`${rows.length} record${rows.length !== 1 ? 's' : ''} on file · ${units} earned here and elsewhere${reviewRequired && !canReview ? ' · your team reviews each one' : ''}`}
+          action={addButton}
+        />
+      )}
     <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white">
-      <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">{combined ? 'Trainings' : 'Outside Trainings'}</p>
-          <p className="text-xs text-gray-500">
-            {combined
-              ? `${rows.length} record${rows.length !== 1 ? 's' : ''} on file · ${units} earned here and elsewhere`
-              : `${units} earned somewhere else, like a conference or another provider`}
-            {reviewRequired && !canReview && ' · your team reviews each one'}
-          </p>
+      {!combined && (
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Outside Trainings</p>
+            <p className="text-xs text-gray-500">
+              {units} earned somewhere else, like a conference or another provider
+              {reviewRequired && !canReview && ' · your team reviews each one'}
+            </p>
+          </div>
+          {addButton}
         </div>
-        {(canAdd || (combined && onAddInternal)) && (
-          <Button size="sm" onClick={() => (combined ? setChooseOpen(true) : openAdd())} className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
-            <Plus className="mr-1 h-4 w-4" /> Add
-          </Button>
-        )}
-      </div>
+      )}
 
       {rows.length === 0 ? (
         <p className="px-5 py-6 text-sm text-gray-400 text-center">{combined ? 'No training records yet.' : 'None added yet.'}</p>
@@ -602,6 +613,7 @@ export function OutsideTrainings({
           </SheetFooter>
         </SheetContent>
       </Sheet>
+    </div>
     </div>
   )
 }

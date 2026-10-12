@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog'
 import { OutsideTrainings, SourceBadge } from '@/components/outside-trainings'
 import { syncBilling } from '@/lib/billing-client'
+import { SectionHeader } from '@/components/section-header'
 import { StaffPaths } from '@/components/staff-paths'
 import { StaffLicenses } from '@/components/staff-licenses'
 import { OUTSIDE_TRAINING_COLUMNS, toOutsideTraining, type OutsideTraining } from '@/lib/outside-trainings'
@@ -755,24 +756,17 @@ export default function StaffDetailPage() {
 
         {/* ── Column 2: Certification and Licensure Cycles ───────────────────────────────── */}
         <section>
-          <div className="mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Certification and Licensure Cycles</h2>
-          </div>
-
-          {/* Same card style as State Licenses below */}
-          <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white">
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">BACB Certification</p>
-                <p className="text-xs text-gray-500">
-                  {cycles.length} cycle{cycles.length !== 1 ? 's' : ''} on record · open one for its trainings and documents
-                </p>
-              </div>
+          <SectionHeader
+            title="Certification and Licensure Cycles"
+            subtitle={`${cycles.length} cycle${cycles.length !== 1 ? 's' : ''} on record · open one for its trainings and documents`}
+            action={
               <Button onClick={openAddCycle} size="sm" className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
                 <Plus className="mr-1 h-4 w-4" /> Add
               </Button>
-            </div>
+            }
+          />
 
+          <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white">
           {cycles.length === 0 ? (
             <p className="px-5 py-6 text-sm text-gray-400 text-center">No certification cycles yet.</p>
           ) : (
@@ -965,7 +959,7 @@ export default function StaffDetailPage() {
 
           {staff?.role?.toUpperCase() === 'BCBA' && (
             <div className="mt-6">
-              <StaffLicenses staffId={staffId} />
+              <StaffLicenses staffId={staffId} titleOutside />
             </div>
           )}
 

@@ -27,7 +27,7 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog'
-import { OutsideTrainings } from '@/components/outside-trainings'
+import { OutsideTrainings, SourceBadge } from '@/components/outside-trainings'
 import { syncBilling } from '@/lib/billing-client'
 import { StaffPaths } from '@/components/staff-paths'
 import { StaffLicenses } from '@/components/staff-licenses'
@@ -676,6 +676,40 @@ export default function StaffDetailPage() {
     { label: 'Original Cert Date',  value: staff.original_certification_date ? formatDate(staff.original_certification_date) : '—' },
   ]
 
+  // One company training, laid out to sit in the combined Trainings list beside outside ones.
+  function renderInternalRecord(r: (typeof allRecords)[number]) {
+    const trainerName = r.courses?.staff
+      ? getDisplayName(r.courses.staff)
+      : r.courses?.trainer_name ?? null
+    return (
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-medium text-gray-900 truncate">{r.courses?.name ?? '—'}</p>
+          <SourceBadge source="internal" />
+          <span
+            className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+              r.confirmed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+            }`}
+          >
+            {r.confirmed ? 'Confirmed' : 'Pending'}
+          </span>
+        </div>
+        <p className="text-xs text-gray-500">
+          {formatDate(r.completed_date)}
+          {r.courses?.units != null && <> · {r.courses.units} unit{r.courses.units === 1 ? '' : 's'}</>}
+          {r.expiry_date && <> · Expires {formatDate(r.expiry_date)}</>}
+          {trainerName && <> · Trainer: {trainerName}</>}
+        </p>
+        {r.notes && <p className="mt-1 text-xs text-gray-500 italic">{r.notes}</p>}
+        {r.courses?.id && (
+          <Link href={`/trainings/${r.courses.id}`} className="mt-1 inline-block text-xs text-blue-600 hover:underline">
+            View training →
+          </Link>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-[1400px]">
 
@@ -934,88 +968,53 @@ export default function StaffDetailPage() {
               <StaffLicenses staffId={staffId} />
             </div>
           )}
-        </section>
-
-        {/* ── Column 3: All Trainings ──────────────────────────────────────── */}
-        <section>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">All Trainings</h2>
-              <p className="text-sm text-gray-500">
-                {allRecords.length} record{allRecords.length !== 1 ? 's' : ''} on file
-              </p>
-            </div>
-            <Button onClick={openAddToTraining} size="sm" className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
-              <Plus className="mr-1.5 h-4 w-4" /> Add
-            </Button>
-          </div>
-
-          {allRecords.length === 0 ? (
-            <div className="rounded-lg border border-dashed bg-white p-8 text-center text-sm text-gray-400 shadow-sm">
-              No training records yet.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {allRecords.map(r => {
-                const trainerName = r.courses?.staff
-                  ? getDisplayName(r.courses.staff)
-                  : r.courses?.trainer_name ?? null
-                return (
-                  <div key={r.id} className="rounded-lg border bg-white shadow-sm p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-gray-900">{r.courses?.name ?? '—'}</p>
-                      <span
-                        className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          r.confirmed
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
-                        }`}
-                      >
-                        {r.confirmed ? 'Confirmed' : 'Pending'}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Completed {formatDate(r.completed_date)}
-                      {r.courses?.units != null && <> · {r.courses.units} unit{r.courses.units === 1 ? '' : 's'}</>}
-                      {r.expiry_date && <> · Expires {formatDate(r.expiry_date)}</>}
-                    </p>
-                    {trainerName && (
-                      <p className="mt-1 text-xs text-gray-500">Trainer: {trainerName}</p>
-                    )}
-                    {r.notes && <p className="mt-1 text-xs text-gray-500 italic">{r.notes}</p>}
-                    {r.courses?.id && (
-                      <Link
-                        href={`/trainings/${r.courses.id}`}
-                        className="mt-2 inline-block text-xs text-blue-600 hover:underline"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        View training →
-                      </Link>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
 
           <div className="mt-6">
             <StaffPaths staffId={staffId} />
           </div>
+        </section>
 
-          {staffCredential && (
-            <div className="mt-6">
-              <OutsideTrainings
-                staffId={staffId}
-                unitLabel={staffCredential.unit_label}
-                showEthics={staffCredential.ethics_units_required > 0}
-                showSupervision={staffCredential.supervision_units_required > 0}
-                items={outside}
-                onChanged={loadOutside}
-                canAdd
-                // Nobody reviews their own entries (the database enforces this too).
-                canReview={!!staff && staff.auth_id !== myAuthId}
-              />
-            </div>
+        {/* ── Column 3: Trainings (company and outside, one list) ──────────── */}
+        <section>
+          {staffCredential ? (
+            <OutsideTrainings
+              staffId={staffId}
+              unitLabel={staffCredential.unit_label}
+              showEthics={staffCredential.ethics_units_required > 0}
+              showSupervision={staffCredential.supervision_units_required > 0}
+              items={outside}
+              onChanged={loadOutside}
+              canAdd
+              // Nobody reviews their own entries (the database enforces this too).
+              canReview={!!staff && staff.auth_id !== myAuthId}
+              internalRows={allRecords.map(r => ({ id: r.id, date: r.completed_date ?? '', node: renderInternalRecord(r) }))}
+              onAddInternal={openAddToTraining}
+            />
+          ) : (
+            <>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Trainings</h2>
+                  <p className="text-sm text-gray-500">
+                    {allRecords.length} record{allRecords.length !== 1 ? 's' : ''} on file
+                  </p>
+                </div>
+                <Button onClick={openAddToTraining} size="sm" className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
+                  <Plus className="mr-1.5 h-4 w-4" /> Add
+                </Button>
+              </div>
+              {allRecords.length === 0 ? (
+                <div className="rounded-lg border border-dashed bg-white p-8 text-center text-sm text-gray-400 shadow-sm">
+                  No training records yet.
+                </div>
+              ) : (
+                <ul className="rounded-xl border-2 border-gray-100 shadow-sm bg-white divide-y divide-gray-100">
+                  {allRecords.map(r => (
+                    <li key={r.id} className="flex items-center gap-3 px-5 py-3">{renderInternalRecord(r)}</li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </section>
 

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { AlertTriangle, Ban, Check, ExternalLink, Loader2, Paperclip, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { AlertTriangle, Ban, Building2, Check, ExternalLink, Loader2, Paperclip, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { countsTowardTotals, type OutsideTraining } from '@/lib/outside-trainings'
 import { EXTRACTION_MAX_BYTES, type Extraction } from '@/lib/certificate-extraction'
 
@@ -31,6 +31,12 @@ export function ReviewBadge({ status }: { status: OutsideTraining['review_status
     return <span className="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Not approved · doesn’t count</span>
   }
   return null
+}
+
+export function SourceBadge({ source }: { source: 'internal' | 'external' }) {
+  return source === 'internal'
+    ? <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-[#025CA8]">Internal</span>
+    : <span className="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">External</span>
 }
 
 // Certificates share the private cycle-documents bucket (see migration 021).
@@ -86,6 +92,8 @@ export function OutsideTrainings({
   canAdd,
   canReview = false,
   reviewRequired = false,
+  internalRows,
+  onAddInternal,
 }: {
   staffId: string
   unitLabel: string          // 'CEU' / 'PDU'
@@ -96,6 +104,10 @@ export function OutsideTrainings({
   canAdd: boolean            // company setting allows it, or an admin is viewing
   canReview?: boolean        // an admin viewing someone else's record
   reviewRequired?: boolean   // tells the person their entry will be reviewed
+  // Passing these turns the card into one combined "Trainings" list: the company's own
+  // trainings (already rendered by the caller) mixed in by date, with Internal / External badges.
+  internalRows?: { id: string; date: string; node: React.ReactNode }[]
+  onAddInternal?: () => void
 }) {
   const supabase = createClient()
   const router   = useRouter()
@@ -117,7 +129,9 @@ export function OutsideTrainings({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [openingId, setOpeningId] = useState<string | null>(null)
   const [reviewingId, setReviewingId] = useState<string | null>(null)
+  const [chooseOpen, setChooseOpen] = useState(false)
 
+  const combined = !!internalRows
   const units = `${unitLabel}s`
   // Totals and pace are computed on the server for the dashboard pages.
   const refresh = onChanged ?? (() => router.refresh())
@@ -349,35 +363,47 @@ export function OutsideTrainings({
     refresh()
   }
 
+  // Newest first, whichever kind it is.
+  const rows = useMemo(() => {
+    const ext = items.map(t => ({ kind: 'external' as const, id: t.id, date: t.completed_date, t }))
+    const int = (internalRows ?? []).map(r => ({ kind: 'internal' as const, id: r.id, date: r.date, node: r.node }))
+    return [...ext, ...int].sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  }, [items, internalRows])
+
   // Nothing to show someone whose company doesn't let them add these.
-  if (!canAdd && items.length === 0) return null
+  if (!canAdd && rows.length === 0) return null
 
   return (
     <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white">
       <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
         <div>
-          <p className="text-sm font-semibold text-gray-900">Outside Trainings</p>
+          <p className="text-sm font-semibold text-gray-900">{combined ? 'Trainings' : 'Outside Trainings'}</p>
           <p className="text-xs text-gray-500">
-            {units} earned somewhere else, like a conference or another provider
+            {combined
+              ? `${rows.length} record${rows.length !== 1 ? 's' : ''} on file · ${units} earned here and elsewhere`
+              : `${units} earned somewhere else, like a conference or another provider`}
             {reviewRequired && !canReview && ' · your team reviews each one'}
           </p>
         </div>
-        {canAdd && (
-          <Button size="sm" onClick={openAdd} className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
+        {(canAdd || (combined && onAddInternal)) && (
+          <Button size="sm" onClick={() => (combined ? setChooseOpen(true) : openAdd())} className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
             <Plus className="mr-1 h-4 w-4" /> Add
           </Button>
         )}
       </div>
 
-      {items.length === 0 ? (
-        <p className="px-5 py-6 text-sm text-gray-400 text-center">None added yet.</p>
+      {rows.length === 0 ? (
+        <p className="px-5 py-6 text-sm text-gray-400 text-center">{combined ? 'No training records yet.' : 'None added yet.'}</p>
       ) : (
         <ul className="divide-y divide-gray-100">
-          {items.map(t => (
+          {rows.map(row => row.kind === 'internal' ? (
+            <li key={`i-${row.id}`} className="flex items-center gap-3 px-5 py-3">{row.node}</li>
+          ) : (() => { const t = row.t; return (
             <li key={t.id} className={`flex items-center gap-3 px-5 py-3 ${countsTowardTotals(t) ? '' : 'bg-gray-50'}`}>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className={`text-sm font-medium truncate ${countsTowardTotals(t) ? 'text-gray-900' : 'text-gray-500 line-through'}`}>{t.name}</p>
+                  {combined && <SourceBadge source="external" />}
                   <ReviewBadge status={t.review_status} />
                   {canReview && t.certificate_name_mismatch && <NameMismatchBadge name={t.certificate_name} />}
                 </div>
@@ -430,9 +456,31 @@ export function OutsideTrainings({
                 </>
               )}
             </li>
-          ))}
+          ) })())}
         </ul>
       )}
+
+      <Sheet open={chooseOpen} onOpenChange={setChooseOpen}>
+        <SheetContent className="w-full sm:max-w-sm flex flex-col">
+          <SheetHeader><SheetTitle>Add a training</SheetTitle></SheetHeader>
+          <div className="space-y-3 px-6 py-5">
+            {onAddInternal && (
+              <button onClick={() => { setChooseOpen(false); onAddInternal() }}
+                className="w-full rounded-lg border bg-white p-4 text-left hover:bg-gray-50 transition-colors">
+                <p className="flex items-center gap-2 text-sm font-semibold text-gray-900"><Building2 className="h-4 w-4 text-[#025CA8]" /> Internal</p>
+                <p className="mt-1 text-xs text-gray-500">Add them to one of your company&apos;s upcoming trainings.</p>
+              </button>
+            )}
+            {canAdd && (
+              <button onClick={() => { setChooseOpen(false); openAdd() }}
+                className="w-full rounded-lg border bg-white p-4 text-left hover:bg-gray-50 transition-colors">
+                <p className="flex items-center gap-2 text-sm font-semibold text-gray-900"><ExternalLink className="h-4 w-4 text-violet-600" /> External</p>
+                <p className="mt-1 text-xs text-gray-500">Record {units} earned somewhere else, like a conference or another provider.</p>
+              </button>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent className="w-full sm:max-w-md flex flex-col">

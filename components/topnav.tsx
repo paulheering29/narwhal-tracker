@@ -125,8 +125,10 @@ export function TopNav({ userTier, userRoles, userName, pendingReviews }: TopNav
     return pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
   }
 
-  const isStaff = userTier === 'staff'
-  const canReview = isStaff && canManageTrainings(userRoles)
+  // A staff-tier login with no Trainer/Admin/Account Owner role (a plain BCBA)
+  // gets the same learner nav as an RBT.
+  const isStaff = userTier === 'staff' && canManageTrainings(userRoles)
+  const canReview = isStaff
 
   // What the person does for the company lives in the bar; what they do as a
   // learner (My Courses, My Progress) lives in the account menu.

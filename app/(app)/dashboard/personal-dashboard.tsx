@@ -153,12 +153,13 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
         </div>
       )}
 
-      {/* Two rows of three equal cards; fixed row height on desktop, long lists scroll inside their card */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[28rem] gap-5">
-        <div className={`rounded-xl border-2 border-gray-100 shadow-sm p-6 overflow-y-auto ${urgency.bg}`}>
+      {/* Certification cards: your credential (with its progress) plus one per state license */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white overflow-hidden">
+        <div className={`p-6 ${urgency.bg}`}>
           <div className="relative flex items-center justify-center mb-4">
             <CalendarClock className={`absolute left-0 h-5 w-5 ${urgency.text}`} />
-            <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Certification</h3>
+            <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{data.certType ?? ''} Certification</h3>
           </div>
           {data.daysUntilExpiry == null ? (
             <p className="text-sm text-gray-500">No certification cycle on file.</p>
@@ -182,7 +183,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
           )}
         </div>
 
-        <div className="rounded-xl border-2 border-gray-100 shadow-sm p-6 bg-white overflow-y-auto">
+        <div className="p-6">
           <div className="relative flex items-center justify-center mb-4">
             <Gauge className="absolute left-0 h-5 w-5 text-blue-500" />
             <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{data.unitLabel ?? 'Training'} Progress</h3>
@@ -238,16 +239,18 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
           </>
           )}
         </div>
+        </div>
+
+        {data.credentialCode === 'BCBA' && <StaffLicenses staffId={data.staffId} asCards />}
+      </div>
+
+      {/* Everything else: fixed row height on desktop, long lists scroll inside their card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 auto-rows-[28rem] gap-5">
 
         <CalendarCard trainings={data.calendar} info="Live trainings you’re registered for." />
 
         {cards.map(card => <DashboardCard key={card.title} card={card} />)}
       </div>
-
-      {/* BCBAs: the BACB certification and every state license, in one place. Read-only here; admins enter the licenses. */}
-      {data.credentialCode === 'BCBA' && (
-        <StaffLicenses staffId={data.staffId} bacb={{ endDate: data.cycleEndDate }} />
-      )}
     </div>
   )
 }

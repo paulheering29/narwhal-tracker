@@ -23,7 +23,7 @@ import {
   expiryPill, fmtLicenseDate,
   type Jurisdiction, type LicenseStatus, type RequirementTopic, type StaffLicense,
 } from '@/lib/licensure'
-import { AlertTriangle, ChevronDown, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, ChevronDown, Gauge, Loader2, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 
 const emptyForm = {
   jurisdiction_code: '', license_number: '', status: 'active' as LicenseStatus,
@@ -37,11 +37,13 @@ const emptyForm = {
  * BCBA themselves, sees them read-only.
  */
 export function StaffLicenses({
-  staffId, bacb, titleOutside = false,
+  staffId, bacb, titleOutside = false, asCards = false,
 }: {
   staffId: string
   /** Show the title above the card (the staff page) instead of inside it (the dashboard). */
   titleOutside?: boolean
+  /** Dashboard layout: one read-only card per license, rendered as children of the caller's grid. */
+  asCards?: boolean
   /** When given (a BCBA viewing their own certifications), the BACB certification is listed alongside the licenses. */
   bacb?: { endDate: string | null }
 }) {
@@ -156,6 +158,22 @@ export function StaffLicenses({
     if (paths.length) await supabase.storage.from('cert-cycle-documents').remove(paths)
     await supabase.from('staff_licenses').delete().eq('id', l.id)
     load()
+  }
+
+  if (asCards) {
+    if (loading) return null
+    return (
+      <>
+        {licenses.map(l => (
+          <LicenseCard
+            key={l.id} license={l} jurisdiction={byCode.get(l.jurisdiction_code)}
+            topics={topics.filter(t => t.jurisdiction_code === l.jurisdiction_code)}
+            events={events} completions={completions} bacbEnd={bacbEnd} covered={covered.has(l.jurisdiction_code)}
+            canEdit={canEdit} onChanged={load}
+          />
+        ))}
+      </>
+    )
   }
 
   const title = bacb ? 'My Certifications' : 'State Licenses'
@@ -361,6 +379,116 @@ export function StaffLicenses({
         </SheetContent>
       </Sheet>
     </div>
+    </div>
+  )
+}
+
+
+function urgency(days: number) {
+  if (days < 0)   return { text: 'text-red-600',     bg: 'bg-red-50',     bar: 'bg-red-600' }
+  if (days <= 30) return { text: 'text-rose-600',    bg: 'bg-rose-50',    bar: 'bg-rose-600' }
+  if (days <= 90) return { text: 'text-amber-600',   bg: 'bg-amber-50',   bar: 'bg-amber-500' }
+  return                 { text: 'text-emerald-600', bg: 'bg-emerald-50', bar: 'bg-emerald-500' }
+}
+
+/** One state license as a dashboard card: days left, where it sits in its cycle, and the state's own CE progress. */
+function LicenseCard({
+  license: l, jurisdiction: j, topics, events, completions, bacbEnd, covered, canEdit, onChanged,
+}: {
+  license: StaffLicense
+  jurisdiction: Jurisdiction | undefined
+  topics: RequirementTopic[]
+  events: UnitEvent[]
+  completions: TopicCompletion[]
+  bacbEnd: string | null
+  covered: boolean
+  canEdit: boolean
+  onChanged: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const days = daysUntil(l.expiration_date)
+  const u = urgency(days)
+  const progress = computeCeProgress(l, j, events, !!bacbEnd)
+  const statuses = computeTopicStatuses(l, j, topics, completions)
+  const topicsDue = statuses.filter(t => !t.done).length
+  const bacbShort = bacbEndsBeforeLicense(l, j, bacbEnd)
+
+  // Cycle start: the issue date if known, otherwise one renewal cycle before expiry.
+  const end = new Date(l.expiration_date + 'T00:00:00')
+  const start = l.issued_date
+    ? new Date(l.issued_date + 'T00:00:00')
+    : j?.cycle_years ? new Date(end.getFullYear() - j.cycle_years, end.getMonth(), end.getDate()) : null
+  const pct = start ? Math.min(1, Math.max(0, (Date.now() - start.getTime()) / Math.max(1, end.getTime() - start.getTime()))) : null
+
+  return (
+    <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white overflow-hidden">
+      <div className={`p-6 ${u.bg}`}>
+        <div className="relative flex items-center justify-center mb-4">
+          <ShieldCheck className={`absolute left-0 h-5 w-5 ${u.text}`} />
+          <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{j?.name ?? l.jurisdiction_code} License</h3>
+        </div>
+        <p className={`text-6xl font-extrabold tabular-nums ${u.text}`}>{days < 0 ? 'Expired' : days}</p>
+        <p className="mt-1 text-sm text-gray-600">
+          {days < 0 ? `Your ${j?.name ?? l.jurisdiction_code} license expired ${fmtLicenseDate(l.expiration_date)}`
+            : `day${days === 1 ? '' : 's'} until your ${j?.name ?? l.jurisdiction_code} license expires`}
+        </p>
+        {l.license_number && <p className="mt-0.5 text-xs text-gray-400">#{l.license_number}</p>}
+        {start && pct != null && days >= 0 && (
+          <div className="mt-6">
+            <div className="relative h-2 w-full rounded-full bg-white/70">
+              <div className={`absolute inset-y-0 left-0 rounded-full ${u.bar}`} style={{ width: `${pct * 100}%` }} />
+              <div className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow ${u.bar}`} style={{ left: `${pct * 100}%` }} />
+            </div>
+            <div className="mt-2 flex justify-between text-xs text-gray-500">
+              <span>{fmtLicenseDate(start.toISOString().split('T')[0])}</span>
+              <span>{Math.round(pct * 100)}% through</span>
+              <span>{fmtLicenseDate(l.expiration_date)}</span>
+            </div>
+          </div>
+        )}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <VerificationBadge license={l} covered={covered} />
+          {j?.tied_to_bacb && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">Requires active BACB</span>}
+        </div>
+      </div>
+
+      <div className="p-6 space-y-4">
+        <div className="relative flex items-center justify-center">
+          <Gauge className="absolute left-0 h-5 w-5 text-blue-500" />
+          <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">CE Progress</h3>
+        </div>
+        {progress ? (
+          <>
+            {progress.exempt || progress.metByBacb ? (
+              <p className="text-sm text-emerald-700 font-medium">{progress.exempt ? 'No CE required this cycle' : 'Met while your BACB certification is active'}</p>
+            ) : (
+              <CeProgressView progress={progress} />
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">{j?.tied_to_bacb ? 'Renewing your BACB certification keeps this license current.' : 'This state has no CE hours of its own to track.'}</p>
+        )}
+        {topicsDue > 0 && <p className="text-sm text-amber-700">{topicsDue} required topic{topicsDue !== 1 ? 's' : ''} due</p>}
+        {bacbShort && (
+          <p className="flex items-start gap-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            Your BACB certification ends {fmtLicenseDate(bacbShort)}, before this license expires. {j?.name} requires it to be active, so renew the BACB to keep this license.
+          </p>
+        )}
+        {j && (
+          <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1 text-sm font-medium text-[#025CA8] hover:underline">
+            <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+            {open ? 'Hide' : 'Show'} requirements and documents
+          </button>
+        )}
+        {open && j && (
+          <div className="space-y-4 rounded-lg bg-gray-50 p-4">
+            <TopicChecklist license={l} statuses={statuses} canEdit={canEdit} onChanged={onChanged} />
+            <LicenseDocuments licenseId={l.id} canEdit={canEdit} />
+            <LicenseDetails jurisdiction={j} topics={topics} hideTopics />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

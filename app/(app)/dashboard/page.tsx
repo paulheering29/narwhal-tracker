@@ -281,11 +281,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">Overview of your training programme</p>
-      </div>
-
       {(pendingReviews ?? 0) > 0 && (
         <Link
           href="/outside-trainings"
@@ -299,7 +294,7 @@ export default async function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[24rem_auto] lg:items-start lg:justify-start">
-        <div className="lg:h-[calc(100vh-14rem)]">
+        <div className="lg:h-[calc(100vh-8rem)]">
           <ExpiringSoonCard items={items} />
         </div>
         {/* Nested so these three stretch to one shared height */}

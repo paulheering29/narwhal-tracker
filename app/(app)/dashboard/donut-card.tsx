@@ -43,7 +43,7 @@ export function DonutCard({ title, slices, center }: {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-4xl font-extrabold tabular-nums text-gray-900">{center?.value ?? total}</span>
-          <span className="max-w-[7rem] text-center text-xs leading-tight text-gray-500">{center?.label ?? 'total staff'}</span>
+          <span className="max-w-[5.5rem] text-center text-xs leading-tight text-gray-500">{center?.label ?? 'total staff'}</span>
         </div>
       </div>
 

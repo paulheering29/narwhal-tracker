@@ -95,6 +95,7 @@ export function OutsideTrainings({
   reviewRequired = false,
   internalRows,
   onAddInternal,
+  addOnly = false,
 }: {
   staffId: string
   unitLabel: string          // 'CEU' / 'PDU'
@@ -109,6 +110,7 @@ export function OutsideTrainings({
   // trainings (already rendered by the caller) mixed in by date, with Internal / External badges.
   internalRows?: { id: string; date: string; node: React.ReactNode }[]
   onAddInternal?: () => void
+  addOnly?: boolean          // just the Add External Training button + its form; the list lives elsewhere
 }) {
   const supabase = createClient()
   const router   = useRouter()
@@ -373,12 +375,12 @@ export function OutsideTrainings({
 
   const addButton = (canAdd || (combined && onAddInternal)) && (
     <Button size="sm" onClick={() => (combined ? setChooseOpen(true) : openAdd())} className="bg-[#025CA8] hover:bg-[#024A87] shrink-0">
-      <Plus className="mr-1 h-4 w-4" /> Add
+      <Plus className="mr-1 h-4 w-4" /> {addOnly ? 'Add External Training' : 'Add'}
     </Button>
   )
 
   // Nothing to show someone whose company doesn't let them add these.
-  if (!canAdd && rows.length === 0) return null
+  if (!canAdd && (addOnly || rows.length === 0)) return null
 
   return (
     <div>
@@ -389,8 +391,9 @@ export function OutsideTrainings({
           action={addButton}
         />
       )}
-    <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white">
-      {!combined && (
+    <div className={addOnly ? '' : 'rounded-xl border-2 border-gray-100 shadow-sm bg-white'}>
+      {addOnly && addButton}
+      {!combined && !addOnly && (
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
           <div>
             <p className="text-sm font-semibold text-gray-900">Outside Trainings</p>
@@ -403,7 +406,7 @@ export function OutsideTrainings({
         </div>
       )}
 
-      {rows.length === 0 ? (
+      {addOnly ? null : rows.length === 0 ? (
         <p className="px-5 py-6 text-sm text-gray-400 text-center">{combined ? 'No training records yet.' : 'None added yet.'}</p>
       ) : (
         <ul className="divide-y divide-gray-100">

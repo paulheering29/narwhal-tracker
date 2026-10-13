@@ -25,7 +25,7 @@ export type PersonalDashboardData = {
   outsideReviewRequired: boolean
   pacingTarget: number
   assignedCourses: { id: string; name: string; href: string; completedSections: number; totalSections: number; status: 'not_started' | 'in_progress' | 'complete' }[]
-  completed: { id: string; label: string; sublabel: string; href: string }[]
+  completed: { id: string; label: string; sublabel: string; href: string; external: boolean }[]
   completedCount: number
   upcoming: { id: string; label: string; sublabel: string; href: string }[]
   upcomingCount: number
@@ -80,7 +80,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
       icon:           'clipboard',
       color:          'teal',
       alwaysExpanded: true,
-      items: data.completed.map(c => ({ id: c.id, label: c.label, sublabel: c.sublabel, href: c.href })),
+      items: data.completed.map(c => ({ id: c.id, label: c.label, sublabel: c.sublabel, href: c.href, external: c.external })),
     },
     {
       title:          'Assigned Courses',
@@ -113,6 +113,21 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
 
   return (
     <div className="space-y-6">
+      {data.unitLabel && (
+        <div className="flex justify-end">
+        <OutsideTrainings
+          addOnly
+          staffId={data.staffId}
+          unitLabel={data.unitLabel}
+          showEthics={data.tracksEthics}
+          showSupervision={data.tracksSupervision}
+          items={data.outsideTrainings}
+          canAdd={data.canAddOutside}
+          reviewRequired={data.outsideReviewRequired}
+        />
+        </div>
+      )}
+
       {/* Hero row: cert countdown + PDU/CEU progress */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div className={`rounded-xl border-2 border-gray-100 shadow-sm p-6 ${urgency.bg}`}>
@@ -160,7 +175,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
                 <div className="h-full bg-blue-500 absolute inset-y-0 left-0" style={{ width: `${unitPct * 100}%` }} />
               </div>
             </div>
-            {data.pacingTarget > 0 && (
+            {data.cycleEndDate && (
               <div>
                 <p className="text-sm text-gray-600">{fmtUnits(data.pacingTarget)} / {data.unitsTarget} {units} — where you should be by now</p>
                 <div className="mt-1 h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
@@ -170,7 +185,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
             )}
           </div>
 
-          {data.pacingTarget > 0 && (
+          {data.cycleEndDate && (
             <p className="mt-3 text-xs text-gray-500">
               You should have <span className="font-medium text-gray-700">{fmtUnits(data.pacingTarget)}</span> {units} by now —{' '}
               {variance === 0 ? (
@@ -207,18 +222,6 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
       {/* BCBAs: the BACB certification and every state license, in one place. Read-only here; admins enter the licenses. */}
       {data.credentialCode === 'BCBA' && (
         <StaffLicenses staffId={data.staffId} bacb={{ endDate: data.cycleEndDate }} />
-      )}
-
-      {data.unitLabel && (
-        <OutsideTrainings
-          staffId={data.staffId}
-          unitLabel={data.unitLabel}
-          showEthics={data.tracksEthics}
-          showSupervision={data.tracksSupervision}
-          items={data.outsideTrainings}
-          canAdd={data.canAddOutside}
-          reviewRequired={data.outsideReviewRequired}
-        />
       )}
     </div>
   )

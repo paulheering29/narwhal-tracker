@@ -25,6 +25,8 @@ export type DetailItem = {
   }
   /** Shown next to the name, e.g. when an expiring cert is already fully covered */
   badge?: { label: string }
+  /** Earned outside the company: shows an External badge and isn't a link */
+  external?: boolean
 }
 
 export type CardColor = 'rose' | 'emerald' | 'violet' | 'blue' | 'amber' | 'teal'
@@ -104,13 +106,16 @@ function DashboardCard({ card }: { card: DashboardCardData }) {
               card.items.map(item => (
                 <li
                   key={item.id}
-                  onClick={() => router.push(item.href)}
-                  className="group flex flex-col px-2 py-2.5 text-sm cursor-pointer rounded-md hover:bg-gray-50 transition-colors"
+                  onClick={item.href ? () => router.push(item.href) : undefined}
+                  className={`group flex flex-col px-2 py-2.5 text-sm rounded-md transition-colors ${item.href ? 'cursor-pointer hover:bg-gray-50' : ''}`}
                 >
                   <span className="flex items-center gap-2 flex-wrap">
                     <span className={`font-medium text-gray-800 ${c.linkHover}`}>
                       {item.label}
                     </span>
+                    {item.external && (
+                      <span className="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">External</span>
+                    )}
                     {item.badge && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                         <CircleCheck className="h-3 w-3" /> {item.badge.label}

@@ -156,10 +156,6 @@ export default async function DashboardPage() {
     const personal   = await getPersonalDashboardData(supabase, staff.id, credential, staff.is_supervisor ?? false)
     return (
       <div className="p-4 md:p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">My Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">Your certification, {credential ? `${credential.unit_label}s` : 'progress'}, and training</p>
-        </div>
         <PersonalDashboard data={personal} />
       </div>
     )

@@ -111,15 +111,29 @@ export async function getPersonalDashboardData(
 
   const confirmedRecordCourseIds = new Set(records.filter(r => r.confirmed && r.courses).map(r => r.courses!.id))
 
-  const completed = records
-    .filter(r => r.confirmed && r.courses)
+  // Outside trainings sit in the same list, flagged so the card can badge them.
+  const completed = [
+    ...records
+      .filter(r => r.confirmed && r.courses)
+      .map(r => ({
+        id:       r.id,
+        date:     r.completed_date,
+        label:    r.courses!.name,
+        sublabel: fmtDate(r.completed_date),
+        href:     r.courses!.course_type === 'streamed' ? `/my-courses/${r.courses!.id}` : `/trainings/${r.courses!.id}`,
+        external: false,
+      })),
+    ...outsideTrainings.map(t => ({
+      id:       `ext-${t.id}`,
+      date:     t.completed_date,
+      label:    t.name,
+      sublabel: `${fmtDate(t.completed_date)}${t.review_status === 'pending' ? ' · Pending review' : t.review_status === 'not_approved' ? ' · Not approved' : ''}`,
+      href:     '',
+      external: true,
+    })),
+  ]
+    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
     .slice(0, 25)
-    .map(r => ({
-      id:       r.id,
-      label:    r.courses!.name,
-      sublabel: fmtDate(r.completed_date),
-      href:     r.courses!.course_type === 'streamed' ? `/my-courses/${r.courses!.id}` : `/trainings/${r.courses!.id}`,
-    }))
 
   const upcomingRaw = records
     .filter(r => r.courses?.course_type === 'live' && r.courses.date && r.courses.date >= today)
@@ -191,7 +205,7 @@ export async function getPersonalDashboardData(
     pacingTarget,
     assignedCourses,
     completed,
-    completedCount:    records.filter(r => r.confirmed).length,
+    completedCount:    records.filter(r => r.confirmed).length + outsideTrainings.length,
     upcoming,
     upcomingCount:     upcomingRaw.length,
   }

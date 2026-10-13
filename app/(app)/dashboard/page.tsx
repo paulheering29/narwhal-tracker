@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 import { ExpiringSoonCard, type ExpiringItem } from './expiring-soon-card'
 import { DonutCard } from './donut-card'
 import { UnconfirmedCard, type UnconfirmedTraining } from './unconfirmed-card'
+import { LapsedCard } from './lapsed-card'
+import { getLapsed } from './lapsed-data'
+import { RatingCard } from './rating-card'
 import { CalendarCard } from './calendar-card'
 import { GaugeCard } from './gauge-card'
 import { getModalityCounts } from './modality-data'
@@ -163,7 +166,7 @@ export default async function DashboardPage() {
   const activeStaffCount = (role: string) =>
     supabase.from('staff').select('id', { count: 'exact', head: true }).eq('active', true).eq('role', role)
 
-  const [data, { count: pendingReviews }, { count: rbtCount }, { count: bcbaCount }, pace, modality, { data: liveCourses }, { data: unconfirmedRecords }] = await Promise.all([
+  const [data, { count: pendingReviews }, { count: rbtCount }, { count: bcbaCount }, pace, modality, { data: liveCourses }, { data: unconfirmedRecords }, { data: reviewRows }, lapsed] = await Promise.all([
     getDashboardData(supabase),
     supabase.from('external_trainings').select('id', { count: 'exact', head: true }).eq('review_status', 'pending'),
     activeStaffCount('RBT'),
@@ -179,6 +182,8 @@ export default async function DashboardPage() {
       .eq('no_show', false)
       .eq('courses.course_type', 'live')
       .lt('courses.date', new Date().toISOString().split('T')[0]),
+    supabase.from('course_reviews').select('rating, created_at'),
+    getLapsed(supabase),
   ])
 
   function formatDate(dateStr: string | null | undefined) {
@@ -314,6 +319,8 @@ export default async function DashboardPage() {
           {modalityCard('BCBA', 'BCBAs')}
           {modalityCard('RBT', 'RBTs')}
           <UnconfirmedCard trainings={unconfirmedTrainings} staffCount={unconfirmedStaff.size} />
+          <LapsedCard items={lapsed} />
+          <RatingCard reviews={(reviewRows ?? []).map(r => ({ rating: Number(r.rating), createdAt: r.created_at as string }))} />
         </div>
       </div>
     </div>

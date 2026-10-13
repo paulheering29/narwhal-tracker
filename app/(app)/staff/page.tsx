@@ -38,7 +38,7 @@ export default async function StaffPage({ searchParams }: { searchParams: { tab?
       }))}
       pendingOutsideReviews={pendingOutside ?? 0}
       initialTab={searchParams.tab}
-      initialPace={searchParams.pace === 'behind' ? 'behind' : 'all'}
+      initialPace={searchParams.pace === 'behind' || searchParams.pace === 'ahead' ? searchParams.pace : 'all'}
     />
   )
 }

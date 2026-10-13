@@ -279,7 +279,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         hasData={n > 0}
         caption="on or ahead of pace"
         legend={[
-          { label: 'On or ahead of pace', count: s.onPace, color: '#10b981' },
+          { label: 'On or ahead of pace', count: s.onPace, color: '#10b981', href: `/staff?tab=${code}&pace=ahead` },
           { label: 'Behind pace',         count: s.behind, color: '#f43f5e', href: `/staff?tab=${code}&pace=behind` },
         ]}
       />

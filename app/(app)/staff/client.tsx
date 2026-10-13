@@ -386,7 +386,7 @@ export function StaffPageClient({
   credentialTypes: Credential[]
   pendingOutsideReviews: number
   initialTab?: string
-  initialPace?: 'all' | 'behind'
+  initialPace?: 'all' | 'behind' | 'ahead'
 }) {
   const supabase = createClient()
   const router   = useRouter()
@@ -473,7 +473,7 @@ export function StaffPageClient({
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('active')
-  const [filterPace, setFilterPace]   = useState<'all' | 'behind'>(initialPace)
+  const [filterPace, setFilterPace]   = useState<'all' | 'behind' | 'ahead'>(initialPace)
   const [sortKey, setSortKey]       = useState<SortKey>('name')
   const [sortDir, setSortDir]       = useState<SortDir>('asc')
   const [view, setView]             = useState<'grid' | 'chart'>('grid')
@@ -830,8 +830,10 @@ export function StaffPageClient({
     const matchesActive = filterActive === 'all'
       || (filterActive === 'active' && s.active)
       || (filterActive === 'inactive' && !s.active)
-    // Staff without a current cycle have no pace, so they never count as behind.
-    const matchesPace = filterPace === 'all' || (!!s.cycleStart && s.variance < 0)
+    // Staff without a current cycle have no pace, so they match neither filter.
+    // 'ahead' means on or ahead (variance >= 0), matching the dashboard gauge.
+    const matchesPace = filterPace === 'all'
+      || (!!s.cycleStart && (filterPace === 'behind' ? s.variance < 0 : s.variance >= 0))
     return matchesSearch && matchesActive && matchesPace
   })].sort((a, b) => {
     const av = getSortValue(a, sortKey)
@@ -925,7 +927,7 @@ export function StaffPageClient({
               ))}
             </div>
             <div className="flex rounded-md border border-gray-200 overflow-hidden shrink-0">
-              {([['all', 'All pace'], ['behind', 'Behind pace']] as const).map(([key, label]) => (
+              {([['all', 'All pace'], ['ahead', 'On or ahead'], ['behind', 'Behind pace']] as const).map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setFilterPace(key)}

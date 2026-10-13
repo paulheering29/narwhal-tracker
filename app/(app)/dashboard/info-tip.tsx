@@ -1,8 +1,10 @@
 // Small italic "i" in a card's top-right corner; the explanation shows on
 // hover or keyboard focus. Pure CSS so it works in server and client cards.
+// The wrapper has its own z-index because its translate creates a stacking
+// context; without it, later positioned content (charts) paints over the tip.
 export function InfoTip({ text }: { text: string }) {
   return (
-    <span className="group absolute right-0 top-1/2 -translate-y-1/2">
+    <span className="group absolute right-0 top-1/2 z-30 -translate-y-1/2">
       <button
         type="button"
         aria-label="About this card"

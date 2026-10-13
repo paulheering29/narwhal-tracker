@@ -10,6 +10,7 @@ import { getLapsed } from './lapsed-data'
 import { RatingCard } from './rating-card'
 import { CalendarCard } from './calendar-card'
 import { GaugeCard } from './gauge-card'
+import { CARD_INFO_DEFAULTS } from './card-info'
 import { ModalityCard } from './modality-card'
 import { getModalityCounts } from './modality-data'
 import { getPaceSummaries } from './pace-data'
@@ -167,7 +168,7 @@ export default async function DashboardPage() {
   const activeStaffCount = (role: string) =>
     supabase.from('staff').select('id', { count: 'exact', head: true }).eq('active', true).eq('role', role)
 
-  const [data, { count: pendingReviews }, { count: rbtCount }, { count: bcbaCount }, pace, modality, { data: liveCourses }, { data: unconfirmedRecords }, { data: reviewRows }, lapsed] = await Promise.all([
+  const [data, { count: pendingReviews }, { count: rbtCount }, { count: bcbaCount }, pace, modality, { data: liveCourses }, { data: unconfirmedRecords }, { data: reviewRows }, lapsed, { data: infoRows }] = await Promise.all([
     getDashboardData(supabase),
     supabase.from('external_trainings').select('id', { count: 'exact', head: true }).eq('review_status', 'pending'),
     activeStaffCount('RBT'),
@@ -185,6 +186,8 @@ export default async function DashboardPage() {
       .lt('courses.date', new Date().toISOString().split('T')[0]),
     supabase.from('course_reviews').select('rating, created_at'),
     getLapsed(supabase),
+    // Editable tooltip text; if the table is missing or empty we fall back to the defaults.
+    supabase.from('dashboard_card_info').select('card_key, explanation'),
   ])
 
   function formatDate(dateStr: string | null | undefined) {
@@ -252,15 +255,18 @@ export default async function DashboardPage() {
   const unconfirmedTrainings = Array.from(unconfirmedByCourse.values()).sort((a, b) => b.date.localeCompare(a.date))
 
   const modalityCard = (code: string, label: string) => (
-    <ModalityCard subtitle={label} counts={modality[code]} />
+    <ModalityCard subtitle={label} info={info(`modality_${code.toLowerCase()}`)} counts={modality[code]} />
   )
 
-  const paceGauge = (title: ReactNode, group: string, s: { onPace: number; behind: number }) => {
+  const infoText = new Map((infoRows ?? []).map(r => [r.card_key as string, r.explanation as string]))
+  const info = (key: string) => infoText.get(key) ?? CARD_INFO_DEFAULTS[key] ?? ''
+
+  const paceGauge = (title: ReactNode, key: string, s: { onPace: number; behind: number }) => {
     const n = s.onPace + s.behind
     return (
       <GaugeCard
         title={title}
-        info={`Share of active ${group} with a current certification cycle whose confirmed units (including approved outside trainings) are at or ahead of the straight-line pace for today.`}
+        info={info(key)}
         pct={n ? s.onPace / n : 0}
         hasData={n > 0}
         caption="on or ahead of pace"
@@ -288,26 +294,27 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[24rem_auto] lg:items-start lg:justify-start">
         <div className="lg:h-[calc(100vh-8rem)]">
-          <ExpiringSoonCard items={items} />
+          <ExpiringSoonCard items={items} info={info('expiring_soon')} />
         </div>
         {/* Nested so each row of three stretches to one shared height */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[repeat(3,20rem)]">
-          <LapsedCard items={lapsed} />
-          {paceGauge(<>RBT<span className="normal-case">s</span></>, 'RBTs', pace.RBT)}
-          {paceGauge(<>BCBA<span className="normal-case">s</span></>, 'BCBAs', pace.BCBA)}
+          <LapsedCard items={lapsed} info={info('lapsed')} />
+          {paceGauge(<>RBT<span className="normal-case">s</span></>, 'pace_rbt', pace.RBT)}
+          {paceGauge(<>BCBA<span className="normal-case">s</span></>, 'pace_bcba', pace.BCBA)}
           <CalendarCard
+            info={info('calendar')}
             trainings={(liveCourses ?? []).map(c => ({ id: c.id, name: c.name, date: c.date as string, startTime: c.start_time }))}
           />
-          <UnconfirmedCard trainings={unconfirmedTrainings} staffCount={unconfirmedStaff.size} />
+          <UnconfirmedCard trainings={unconfirmedTrainings} staffCount={unconfirmedStaff.size} info={info('unconfirmed')} />
           <DonutCard
             title="Staff"
-            info="Active certified staff, split by RBT and BCBA. Staff without a certification (such as non-certified trainers) are not counted."
+            info={info('staff')}
             slices={[
               { label: 'RBT',  count: rbtCount ?? 0,  color: '#3b82f6' },
               { label: 'BCBA', count: bcbaCount ?? 0, color: '#f59e0b' },
             ]}
           />
-          <RatingCard reviews={(reviewRows ?? []).map(r => ({ rating: Number(r.rating), createdAt: r.created_at as string }))} />
+          <RatingCard info={info('course_rating')} reviews={(reviewRows ?? []).map(r => ({ rating: Number(r.rating), createdAt: r.created_at as string }))} />
           {modalityCard('RBT', 'RBTs')}
           {modalityCard('BCBA', 'BCBAs')}
         </div>

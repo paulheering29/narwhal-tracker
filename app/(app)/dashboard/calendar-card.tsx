@@ -18,7 +18,7 @@ function fmtTime(t: string | null) {
   return `${h % 12 || 12}:${pad(m)} ${h >= 12 ? 'PM' : 'AM'}`
 }
 
-export function CalendarCard({ trainings }: { trainings: CalendarTraining[] }) {
+export function CalendarCard({ trainings, info }: { trainings: CalendarTraining[]; info: string }) {
   const now = new Date()
   const [year, setYear]   = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
@@ -45,7 +45,7 @@ export function CalendarCard({ trainings }: { trainings: CalendarTraining[] }) {
       <div className="relative flex items-center justify-center mb-4">
         <CalendarDays className="absolute left-0 h-5 w-5 text-emerald-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Calendar</h3>
-        <InfoTip text="Scheduled live trainings by month. A green dot marks a day with a training. Click the day to see the trainings, then click one to open it." />
+        <InfoTip text={info} />
       </div>
 
       <div className="flex items-center justify-between mb-2">

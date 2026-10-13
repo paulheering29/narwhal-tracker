@@ -19,7 +19,7 @@ function PartialStar({ fill }: { fill: number }) {
   )
 }
 
-export function RatingCard({ reviews }: { reviews: ReviewPoint[] }) {
+export function RatingCard({ reviews, info }: { reviews: ReviewPoint[]; info: string }) {
   const [range, setRange] = useState<Range>('30')
 
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
@@ -31,7 +31,7 @@ export function RatingCard({ reviews }: { reviews: ReviewPoint[] }) {
       <div className="relative flex items-center justify-center mb-4">
         <Star className="absolute left-0 h-5 w-5 text-amber-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Course Rating</h3>
-        <InfoTip text="Average star rating (1-5) learners gave recorded courses, across all courses. Use the toggle for the last 30 days or all time." />
+        <InfoTip text={info} />
       </div>
 
       <RangeToggle value={range} onChange={setRange} />

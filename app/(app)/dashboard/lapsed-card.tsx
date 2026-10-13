@@ -17,14 +17,12 @@ const CONFETTI = Array.from({ length: 36 }, (_, i) => ({
   drift:  ((i * 17) % 40) - 20,
 }))
 
-const LAPSED_INFO = 'Active staff whose certification or state license has expired with nothing covering today. A renewal that starts the day after (or the same day) means they are not lapsed.'
-
 function fmtDate(d: string) {
   const [y, m, day] = d.split('-')
   return `${m}/${day}/${y}`
 }
 
-export function LapsedCard({ items }: { items: LapsedItem[] }) {
+export function LapsedCard({ items, info }: { items: LapsedItem[]; info: string }) {
   const router = useRouter()
 
   if (items.length === 0) {
@@ -72,7 +70,7 @@ export function LapsedCard({ items }: { items: LapsedItem[] }) {
         <div className="relative flex items-center justify-center mb-4">
           <AlertOctagon className="absolute left-0 h-5 w-5 text-emerald-500" />
           <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Lapsed</h3>
-          <InfoTip text={LAPSED_INFO} />
+          <InfoTip text={info} />
         </div>
 
         <div className="relative flex flex-1 flex-col items-center justify-center text-center">
@@ -115,7 +113,7 @@ export function LapsedCard({ items }: { items: LapsedItem[] }) {
       <div className="relative flex items-center justify-center mb-4">
         <AlertOctagon className="absolute left-0 h-5 w-5 text-rose-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Lapsed</h3>
-          <InfoTip text={LAPSED_INFO} />
+          <InfoTip text={info} />
       </div>
       <p className="text-center text-6xl font-extrabold leading-none tabular-nums text-rose-600">{items.length}</p>
       <p className="mt-2 text-center text-sm text-gray-600">

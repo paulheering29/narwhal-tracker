@@ -18,7 +18,7 @@ export type ExpiringItem = {
 
 const MAX_DAYS = 90
 
-export function ExpiringSoonCard({ items }: { items: ExpiringItem[] }) {
+export function ExpiringSoonCard({ items, info }: { items: ExpiringItem[]; info: string }) {
   const [days, setDays] = useState(30)
   const router = useRouter()
 
@@ -30,7 +30,7 @@ export function ExpiringSoonCard({ items }: { items: ExpiringItem[] }) {
       <div className="relative flex items-center justify-center mb-3">
         <AlertTriangle className="absolute left-0 h-5 w-5 text-rose-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Expiring Soon</h3>
-        <InfoTip text="Certifications and state licenses ending within the number of days you pick with the slider (up to 90). Bars show progress toward each person's renewal requirements. Click a name to open their profile." />
+        <InfoTip text={info} />
       </div>
 
       <p className="text-6xl font-extrabold leading-none tabular-nums text-rose-600">{visible.length}</p>

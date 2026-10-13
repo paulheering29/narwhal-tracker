@@ -9,13 +9,13 @@ function fmtDate(d: string) {
   return `${m}/${day}/${y}`
 }
 
-export function UnconfirmedCard({ trainings, staffCount }: { trainings: UnconfirmedTraining[]; staffCount: number }) {
+export function UnconfirmedCard({ trainings, staffCount, info }: { trainings: UnconfirmedTraining[]; staffCount: number; info: string }) {
   return (
     <div className="rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6 flex flex-col">
       <div className="relative flex items-center justify-center mb-4">
         <ClipboardCheck className="absolute left-0 h-5 w-5 text-amber-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Unconfirmed</h3>
-        <InfoTip text="Past live trainings where at least one registered person is still pending: not yet confirmed as attended and not marked a no-show. Open the training to settle them." />
+        <InfoTip text={info} />
       </div>
       <p className="-mt-3 mb-3 text-center text-xs text-gray-400">Past live trainings awaiting attendance confirmation</p>
 

@@ -37,7 +37,7 @@ type TopicOption = { id: string; name: string }
 type Training = {
   id: string; name: string; description: string | null; objectives: string | null
   date: string | null; start_time: string | null; end_time: string | null
-  units: number | null; modality: string | null; validity_months: number | null
+  units: number | null; modality: string | null
   eligible_credentials: string[] | null; ethics_units: number | null; supervision_units: number | null
   trainer_staff_id: string | null; trainer_name: string | null; trainer_cert_number: string | null
   topic_id: string | null
@@ -83,7 +83,7 @@ const CERT_STYLES: Record<string, string> = {
 
 const emptyForm = {
   name: '', description: '', objectives: '', date: '', start_time: '', end_time: '',
-  units: '', validity_months: '', modality: '',
+  units: '', modality: '',
   trainer_staff_id: '', trainer_name: '', trainer_cert_number: '',
   topic_id: '',
 }
@@ -356,7 +356,6 @@ export default function TrainingDetailPage() {
       start_time:         training.start_time?.slice(0, 5) ?? '',
       end_time:           training.end_time?.slice(0, 5) ?? '',
       units:              training.units?.toString() ?? '',
-      validity_months:    training.validity_months?.toString() ?? '',
       modality:           training.modality ?? '',
       trainer_staff_id:   training.trainer_staff_id ?? '',
       trainer_name:       training.trainer_name ?? '',
@@ -386,7 +385,6 @@ export default function TrainingDetailPage() {
       start_time:          form.start_time,
       end_time:            form.end_time,
       units:               parseFloat(form.units),
-      validity_months:     form.validity_months ? parseInt(form.validity_months) : null,
       modality:            form.modality,
       trainer_staff_id:    trainerType === 'staff'    ? form.trainer_staff_id || null : null,
       trainer_name:        trainerType === 'external' ? form.trainer_name || null     : null,
@@ -445,16 +443,9 @@ export default function TrainingDetailPage() {
       return
     }
     const completedDate = training?.date ?? new Date().toISOString().split('T')[0]
-    const expiryDate = training?.validity_months && training?.date
-      ? (() => {
-          const d = new Date(training.date + 'T00:00:00')
-          d.setMonth(d.getMonth() + training.validity_months!)
-          return d.toISOString().split('T')[0]
-        })()
-      : null
     const rows = Array.from(selectedStaffIds).map(staffId => ({
       company_id: companyId, staff_id: staffId, course_id: trainingId,
-      completed_date: completedDate, expiry_date: expiryDate, confirmed: false,
+      completed_date: completedDate, confirmed: false,
     }))
     const { error } = await supabase.from('training_records').insert(rows)
     if (error) { setAttendeeError(error.message); setAddingAttendees(false); return }

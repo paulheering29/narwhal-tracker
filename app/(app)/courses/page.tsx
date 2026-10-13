@@ -38,7 +38,6 @@ type StreamedCourse = {
   eligible_credentials: string[] | null
   ethics_units: number | null
   supervision_units: number | null
-  validity_months: number | null
   topic_id: string | null
   trainer_staff_id: string | null
   trainer_name: string | null
@@ -47,7 +46,7 @@ type StreamedCourse = {
 }
 
 const emptyForm = {
-  name: '', description: '', objectives: '', units: '', validity_months: '',
+  name: '', description: '', objectives: '', units: '',
   trainer_staff_id: '', trainer_name: '', trainer_cert_number: '', topic_id: '',
 }
 
@@ -77,7 +76,7 @@ export default function CoursesPage() {
         supabase
           .from('courses')
           .select(`
-            id, name, description, units, validity_months, topic_id,
+            id, name, description, units, topic_id,
             eligible_credentials, ethics_units, supervision_units,
             trainer_staff_id, trainer_name,
             staff:trainer_staff_id(id, first_name, last_name, display_first_name, display_last_name),
@@ -137,7 +136,6 @@ export default function CoursesPage() {
       description:          form.description || null,
       objectives:           form.objectives || null,
       units:                parseFloat(form.units),
-      validity_months:      form.validity_months ? parseInt(form.validity_months) : null,
       trainer_staff_id:     trainerType === 'staff'    ? form.trainer_staff_id || null : null,
       trainer_name:         trainerType === 'external' ? form.trainer_name || null     : null,
       trainer_cert_number:  trainerType === 'external' ? form.trainer_cert_number || null : null,
@@ -298,12 +296,6 @@ export default function CoursesPage() {
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Certification Validity <span className="text-gray-400 font-normal">(months, optional)</span></Label>
-              <Input type="number" min="0" placeholder="e.g. 12"
-                value={form.validity_months} onChange={e => setForm(f => ({ ...f, validity_months: e.target.value }))} />
             </div>
 
             {error && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{error}</p>}

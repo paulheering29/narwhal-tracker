@@ -67,7 +67,6 @@ type Training = {
   ethics_units: number | null
   supervision_units: number | null
   modality: string | null
-  validity_months: number | null
   trainer_staff_id: string | null
   trainer_name: string | null
   trainer_cert_number: string | null
@@ -161,7 +160,7 @@ const MODALITY_LABEL: Record<string, string> = {
 
 const emptyForm = {
   name: '', description: '', date: '', start_time: '', end_time: '',
-  units: '', validity_months: '', modality: '',
+  units: '', modality: '',
   trainer_staff_id: '', trainer_name: '', trainer_cert_number: '',
   topic_id: '',
 }
@@ -372,7 +371,7 @@ export default function TrainingsPage() {
           .select(`
             id, name, description, date, start_time, end_time, units, modality,
             eligible_credentials, ethics_units, supervision_units,
-            validity_months, trainer_staff_id, trainer_name, trainer_cert_number,
+            trainer_staff_id, trainer_name, trainer_cert_number,
             topic_id,
             staff:trainer_staff_id(id, first_name, last_name, display_first_name, display_last_name),
             training_document_links(document_id),
@@ -428,7 +427,6 @@ export default function TrainingsPage() {
       start_time:         t.start_time?.slice(0, 5) ?? '',
       end_time:           t.end_time?.slice(0, 5) ?? '',
       units:              t.units?.toString() ?? '',
-      validity_months:    t.validity_months?.toString() ?? '',
       modality:           t.modality ?? '',
       trainer_staff_id:   t.trainer_staff_id ?? '',
       trainer_name:       t.trainer_name ?? '',
@@ -450,7 +448,6 @@ export default function TrainingsPage() {
       name:            t.name,
       description:     t.description ?? '',
       units:           t.units?.toString() ?? '',
-      validity_months: t.validity_months?.toString() ?? '',
       modality:        t.modality ?? '',
       topic_id:        t.topic_id ?? '',
       // date, start_time, end_time, trainer fields intentionally blank
@@ -480,7 +477,6 @@ export default function TrainingsPage() {
       start_time:          form.start_time,
       end_time:            form.end_time,
       units:               parseFloat(form.units),
-      validity_months:     form.validity_months ? parseInt(form.validity_months) : null,
       modality:            form.modality,
       trainer_staff_id:    trainerType === 'staff'     ? form.trainer_staff_id || null : null,
       trainer_name:        trainerType === 'external'  ? form.trainer_name || null     : null,

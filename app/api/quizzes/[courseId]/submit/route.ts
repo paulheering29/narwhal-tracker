@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, { params }: { params: { courseI
 
   const { data: course } = await service
     .from('courses')
-    .select('id, company_id, validity_months')
+    .select('id, company_id')
     .eq('id', params.courseId)
     .single()
   if (!course || course.company_id !== caller.company_id) {
@@ -159,18 +159,11 @@ export async function POST(request: NextRequest, { params }: { params: { courseI
       recordId = existingRecord.id
     } else {
       const today = new Date().toISOString().split('T')[0]
-      let expiryDate: string | null = null
-      if (course.validity_months) {
-        const d = new Date()
-        d.setMonth(d.getMonth() + course.validity_months)
-        expiryDate = d.toISOString().split('T')[0]
-      }
 
       if (existingRecord) {
         // Confirm the pending row created when the course was assigned.
         await service.from('training_records').update({
           completed_date: today,
-          expiry_date:    expiryDate,
           confirmed:      true,
           notes:          'Completed via self-paced course quiz',
         }).eq('id', existingRecord.id)
@@ -181,7 +174,6 @@ export async function POST(request: NextRequest, { params }: { params: { courseI
           staff_id:       caller.id,
           course_id:      course.id,
           completed_date: today,
-          expiry_date:    expiryDate,
           confirmed:      true,
           notes:          'Completed via self-paced course quiz',
         }).select('id').single()

@@ -42,7 +42,7 @@ type TopicOption = { id: string; name: string }
 
 type StreamedCourse = {
   id: string; name: string; description: string | null; objectives: string | null
-  units: number | null; validity_months: number | null
+  units: number | null
   eligible_credentials: string[] | null; ethics_units: number | null; supervision_units: number | null
   trainer_staff_id: string | null; trainer_name: string | null; trainer_cert_number: string | null
   topic_id: string | null
@@ -79,7 +79,7 @@ type CourseReview = {
 }
 
 const emptyForm = {
-  name: '', description: '', objectives: '', units: '', validity_months: '',
+  name: '', description: '', objectives: '', units: '',
   trainer_staff_id: '', trainer_name: '', trainer_cert_number: '', topic_id: '',
 }
 
@@ -507,7 +507,6 @@ export default function CourseDetailPage() {
       description:         course.description ?? '',
       objectives:          course.objectives ?? '',
       units:               course.units?.toString() ?? '',
-      validity_months:     course.validity_months?.toString() ?? '',
       trainer_staff_id:    course.trainer_staff_id ?? '',
       trainer_name:        course.trainer_name ?? '',
       trainer_cert_number: course.trainer_cert_number ?? '',
@@ -533,7 +532,6 @@ export default function CourseDetailPage() {
       description:         form.description || null,
       objectives:          form.objectives || null,
       units:               parseFloat(form.units),
-      validity_months:     form.validity_months ? parseInt(form.validity_months) : null,
       trainer_staff_id:    trainerType === 'staff'    ? form.trainer_staff_id || null : null,
       trainer_name:        trainerType === 'external' ? form.trainer_name || null     : null,
       trainer_cert_number: trainerType === 'external' ? form.trainer_cert_number || null : null,
@@ -1175,11 +1173,6 @@ export default function CourseDetailPage() {
                   </div>
                 </div>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label>Certification Validity <span className="text-gray-400 font-normal">(months, optional)</span></Label>
-              <Input type="number" min="0" value={form.validity_months}
-                onChange={e => setForm(f => ({ ...f, validity_months: e.target.value }))} />
             </div>
             {editError && <p className="text-sm text-red-600 bg-red-50 rounded px-3 py-2">{editError}</p>}
           </div>

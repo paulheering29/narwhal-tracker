@@ -84,7 +84,6 @@ type Cycle = {
 type TrainingRecord = {
   id: string
   completed_date: string
-  expiry_date: string | null
   notes: string | null
   courses: { name: string } | null
 }
@@ -104,7 +103,6 @@ type CycleDocument = {
 type AllTrainingRecord = {
   id: string
   completed_date: string
-  expiry_date: string | null
   confirmed: boolean
   no_show: boolean
   notes: string | null
@@ -257,13 +255,11 @@ export default function StaffDetailPage() {
     const companyId = await getCompanyId()
     if (!companyId) { setAddingToTrainingId(null); return }
     const completedDate = training.date ?? new Date().toISOString().split('T')[0]
-    const expiryDate = null // can be set later
     const { error } = await supabase.from('training_records').insert({
       company_id: companyId,
       staff_id:   staffId,
       course_id:  training.id,
       completed_date: completedDate,
-      expiry_date:    expiryDate,
       confirmed:      false,
     })
     if (!error) {
@@ -325,7 +321,7 @@ export default function StaffDetailPage() {
   const loadAllRecords = useCallback(async () => {
     const { data } = await supabase
       .from('training_records')
-      .select('id, completed_date, expiry_date, confirmed, no_show, notes, courses(id, name, units, trainer_name, trainer_staff_id, staff:trainer_staff_id(first_name, last_name, display_first_name, display_last_name))')
+      .select('id, completed_date, confirmed, no_show, notes, courses(id, name, units, trainer_name, trainer_staff_id, staff:trainer_staff_id(first_name, last_name, display_first_name, display_last_name))')
       .eq('staff_id', staffId)
       .order('completed_date', { ascending: false })
     setAllRecords((data ?? []) as unknown as AllTrainingRecord[])
@@ -345,7 +341,7 @@ export default function StaffDetailPage() {
     setLoadingRecords(true)
     const { data } = await supabase
       .from('training_records')
-      .select('id, completed_date, expiry_date, notes, courses(name)')
+      .select('id, completed_date, notes, courses(name)')
       .eq('staff_id', staffId)
       .gte('completed_date', cycle.start_date)
       .lte('completed_date', cycle.end_date)
@@ -699,7 +695,6 @@ export default function StaffDetailPage() {
         <p className="text-xs text-gray-500">
           {formatDate(r.completed_date)}
           {r.courses?.units != null && <> · {r.courses.units} unit{r.courses.units === 1 ? '' : 's'}</>}
-          {r.expiry_date && <> · Expires {formatDate(r.expiry_date)}</>}
           {trainerName && <> · Trainer: {trainerName}</>}
         </p>
         {r.notes && <p className="mt-1 text-xs text-gray-500 italic">{r.notes}</p>}
@@ -835,7 +830,6 @@ export default function StaffDetailPage() {
                                 <p className="text-sm font-medium text-gray-900">{r.courses?.name}</p>
                                 <p className="text-xs text-gray-500 mt-0.5">
                                   Completed {formatDate(r.completed_date)}
-                                  {r.expiry_date && <> · Expires {formatDate(r.expiry_date)}</>}
                                 </p>
                                 {r.notes && <p className="text-xs text-gray-500 mt-1 italic">{r.notes}</p>}
                               </li>

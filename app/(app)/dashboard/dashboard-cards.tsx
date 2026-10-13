@@ -72,9 +72,9 @@ export function DashboardCard({ card }: { card: DashboardCardData }) {
 
   return (
     <div className="rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6 flex flex-col overflow-y-auto">
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className={`h-5 w-5 ${c.iconFg}`} />
-        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">{card.title}</h3>
+      <div className="relative flex items-center justify-center mb-4">
+        <Icon className={`absolute left-0 h-5 w-5 ${c.iconFg}`} />
+        <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{card.title}</h3>
       </div>
 
       <p className={`text-6xl font-extrabold leading-none tabular-nums ${c.number}`}>

@@ -133,9 +133,9 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
       {/* Two rows of three equal cards; fixed row height on desktop, long lists scroll inside their card */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[28rem] gap-5">
         <div className={`rounded-xl border-2 border-gray-100 shadow-sm p-6 overflow-y-auto ${urgency.bg}`}>
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarClock className={`h-5 w-5 ${urgency.text}`} />
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Certification</p>
+          <div className="relative flex items-center justify-center mb-4">
+            <CalendarClock className={`absolute left-0 h-5 w-5 ${urgency.text}`} />
+            <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Certification</h3>
           </div>
           {data.daysUntilExpiry == null ? (
             <p className="text-sm text-gray-500">No certification cycle on file.</p>
@@ -159,9 +159,9 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
         </div>
 
         <div className="rounded-xl border-2 border-gray-100 shadow-sm p-6 bg-white overflow-y-auto">
-          <div className="flex items-center gap-2 mb-3">
-            <Gauge className="h-5 w-5 text-blue-500" />
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{data.unitLabel ?? 'Training'} Progress</p>
+          <div className="relative flex items-center justify-center mb-4">
+            <Gauge className="absolute left-0 h-5 w-5 text-blue-500" />
+            <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{data.unitLabel ?? 'Training'} Progress</h3>
           </div>
           {data.unitsTarget === 0 ? (
             <p className="text-sm text-gray-500">No RBT or BCBA credential on file, so there’s no requirement to track.</p>

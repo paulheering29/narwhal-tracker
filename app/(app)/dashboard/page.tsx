@@ -17,6 +17,7 @@ import { getPaceSummaries } from './pace-data'
 import { PersonalDashboard } from './personal-dashboard'
 import { getPersonalDashboardData } from './personal-data'
 import { getCredential } from '@/lib/credentials'
+import { canManageTrainings } from '@/lib/permissions'
 import { DashboardTabs } from './dashboard-tabs'
 
 async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -149,16 +150,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const { data: staff } = await supabase
     .from('staff')
-    .select('id, tier, role, is_supervisor')
+    .select('id, tier, role, roles, is_supervisor')
     .eq('auth_id', user.id)
     .single()
 
-  const isLearner = (staff?.tier ?? 'rbt') === 'rbt'
-  // Staff who also hold a credential (a BCBA who trains, an RBT who runs the
-  // company's tracking) get both dashboards; everyone else gets just one.
-  const credential = staff?.id ? await getCredential(supabase, staff.role) : null
-  const hasBoth    = !isLearner && credential !== null
-  const showMine   = isLearner || (hasBoth && view === 'my')
+  // The company view needs a management role (Trainer / Admin / Account Owner);
+  // a BCBA with no permissions is a staff-tier login but only gets their own.
+  const canSeeCompany = (staff?.tier ?? 'rbt') !== 'rbt' && canManageTrainings((staff?.roles ?? []) as string[])
+  const credential    = staff?.id ? await getCredential(supabase, staff.role) : null
+  // Someone who manages the company and also holds a credential (a BCBA who
+  // trains, an RBT who runs the tracking) gets both dashboards.
+  const hasBoth  = canSeeCompany && credential !== null
+  const showMine = !canSeeCompany || (hasBoth && view === 'my')
 
   if (showMine && staff?.id) {
     const personal = await getPersonalDashboardData(supabase, staff.id, credential, staff.is_supervisor ?? false)

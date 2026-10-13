@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -219,7 +220,7 @@ export default async function DashboardPage() {
         }),
   ]
 
-  const paceGauge = (title: string, s: { onPace: number; behind: number }) => {
+  const paceGauge = (title: ReactNode, s: { onPace: number; behind: number }) => {
     const n = s.onPace + s.behind
     return (
       <GaugeCard
@@ -254,19 +255,22 @@ export default async function DashboardPage() {
         </Link>
       )}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[24rem_repeat(3,20rem)] lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[24rem_auto] lg:items-start lg:justify-start">
         <div className="lg:h-[calc(100vh-14rem)]">
           <ExpiringSoonCard items={items} />
         </div>
-        <DonutCard
-          title="Staff"
-          slices={[
-            { label: 'RBT',  count: rbtCount ?? 0,  color: '#3b82f6' },
-            { label: 'BCBA', count: bcbaCount ?? 0, color: '#f59e0b' },
-          ]}
-        />
-        {paceGauge('BCBAs', pace.BCBA)}
-        {paceGauge('RBTs', pace.RBT)}
+        {/* Nested so these three stretch to one shared height */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[repeat(3,20rem)]">
+          <DonutCard
+            title="Staff"
+            slices={[
+              { label: 'RBT',  count: rbtCount ?? 0,  color: '#3b82f6' },
+              { label: 'BCBA', count: bcbaCount ?? 0, color: '#f59e0b' },
+            ]}
+          />
+          {paceGauge(<>BCBA<span className="normal-case">s</span></>, pace.BCBA)}
+          {paceGauge(<>RBT<span className="normal-case">s</span></>, pace.RBT)}
+        </div>
       </div>
     </div>
   )

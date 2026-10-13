@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react'
 import { Users } from 'lucide-react'
 
 // Semicircle gauge: a gray track with a colored arc filled to `pct` (0-1).
 // Plain SVG, same as the donut.
 export function GaugeCard({ title, pct, hasData, caption, legend }: {
-  title: string
+  title: ReactNode
   pct: number
   hasData: boolean
   caption: string

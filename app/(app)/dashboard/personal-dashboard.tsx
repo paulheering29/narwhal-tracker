@@ -8,6 +8,7 @@ import type { OutsideTraining } from '@/lib/outside-trainings'
 export type PersonalDashboardData = {
   credentialCode: string | null   // 'RBT' / 'BCBA'; null when the person holds no credential
   certType: string | null
+  certificationNumber: string | null
   cycleStartDate: string | null
   cycleEndDate: string | null
   daysUntilExpiry: number | null
@@ -173,6 +174,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
                   ? `Your ${data.certType} certification expired ${fmtDate(data.cycleEndDate!)}`
                   : `day${data.daysUntilExpiry === 1 ? '' : 's'} until your ${data.certType} certification expires`}
               </p>
+              {data.certificationNumber && <p className="mt-0.5 text-xs text-gray-400">#{data.certificationNumber}</p>}
               {data.cycleStartDate && data.cycleEndDate && data.daysUntilExpiry >= 0 && (
                 <div className="mt-6">
                   <CycleTimeline start={data.cycleStartDate} end={data.cycleEndDate} color={urgency.bar} />

@@ -37,7 +37,8 @@ export async function getPersonalDashboardData(
 ): Promise<PersonalDashboardData> {
   const today = new Date().toISOString().split('T')[0]
 
-  const [cyclesRes, recordsRes, assignmentsRes, externalRes, settingsRes] = await Promise.all([
+  const [staffRes, cyclesRes, recordsRes, assignmentsRes, externalRes, settingsRes] = await Promise.all([
+    supabase.from('staff').select('certification_number').eq('id', staffId).single(),
     supabase
       .from('certification_cycles')
       .select('certification_type, start_date, end_date')
@@ -191,6 +192,7 @@ export async function getPersonalDashboardData(
   return {
     credentialCode:   credential?.code ?? null,
     certType:         activeCycle?.certification_type ?? null,
+    certificationNumber: (staffRes.data?.certification_number as string | null) || null,
     cycleStartDate:    activeCycle?.start_date ?? null,
     cycleEndDate:      activeCycle?.end_date ?? null,
     daysUntilExpiry,

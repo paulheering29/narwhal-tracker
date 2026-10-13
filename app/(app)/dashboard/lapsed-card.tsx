@@ -83,13 +83,14 @@ export function LapsedCard({ items }: { items: LapsedItem[] }) {
           >
             0
           </p>
-          <p
-            className="lapsed-pop mt-3 text-sm font-medium text-gray-700"
+        </div>
+
+        <p
+            className="lapsed-pop relative text-center text-sm font-medium text-gray-700"
             style={{ animation: 'lapsed-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both' }}
           >
             Nobody has lapsed. Everyone&apos;s current!
-          </p>
-        </div>
+        </p>
       </div>
     )
   }

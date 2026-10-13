@@ -297,8 +297,15 @@ export default async function DashboardPage() {
         <div className="lg:h-[calc(100vh-8rem)]">
           <ExpiringSoonCard items={items} />
         </div>
-        {/* Nested so these three stretch to one shared height */}
+        {/* Nested so each row of three stretches to one shared height */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[repeat(3,20rem)]">
+          <LapsedCard items={lapsed} />
+          {paceGauge(<>RBT<span className="normal-case">s</span></>, pace.RBT)}
+          {paceGauge(<>BCBA<span className="normal-case">s</span></>, pace.BCBA)}
+          <CalendarCard
+            trainings={(liveCourses ?? []).map(c => ({ id: c.id, name: c.name, date: c.date as string, startTime: c.start_time }))}
+          />
+          <UnconfirmedCard trainings={unconfirmedTrainings} staffCount={unconfirmedStaff.size} />
           <DonutCard
             title="Staff"
             slices={[
@@ -306,16 +313,9 @@ export default async function DashboardPage() {
               { label: 'BCBA', count: bcbaCount ?? 0, color: '#f59e0b' },
             ]}
           />
-          {paceGauge(<>BCBA<span className="normal-case">s</span></>, pace.BCBA)}
-          {paceGauge(<>RBT<span className="normal-case">s</span></>, pace.RBT)}
-          <CalendarCard
-            trainings={(liveCourses ?? []).map(c => ({ id: c.id, name: c.name, date: c.date as string, startTime: c.start_time }))}
-          />
-          {modalityCard('BCBA', 'BCBAs')}
-          {modalityCard('RBT', 'RBTs')}
-          <UnconfirmedCard trainings={unconfirmedTrainings} staffCount={unconfirmedStaff.size} />
-          <LapsedCard items={lapsed} />
           <RatingCard reviews={(reviewRows ?? []).map(r => ({ rating: Number(r.rating), createdAt: r.created_at as string }))} />
+          {modalityCard('RBT', 'RBTs')}
+          {modalityCard('BCBA', 'BCBAs')}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { ArrowUp, CalendarClock, Check, Circle, Gauge } from 'lucide-react'
+import { ArrowUp, CalendarClock, Gauge } from 'lucide-react'
 import { DashboardCard, type DashboardCardData } from './dashboard-cards'
 import { CalendarCard, type CalendarTraining } from './calendar-card'
 import { OutsideTrainings } from '@/components/outside-trainings'
@@ -86,16 +86,6 @@ function CycleTimeline({ start, end, color }: { start: string; end: string; colo
   )
 }
 
-function Requirement({ label, detail, met }: { label: string; detail: string; met: boolean }) {
-  return (
-    <li className="flex items-center gap-2 text-sm">
-      {met ? <Check className="h-4 w-4 shrink-0 text-emerald-600" strokeWidth={3} /> : <Circle className="h-4 w-4 shrink-0 text-gray-300" />}
-      <span className={met ? 'text-gray-700' : 'text-gray-600'}>{label}</span>
-      <span className={`ml-auto tabular-nums ${met ? 'text-emerald-600 font-medium' : 'text-gray-500'}`}>{detail}</span>
-    </li>
-  )
-}
-
 export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
   const urgency = urgencyColor(data.daysUntilExpiry)
   const target  = Math.max(1, data.unitsTarget)
@@ -104,16 +94,6 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
   const pacingPct = Math.min(1, data.pacingTarget / target)
   const variance = Math.round((data.unitsDone - data.pacingTarget) * 2) / 2
   const units = `${data.unitLabel ?? 'Unit'}s`
-
-  const unitsLeft = Math.max(0, data.unitsTarget - data.unitsDone)
-  const ethicsMet = data.ethicsDone >= data.ethicsTarget
-  const supervisionMet = data.supervisionDone >= data.supervisionTarget
-  const allMet = data.unitsTarget > 0 && unitsLeft === 0 && ethicsMet && supervisionMet
-  const gaps = [
-    unitsLeft > 0 ? `${fmtUnits(unitsLeft)} ${units}` : '',
-    !ethicsMet ? `${fmtUnits(data.ethicsTarget - data.ethicsDone)} ethics` : '',
-    !supervisionMet ? `${fmtUnits(data.supervisionTarget - data.supervisionDone)} supervision` : '',
-  ].filter(Boolean)
 
   const incompleteAssignedCourses = data.assignedCourses.filter(c => c.status !== 'complete')
 
@@ -198,23 +178,6 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
                 </div>
               )}
 
-              {data.unitsTarget > 0 && data.daysUntilExpiry >= 0 && (
-                <div className="mt-6 pt-4 border-t border-black/5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">To renew</p>
-                  <ul className="space-y-2">
-                    <Requirement label={`${data.unitLabel}s`} detail={`${fmtUnits(data.unitsDone)} / ${data.unitsTarget}`} met={unitsLeft === 0} />
-                    {data.ethicsTarget > 0 && (
-                      <Requirement label="Ethics" detail={`${fmtUnits(data.ethicsDone)} / ${data.ethicsTarget}`} met={ethicsMet} />
-                    )}
-                    {data.supervisionTarget > 0 && (
-                      <Requirement label="Supervision" detail={`${fmtUnits(data.supervisionDone)} / ${data.supervisionTarget}`} met={supervisionMet} />
-                    )}
-                  </ul>
-                  <p className={`mt-3 text-sm font-medium ${allMet ? 'text-emerald-700' : 'text-gray-700'}`}>
-                    {allMet ? 'All requirements met — you’re ready to renew.' : `Still needed: ${gaps.join(' + ')}`}
-                  </p>
-                </div>
-              )}
             </>
           )}
         </div>

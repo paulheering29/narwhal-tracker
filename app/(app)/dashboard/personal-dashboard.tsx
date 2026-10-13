@@ -1,5 +1,6 @@
-import { CalendarClock, Gauge } from 'lucide-react'
-import { DashboardCards, type DashboardCardData } from './dashboard-cards'
+import { ArrowUp, CalendarClock, Gauge } from 'lucide-react'
+import { DashboardCard, type DashboardCardData } from './dashboard-cards'
+import { CalendarCard, type CalendarTraining } from './calendar-card'
 import { OutsideTrainings } from '@/components/outside-trainings'
 import { StaffLicenses } from '@/components/staff-licenses'
 import type { OutsideTraining } from '@/lib/outside-trainings'
@@ -25,6 +26,7 @@ export type PersonalDashboardData = {
   outsideReviewRequired: boolean
   pacingTarget: number
   assignedCourses: { id: string; name: string; href: string; completedSections: number; totalSections: number; status: 'not_started' | 'in_progress' | 'complete' }[]
+  calendar: CalendarTraining[]
   completed: { id: string; label: string; sublabel: string; href: string; external: boolean }[]
   completedCount: number
   upcoming: { id: string; label: string; sublabel: string; href: string }[]
@@ -128,9 +130,9 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
         </div>
       )}
 
-      {/* Hero row: cert countdown + PDU/CEU progress */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div className={`rounded-xl border-2 border-gray-100 shadow-sm p-6 ${urgency.bg}`}>
+      {/* Two rows of three equal cards; fixed row height on desktop, long lists scroll inside their card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:auto-rows-[28rem] gap-5">
+        <div className={`rounded-xl border-2 border-gray-100 shadow-sm p-6 overflow-y-auto ${urgency.bg}`}>
           <div className="flex items-center gap-2 mb-3">
             <CalendarClock className={`h-5 w-5 ${urgency.text}`} />
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Certification</p>
@@ -156,7 +158,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
           )}
         </div>
 
-        <div className="rounded-xl border-2 border-gray-100 shadow-sm p-6 bg-white">
+        <div className="rounded-xl border-2 border-gray-100 shadow-sm p-6 bg-white overflow-y-auto">
           <div className="flex items-center gap-2 mb-3">
             <Gauge className="h-5 w-5 text-blue-500" />
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{data.unitLabel ?? 'Training'} Progress</p>
@@ -174,15 +176,12 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
                 <div className="h-full bg-blue-200 absolute inset-y-0 left-0" style={{ width: `${unitScheduledPct * 100}%` }} />
                 <div className="h-full bg-blue-500 absolute inset-y-0 left-0" style={{ width: `${unitPct * 100}%` }} />
               </div>
-            </div>
-            {data.cycleEndDate && (
-              <div>
-                <p className="text-sm text-gray-600">{fmtUnits(data.pacingTarget)} / {data.unitsTarget} {units} — where you should be by now</p>
-                <div className="mt-1 h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full bg-gray-400" style={{ width: `${pacingPct * 100}%` }} />
-                </div>
+              {/* Arrow under the bar marks where they should be by today */}
+              <div className="relative h-4">
+                <ArrowUp className="absolute top-0.5 h-4 w-4 -translate-x-1/2 text-gray-600" strokeWidth={3} style={{ left: `${pacingPct * 100}%` }} />
               </div>
-            )}
+              <p className="text-sm text-gray-600">{fmtUnits(data.pacingTarget)} / {data.unitsTarget} {units} — where you should be by now</p>
+            </div>
           </div>
 
           {data.cycleEndDate && (
@@ -215,9 +214,11 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
           </>
           )}
         </div>
-      </div>
 
-      <DashboardCards cards={cards} />
+        <CalendarCard trainings={data.calendar} info="Live trainings you’re registered for." />
+
+        {cards.map(card => <DashboardCard key={card.title} card={card} />)}
+      </div>
 
       {/* BCBAs: the BACB certification and every state license, in one place. Read-only here; admins enter the licenses. */}
       {data.credentialCode === 'BCBA' && (

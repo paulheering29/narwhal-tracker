@@ -62,7 +62,7 @@ const COLOR_STYLES: Record<CardColor, { iconFg: string; number: string; linkHove
   teal:    { iconFg: 'text-teal-500',    number: 'text-teal-600',    linkHover: 'group-hover:text-teal-700' },
 }
 
-function DashboardCard({ card }: { card: DashboardCardData }) {
+export function DashboardCard({ card }: { card: DashboardCardData }) {
   const [expanded, setExpanded] = useState(false)
   const router = useRouter()
   const Icon = ICON_MAP[card.icon]
@@ -71,7 +71,7 @@ function DashboardCard({ card }: { card: DashboardCardData }) {
   const showList = card.alwaysExpanded || expanded
 
   return (
-    <div className="rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6 flex flex-col">
+    <div className="rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6 flex flex-col overflow-y-auto">
       <div className="flex items-center gap-2 mb-3">
         <Icon className={`h-5 w-5 ${c.iconFg}`} />
         <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">{card.title}</h3>

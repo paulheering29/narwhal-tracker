@@ -135,6 +135,11 @@ export async function getPersonalDashboardData(
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
     .slice(0, 25)
 
+  // Every live training they're registered for (past and future) so the calendar can page through months.
+  const calendar = records
+    .filter(r => r.courses?.course_type === 'live' && r.courses.date && !r.no_show)
+    .map(r => ({ id: r.courses!.id, name: r.courses!.name, date: r.courses!.date!, startTime: r.courses!.start_time }))
+
   const upcomingRaw = records
     .filter(r => r.courses?.course_type === 'live' && r.courses.date && r.courses.date >= today)
     .sort((a, b) => (a.courses!.date! < b.courses!.date! ? -1 : 1))
@@ -206,6 +211,7 @@ export async function getPersonalDashboardData(
     assignedCourses,
     completed,
     completedCount:    records.filter(r => r.confirmed).length + outsideTrainings.length,
+    calendar,
     upcoming,
     upcomingCount:     upcomingRaw.length,
   }

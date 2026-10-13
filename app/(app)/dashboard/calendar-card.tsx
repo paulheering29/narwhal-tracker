@@ -41,7 +41,7 @@ export function CalendarCard({ trainings, info }: { trainings: CalendarTraining[
   const selectedTrainings = selected ? (byDate.get(selected) ?? []) : []
 
   return (
-    <div className="rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6 flex flex-col">
+    <div className="rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6 flex flex-col overflow-y-auto">
       <div className="relative flex items-center justify-center mb-4">
         <CalendarDays className="absolute left-0 h-5 w-5 text-emerald-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Calendar</h3>

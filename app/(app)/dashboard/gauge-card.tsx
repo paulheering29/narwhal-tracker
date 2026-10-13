@@ -25,7 +25,8 @@ export function GaugeCard({ title, pct, hasData, caption, legend }: {
 
       <div className="relative mx-auto w-56">
         <svg viewBox="0 0 200 110" className="w-full">
-          <path d={arc} fill="none" stroke="#f3f4f6" strokeWidth="22" strokeLinecap="butt" />
+          {/* In dark mode `white` resolves to the card surface, so the unfilled part disappears */}
+          <path d={arc} fill="none" className="stroke-gray-100 dark:stroke-white" strokeWidth="22" />
           {filled > 0 && (
             <path
               d={arc}

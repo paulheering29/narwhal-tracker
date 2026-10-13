@@ -41,6 +41,7 @@ type TrainingRecord = {
   completed_date: string
   expiry_date: string | null
   confirmed: boolean
+  no_show: boolean
   notes: string | null
   staff: { first_name: string; last_name: string; display_first_name: string | null; display_last_name: string | null } | null
   courses: { name: string } | null
@@ -79,6 +80,7 @@ type Training = {
 type CalAttendee = {
   id: string
   confirmed: boolean
+  no_show: boolean
   staff: StaffOption | null
 }
 
@@ -336,7 +338,7 @@ export default function TrainingsPage() {
     const [recordsRes, staffRes, coursesRes] = await Promise.all([
       supabase
         .from('training_records')
-        .select('id, staff_id, course_id, completed_date, expiry_date, confirmed, notes, staff(first_name, last_name, display_first_name, display_last_name), courses(name)')
+        .select('id, staff_id, course_id, completed_date, expiry_date, confirmed, no_show, notes, staff(first_name, last_name, display_first_name, display_last_name), courses(name)')
         .order('completed_date', { ascending: false }),
       supabase.from('staff').select('id, first_name, last_name, display_first_name, display_last_name').eq('active', true).order('last_name'),
       supabase.from('courses').select('id, name').order('name'),
@@ -550,15 +552,15 @@ export default function TrainingsPage() {
 
     const { data } = await supabase
       .from('training_records')
-      .select('id, confirmed, course_id, staff:staff_id(id, first_name, last_name, display_first_name, display_last_name)')
+      .select('id, confirmed, no_show, course_id, staff:staff_id(id, first_name, last_name, display_first_name, display_last_name)')
       .in('course_id', ids)
 
     const recordsByCourse = new Map<string, CalAttendee[]>()
-    for (const r of (data ?? []) as unknown as { id: string; confirmed: boolean; course_id: string; staff: StaffOption | StaffOption[] | null }[]) {
+    for (const r of (data ?? []) as unknown as { id: string; confirmed: boolean; no_show: boolean; course_id: string; staff: StaffOption | StaffOption[] | null }[]) {
       const cid = r.course_id
       if (!recordsByCourse.has(cid)) recordsByCourse.set(cid, [])
       const staffVal = Array.isArray(r.staff) ? (r.staff[0] ?? null) : r.staff
-      recordsByCourse.get(cid)!.push({ id: r.id, confirmed: r.confirmed, staff: staffVal })
+      recordsByCourse.get(cid)!.push({ id: r.id, confirmed: r.confirmed, no_show: r.no_show, staff: staffVal })
     }
 
     const result: CalCourse[] = coursesOnDay.map(c => ({
@@ -891,7 +893,8 @@ export default function TrainingsPage() {
                 ) : calDayCourses.map(c => {
                   const isFuture    = c.date > today
                   const confirmed   = c.records.filter(r => r.confirmed)
-                  const unconfirmed = c.records.filter(r => !r.confirmed)
+                  const unconfirmed = c.records.filter(r => !r.confirmed && !r.no_show)
+                  const noShows     = c.records.filter(r => r.no_show)
 
                   return (
                     <div key={c.id} className="rounded-xl border border-gray-200 overflow-hidden">
@@ -962,6 +965,21 @@ export default function TrainingsPage() {
                                 </ul>
                               </div>
                             )}
+                            {noShows.length > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
+                                  No-show · {noShows.length}
+                                </p>
+                                <ul className="space-y-1">
+                                  {noShows.map(r => (
+                                    <li key={r.id} className="flex items-center gap-2 text-sm text-rose-600">
+                                      <Circle className="h-3.5 w-3.5 text-rose-300 shrink-0" />
+                                      {r.staff ? getCalDisplayName(r.staff) : <span className="italic">Unknown</span>}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1018,6 +1036,7 @@ export default function TrainingsPage() {
                   <SelectItem value="all">All Attendance</SelectItem>
                   <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="no_show">No-show</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1053,7 +1072,7 @@ export default function TrainingsPage() {
                       `${name} ${r.courses?.name ?? ''}`.toLowerCase().includes(trSearch.toLowerCase()) &&
                       (trFilterStaff === 'all' || r.staff_id === trFilterStaff) &&
                       (trFilterCourse === 'all' || r.course_id === trFilterCourse) &&
-                      (trFilterAttendance === 'all' || (trFilterAttendance === 'confirmed' && r.confirmed) || (trFilterAttendance === 'pending' && !r.confirmed))
+                      (trFilterAttendance === 'all' || (trFilterAttendance === 'confirmed' && r.confirmed) || (trFilterAttendance === 'pending' && !r.confirmed && !r.no_show) || (trFilterAttendance === 'no_show' && r.no_show))
                     )
                   })
                   return filtered.length === 0 ? (
@@ -1076,8 +1095,8 @@ export default function TrainingsPage() {
                               {new Date(r.completed_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </TableCell>
                             <TableCell>
-                              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${r.confirmed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                {r.confirmed ? <><CheckCircle2 className="h-3 w-3" /> Confirmed</> : <><Circle className="h-3 w-3" /> Pending</>}
+                              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${r.confirmed ? 'bg-emerald-100 text-emerald-700' : r.no_show ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {r.confirmed ? <><CheckCircle2 className="h-3 w-3" /> Confirmed</> : <><Circle className="h-3 w-3" /> {r.no_show ? 'No-show' : 'Pending'}</>}
                               </span>
                             </TableCell>
                           </TableRow>

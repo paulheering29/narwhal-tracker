@@ -496,7 +496,7 @@ export function StaffPageClient({
         .lte('start_date', today)
         .gte('end_date', today),
       supabase.from('training_records')
-        .select('staff_id, completed_date, confirmed, courses(units, eligible_credentials, ethics_units, supervision_units)'),
+        .select('staff_id, completed_date, confirmed, no_show, courses(units, eligible_credentials, ethics_units, supervision_units)'),
       supabase.from('external_trainings')
         .select('staff_id, completed_date, units, ethics_units, supervision_units')
         .neq('review_status', 'not_approved'),
@@ -505,9 +505,9 @@ export function StaffPageClient({
     const cycleMap = new Map<string, { start_date: string; end_date: string }>()
     for (const c of cyclesRes.data ?? []) cycleMap.set(c.staff_id, c)
 
-    type TRec = { completed_date: string; confirmed: boolean; units: number; ethics: number; supervision: number }
+    type TRec = { completed_date: string; confirmed: boolean; no_show?: boolean; units: number; ethics: number; supervision: number }
     type RawRec = {
-      staff_id: string; completed_date: string; confirmed: boolean
+      staff_id: string; completed_date: string; confirmed: boolean; no_show: boolean
       courses: { units: number | null; eligible_credentials: string[] | null; ethics_units: number | null; supervision_units: number | null } | null
     }
     const recMap = new Map<string, TRec[]>()
@@ -516,7 +516,7 @@ export function StaffPageClient({
       if (!(r.courses?.eligible_credentials ?? ['RBT']).includes(credential.code)) continue
       if (!recMap.has(r.staff_id)) recMap.set(r.staff_id, [])
       recMap.get(r.staff_id)!.push({
-        completed_date: r.completed_date, confirmed: r.confirmed,
+        completed_date: r.completed_date, confirmed: r.confirmed, no_show: r.no_show,
         units:       Number(r.courses?.units ?? 0),
         ethics:      Number(r.courses?.ethics_units ?? 0),
         supervision: Number(r.courses?.supervision_units ?? 0),
@@ -539,7 +539,7 @@ export function StaffPageClient({
         for (const r of recMap.get(s.id) ?? []) {
           if (r.completed_date >= cycle.start_date && r.completed_date <= cycle.end_date) {
             if (r.confirmed) { pduDone += r.units; ethicsDone += r.ethics; supervisionDone += r.supervision }
-            else             pduScheduled += r.units
+            else if (!r.no_show) pduScheduled += r.units
           }
         }
       }

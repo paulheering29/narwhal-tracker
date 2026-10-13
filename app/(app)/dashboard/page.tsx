@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ExpiringSoonCard, type ExpiringItem } from './expiring-soon-card'
 import { DonutCard } from './donut-card'
+import { UnconfirmedCard, type UnconfirmedTraining } from './unconfirmed-card'
 import { CalendarCard } from './calendar-card'
 import { GaugeCard } from './gauge-card'
 import { getModalityCounts } from './modality-data'
@@ -74,7 +75,7 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
     const [{ data: recs }, { data: outside }, { data: types }] = await Promise.all([
       supabase
         .from('training_records')
-        .select('staff_id, completed_date, confirmed, courses(units, eligible_credentials, ethics_units, supervision_units)')
+        .select('staff_id, completed_date, confirmed, no_show, courses(units, eligible_credentials, ethics_units, supervision_units)')
         .in('staff_id', expiringStaffIds),
       supabase
         .from('external_trainings')
@@ -107,7 +108,7 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
         entry.done        += units
         entry.ethics      += Number(course?.ethics_units ?? 0)
         entry.supervision += Number(course?.supervision_units ?? 0)
-      } else {
+      } else if (!r.no_show) {
         entry.scheduled   += units
       }
       pacingByStaff.set(staffId, entry)
@@ -162,7 +163,7 @@ export default async function DashboardPage() {
   const activeStaffCount = (role: string) =>
     supabase.from('staff').select('id', { count: 'exact', head: true }).eq('active', true).eq('role', role)
 
-  const [data, { count: pendingReviews }, { count: rbtCount }, { count: bcbaCount }, pace, modality, { data: liveCourses }] = await Promise.all([
+  const [data, { count: pendingReviews }, { count: rbtCount }, { count: bcbaCount }, pace, modality, { data: liveCourses }, { data: unconfirmedRecords }] = await Promise.all([
     getDashboardData(supabase),
     supabase.from('external_trainings').select('id', { count: 'exact', head: true }).eq('review_status', 'pending'),
     activeStaffCount('RBT'),
@@ -170,6 +171,14 @@ export default async function DashboardPage() {
     getPaceSummaries(supabase, ['BCBA', 'RBT']),
     getModalityCounts(supabase, ['BCBA', 'RBT']),
     supabase.from('courses').select('id, name, date, start_time').eq('course_type', 'live').not('date', 'is', null).order('date'),
+    // Past live trainings with at least one registrant whose attendance was never confirmed.
+    supabase
+      .from('training_records')
+      .select('staff_id, courses:course_id!inner(id, name, date, course_type)')
+      .eq('confirmed', false)
+      .eq('no_show', false)
+      .eq('courses.course_type', 'live')
+      .lt('courses.date', new Date().toISOString().split('T')[0]),
   ])
 
   function formatDate(dateStr: string | null | undefined) {
@@ -223,6 +232,18 @@ export default async function DashboardPage() {
         }
         }),
   ]
+
+  const unconfirmedByCourse = new Map<string, UnconfirmedTraining>()
+  const unconfirmedStaff = new Set<string>()
+  for (const r of unconfirmedRecords ?? []) {
+    const c = Array.isArray(r.courses) ? r.courses[0] : r.courses
+    if (!c) continue
+    unconfirmedStaff.add(r.staff_id as string)
+    const entry = unconfirmedByCourse.get(c.id) ?? { id: c.id, name: c.name, date: c.date as string, unconfirmed: 0 }
+    entry.unconfirmed++
+    unconfirmedByCourse.set(c.id, entry)
+  }
+  const unconfirmedTrainings = Array.from(unconfirmedByCourse.values()).sort((a, b) => b.date.localeCompare(a.date))
 
   const modalityCard = (code: string, label: string) => (
     <DonutCard
@@ -292,6 +313,7 @@ export default async function DashboardPage() {
           />
           {modalityCard('BCBA', 'BCBAs')}
           {modalityCard('RBT', 'RBTs')}
+          <UnconfirmedCard trainings={unconfirmedTrainings} staffCount={unconfirmedStaff.size} />
         </div>
       </div>
     </div>

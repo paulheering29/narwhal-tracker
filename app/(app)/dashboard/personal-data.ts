@@ -45,7 +45,7 @@ export async function getPersonalDashboardData(
       .order('end_date', { ascending: false }),
     supabase
       .from('training_records')
-      .select('id, completed_date, confirmed, courses:course_id(id, name, units, course_type, date, start_time, end_time, eligible_credentials, ethics_units, supervision_units)')
+      .select('id, completed_date, confirmed, no_show, courses:course_id(id, name, units, course_type, date, start_time, end_time, eligible_credentials, ethics_units, supervision_units)')
       .eq('staff_id', staffId)
       .order('completed_date', { ascending: false }),
     supabase
@@ -68,7 +68,7 @@ export async function getPersonalDashboardData(
     : null
 
   const records = (recordsRes.data ?? []) as unknown as {
-    id: string; completed_date: string; confirmed: boolean
+    id: string; completed_date: string; confirmed: boolean; no_show: boolean
     courses: {
       id: string; name: string; units: number | null; course_type: string; date: string | null; start_time: string | null; end_time: string | null
       eligible_credentials: string[] | null; ethics_units: number | null; supervision_units: number | null
@@ -90,7 +90,7 @@ export async function getPersonalDashboardData(
         unitsDone       += units
         ethicsDone      += Number(r.courses?.ethics_units ?? 0)
         supervisionDone += Number(r.courses?.supervision_units ?? 0)
-      } else {
+      } else if (!r.no_show) {
         unitsScheduled += units
       }
     }

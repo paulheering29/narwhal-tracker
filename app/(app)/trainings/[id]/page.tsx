@@ -22,7 +22,7 @@ import { TemplatePickerDialog } from '@/components/template-picker-dialog'
 import { CreditFields, creditFormFrom, creditPayload, creditSummary, emptyCreditForm, validateCredit, type CreditForm } from '@/components/credit-fields'
 import {
   ArrowLeft, Pencil, Loader2, Upload, FileText, Download,
-  Link2, Link2Off, Clock, Calendar, CheckCircle2, Circle, Search, Award, Mail,
+  Link2, Link2Off, Clock, Calendar, CheckCircle2, Trash2, Search, Award, Mail,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,6 +48,7 @@ type Attendee = {
   id: string
   staff_id: string
   confirmed: boolean
+  no_show: boolean
   completed_date: string
   staff: StaffOption
 }
@@ -302,7 +303,7 @@ export default function TrainingDetailPage() {
     const [attendeesRes, cyclesRes] = await Promise.all([
       supabase
         .from('training_records')
-        .select('id, staff_id, confirmed, completed_date, staff:staff_id(id, first_name, last_name, display_first_name, display_last_name)')
+        .select('id, staff_id, confirmed, no_show, completed_date, staff:staff_id(id, first_name, last_name, display_first_name, display_last_name)')
         .eq('course_id', trainingId),
       supabase
         .from('certification_cycles')
@@ -401,17 +402,28 @@ export default function TrainingDetailPage() {
 
   // ── Attendees ─────────────────────────────────────────────────────────────────
 
-  async function toggleConfirmed(attendee: Attendee) {
-    const next = !attendee.confirmed
-    setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, confirmed: next } : a))
+  async function setAttendance(attendee: Attendee, status: 'pending' | 'confirmed' | 'no_show') {
+    const next = { confirmed: status === 'confirmed', no_show: status === 'no_show' }
+    setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, ...next } : a))
     const { error } = await supabase
       .from('training_records')
-      .update({ confirmed: next })
+      .update(next)
       .eq('id', attendee.id)
     if (error) {
-      setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, confirmed: attendee.confirmed } : a))
+      setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, confirmed: attendee.confirmed, no_show: attendee.no_show } : a))
       setAttendeeError(error.message)
     }
+  }
+
+  // For people who were registered but simply aren't part of this session
+  // (moved to another day or course, on PTO): drops the registration entirely.
+  async function removeAttendee(attendee: Attendee) {
+    const name = getDisplayName(attendee.staff)
+    const warning = attendee.confirmed ? ' Their confirmed attendance and credit for this training will be removed too.' : ''
+    if (!confirm(`Remove ${name} from this training?${warning}`)) return
+    const { error } = await supabase.from('training_records').delete().eq('id', attendee.id)
+    if (error) { setAttendeeError(error.message); return }
+    setAttendees(prev => prev.filter(a => a.id !== attendee.id))
   }
 
   function toggleStaffSelection(staffId: string) {
@@ -540,6 +552,7 @@ export default function TrainingDetailPage() {
 
   const trainerDisplay = training.staff ? getDisplayName(training.staff) : training.trainer_name ?? null
   const confirmedCount = attendees.filter(a => a.confirmed).length
+  const noShowCount    = attendees.filter(a => a.no_show).length
 
   // Block confirm + cert generation until after the training's end time
   const trainingEnded = (() => {
@@ -643,7 +656,7 @@ export default function TrainingDetailPage() {
               {attendees.length} added
               {attendees.length > 0 && (
                 <span className="ml-2 text-gray-400 font-normal">
-                  · {confirmedCount} confirmed
+                  · {confirmedCount} confirmed{noShowCount > 0 && <> · {noShowCount} no-show</>}
                 </span>
               )}
             </p>
@@ -727,22 +740,32 @@ export default function TrainingDetailPage() {
                           ) : <span className="text-gray-300">—</span>}
                         </TableCell>
                         <TableCell>
-                          <button
-                            onClick={() => trainingEnded && toggleConfirmed(attendee)}
-                            disabled={!trainingEnded}
-                            title={!trainingEnded ? 'Cannot confirm attendance until the training end time has passed' : undefined}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                              !trainingEnded
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : attendee.confirmed
-                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                  : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                            }`}
+                          <div
+                            className={`inline-flex rounded-full bg-gray-100 p-0.5 text-xs font-medium ${trainingEnded ? '' : 'opacity-50 cursor-not-allowed'}`}
+                            title={!trainingEnded ? 'Cannot set attendance until the training end time has passed' : undefined}
                           >
-                            {attendee.confirmed
-                              ? <><CheckCircle2 className="h-3.5 w-3.5" /> Confirmed</>
-                              : <><Circle className="h-3.5 w-3.5" /> Pending</>
-                            }
+                            {([
+                              { key: 'pending',   label: 'Pending',   active: !attendee.confirmed && !attendee.no_show, on: 'bg-amber-100 text-amber-700' },
+                              { key: 'confirmed', label: 'Confirmed', active: attendee.confirmed,                       on: 'bg-emerald-100 text-emerald-700' },
+                              { key: 'no_show',   label: 'No-show',   active: attendee.no_show,                         on: 'bg-rose-100 text-rose-700' },
+                            ] as const).map(o => (
+                              <button
+                                key={o.key}
+                                disabled={!trainingEnded}
+                                onClick={() => !o.active && setAttendance(attendee, o.key)}
+                                className={`rounded-full px-2.5 py-1 transition-colors ${o.active ? o.on : 'text-gray-500 hover:text-gray-800'} ${trainingEnded ? '' : 'pointer-events-none'}`}
+                              >
+                                {o.label}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => removeAttendee(attendee)}
+                            title="Remove from this training"
+                            aria-label={`Remove ${getDisplayName(attendee.staff)} from this training`}
+                            className="ml-2 rounded p-1 text-gray-300 hover:bg-rose-50 hover:text-rose-600 transition-colors align-middle"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </TableCell>
                         <TableCell className="text-right">

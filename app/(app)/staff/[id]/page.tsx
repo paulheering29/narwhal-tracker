@@ -106,6 +106,7 @@ type AllTrainingRecord = {
   completed_date: string
   expiry_date: string | null
   confirmed: boolean
+  no_show: boolean
   notes: string | null
   courses: {
     id: string
@@ -324,7 +325,7 @@ export default function StaffDetailPage() {
   const loadAllRecords = useCallback(async () => {
     const { data } = await supabase
       .from('training_records')
-      .select('id, completed_date, expiry_date, confirmed, notes, courses(id, name, units, trainer_name, trainer_staff_id, staff:trainer_staff_id(first_name, last_name, display_first_name, display_last_name))')
+      .select('id, completed_date, expiry_date, confirmed, no_show, notes, courses(id, name, units, trainer_name, trainer_staff_id, staff:trainer_staff_id(first_name, last_name, display_first_name, display_last_name))')
       .eq('staff_id', staffId)
       .order('completed_date', { ascending: false })
     setAllRecords((data ?? []) as unknown as AllTrainingRecord[])
@@ -689,10 +690,10 @@ export default function StaffDetailPage() {
           <SourceBadge source="internal" />
           <span
             className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-              r.confirmed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+              r.confirmed ? 'bg-emerald-100 text-emerald-700' : r.no_show ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
             }`}
           >
-            {r.confirmed ? 'Confirmed' : 'Pending'}
+            {r.confirmed ? 'Confirmed' : r.no_show ? 'No-show' : 'Pending'}
           </span>
         </div>
         <p className="text-xs text-gray-500">

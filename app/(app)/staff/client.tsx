@@ -377,17 +377,23 @@ export function StaffPageClient({
   initialStaff,
   credentialTypes,
   pendingOutsideReviews,
+  initialTab,
+  initialPace = 'all',
 }: {
   currentAuthId: string
   currentRoles: string[]
   initialStaff: StaffMember[]
   credentialTypes: Credential[]
   pendingOutsideReviews: number
+  initialTab?: string
+  initialPace?: 'all' | 'behind'
 }) {
   const supabase = createClient()
   const router   = useRouter()
 
-  const [tab, setTab] = useState<StaffTab>(credentialTypes[0]?.code ?? 'trainers')
+  const [tab, setTab] = useState<StaffTab>(
+    credentialTypes.some(c => c.code === initialTab) ? initialTab! : credentialTypes[0]?.code ?? 'trainers',
+  )
   // The credential whose tab is open; null on the Trainers & Admin tab.
   const credential = credentialTypes.find(c => c.code === tab) ?? null
   // Ethics / supervision columns only for credentials with those minimums (BCBA).
@@ -467,6 +473,7 @@ export function StaffPageClient({
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('active')
+  const [filterPace, setFilterPace]   = useState<'all' | 'behind'>(initialPace)
   const [sortKey, setSortKey]       = useState<SortKey>('name')
   const [sortDir, setSortDir]       = useState<SortDir>('asc')
   const [view, setView]             = useState<'grid' | 'chart'>('grid')
@@ -823,7 +830,9 @@ export function StaffPageClient({
     const matchesActive = filterActive === 'all'
       || (filterActive === 'active' && s.active)
       || (filterActive === 'inactive' && !s.active)
-    return matchesSearch && matchesActive
+    // Staff without a current cycle have no pace, so they never count as behind.
+    const matchesPace = filterPace === 'all' || (!!s.cycleStart && s.variance < 0)
+    return matchesSearch && matchesActive && matchesPace
   })].sort((a, b) => {
     const av = getSortValue(a, sortKey)
     const bv = getSortValue(b, sortKey)
@@ -912,6 +921,19 @@ export function StaffPageClient({
                   }`}
                 >
                   {opt === 'all' ? 'All' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="flex rounded-md border border-gray-200 overflow-hidden shrink-0">
+              {([['all', 'All pace'], ['behind', 'Behind pace']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setFilterPace(key)}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    filterPace === key ? 'bg-[#025CA8] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {label}
                 </button>
               ))}
             </div>

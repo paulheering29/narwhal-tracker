@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { StaffPageClient } from './client'
 
-export default async function StaffPage() {
+export default async function StaffPage({ searchParams }: { searchParams: { tab?: string; pace?: string } }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -37,6 +37,8 @@ export default async function StaffPage() {
         supervision_units_required: Number(c.supervision_units_required),
       }))}
       pendingOutsideReviews={pendingOutside ?? 0}
+      initialTab={searchParams.tab}
+      initialPace={searchParams.pace === 'behind' ? 'behind' : 'all'}
     />
   )
 }

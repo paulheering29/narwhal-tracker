@@ -269,7 +269,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const infoText = new Map((infoRows ?? []).map(r => [r.card_key as string, r.explanation as string]))
   const info = (key: string) => infoText.get(key) ?? CARD_INFO_DEFAULTS[key] ?? ''
 
-  const paceGauge = (title: ReactNode, key: string, s: { onPace: number; behind: number }) => {
+  const paceGauge = (title: ReactNode, key: string, code: string, s: { onPace: number; behind: number }) => {
     const n = s.onPace + s.behind
     return (
       <GaugeCard
@@ -280,7 +280,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         caption="on or ahead of pace"
         legend={[
           { label: 'On or ahead of pace', count: s.onPace, color: '#10b981' },
-          { label: 'Behind pace',         count: s.behind, color: '#f43f5e' },
+          { label: 'Behind pace',         count: s.behind, color: '#f43f5e', href: `/staff?tab=${code}&pace=behind` },
         ]}
       />
     )
@@ -308,8 +308,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {/* Nested so each row of three stretches to one shared height */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[repeat(3,20rem)]">
           <LapsedCard items={lapsed} info={info('lapsed')} />
-          {paceGauge(<>RBT<span className="normal-case">s</span></>, 'pace_rbt', pace.RBT)}
-          {paceGauge(<>BCBA<span className="normal-case">s</span></>, 'pace_bcba', pace.BCBA)}
+          {paceGauge(<>RBT<span className="normal-case">s</span></>, 'pace_rbt', 'RBT', pace.RBT)}
+          {paceGauge(<>BCBA<span className="normal-case">s</span></>, 'pace_bcba', 'BCBA', pace.BCBA)}
           <CalendarCard
             info={info('calendar')}
             trainings={(liveCourses ?? []).map(c => ({ id: c.id, name: c.name, date: c.date as string, startTime: c.start_time }))}

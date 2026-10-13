@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 import { Users } from 'lucide-react'
 import { InfoTip } from './info-tip'
 
@@ -10,7 +11,7 @@ export function GaugeCard({ title, info, pct, hasData, caption, legend }: {
   pct: number
   hasData: boolean
   caption: string
-  legend: { label: string; count: number; color: string }[]
+  legend: { label: string; count: number; color: string; href?: string }[]
 }) {
   const R = 80
   const half = Math.PI * R
@@ -48,13 +49,26 @@ export function GaugeCard({ title, info, pct, hasData, caption, legend }: {
       </div>
 
       <ul className="mt-5 space-y-2">
-        {legend.map(s => (
-          <li key={s.label} className="flex items-center gap-2 text-sm">
-            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: s.color }} />
-            <span className="font-medium text-gray-800">{s.label}</span>
-            <span className="ml-auto tabular-nums text-gray-500">{s.count}</span>
-          </li>
-        ))}
+        {legend.map(s => {
+          const row = (
+            <>
+              <span className="h-3 w-3 rounded-full" style={{ backgroundColor: s.color }} />
+              <span className="font-medium text-gray-800">{s.label}</span>
+              <span className="ml-auto tabular-nums text-gray-500">{s.count}</span>
+            </>
+          )
+          return (
+            <li key={s.label}>
+              {s.href && s.count > 0 ? (
+                <Link href={s.href} className="-mx-2 flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-gray-50">
+                  {row}
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2 px-0 py-1 text-sm">{row}</div>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

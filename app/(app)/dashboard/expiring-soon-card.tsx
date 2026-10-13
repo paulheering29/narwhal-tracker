@@ -26,8 +26,8 @@ export function ExpiringSoonCard({ items }: { items: ExpiringItem[] }) {
 
   return (
     <div className="h-full rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6 flex flex-col">
-      <div className="flex items-center gap-2 mb-3">
-        <AlertTriangle className="h-5 w-5 text-rose-500" />
+      <div className="relative flex items-center justify-center mb-3">
+        <AlertTriangle className="absolute left-0 h-5 w-5 text-rose-500" />
         <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Expiring Soon</h3>
       </div>
 

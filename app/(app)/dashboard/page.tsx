@@ -220,7 +220,7 @@ export default async function DashboardPage() {
 
   const paceSlices = (p: { onPace: number; behind: number }) => [
     { label: 'On or ahead of pace', count: p.onPace, color: '#10b981' },
-    { label: 'Behind pace',         count: p.behind, color: '#f43f5e' },
+    { label: 'Behind pace',         count: p.behind, color: '#f43f5e', hidden: true },
   ]
   const paceCenter = (p: { onPace: number; behind: number }) => {
     const n = p.onPace + p.behind
@@ -254,7 +254,7 @@ export default async function DashboardPage() {
           title="Staff"
           slices={[
             { label: 'RBT',  count: rbtCount ?? 0,  color: '#3b82f6' },
-            { label: 'BCBA', count: bcbaCount ?? 0, color: '#8b5cf6' },
+            { label: 'BCBA', count: bcbaCount ?? 0, color: '#f59e0b' },
           ]}
         />
         <DonutCard title="BCBAs" slices={paceSlices(pace.BCBA)} center={paceCenter(pace.BCBA)} />

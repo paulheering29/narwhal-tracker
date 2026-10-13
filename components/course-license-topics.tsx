@@ -24,13 +24,19 @@ export function CourseLicenseTopics({ courseId }: { courseId: string }) {
 
   useEffect(() => {
     async function load() {
-      const [topicRes, jurRes, tagRes] = await Promise.all([
+      const [topicRes, jurRes, tagRes, licRes] = await Promise.all([
         supabase.from('license_requirement_topics').select('*'),
         supabase.from('license_jurisdictions').select('code, name'),
         supabase.from('course_license_topics').select('topic_id').eq('course_id', courseId),
+        supabase.from('staff_licenses').select('jurisdiction_code').eq('status', 'active'),
       ])
+      // Only states this organization actually has active licenses in, plus any
+      // state already tagged on this course so existing ticks never vanish.
+      const licensedStates = new Set((licRes.data ?? []).map(l => l.jurisdiction_code as string))
+      const taggedIds = new Set((tagRes.data ?? []).map(t => t.topic_id as string))
       const names = new Map((jurRes.data ?? []).map(j => [j.code as string, j.name as string]))
       setRows(((topicRes.data ?? []) as RequirementTopic[])
+        .filter(t => licensedStates.has(t.jurisdiction_code) || taggedIds.has(t.id))
         .map(t => ({ ...t, state: names.get(t.jurisdiction_code) ?? t.jurisdiction_code }))
         .sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name)))
       setSelected(new Set((tagRes.data ?? []).map(t => t.topic_id as string)))

@@ -191,6 +191,7 @@ export async function getPersonalDashboardData(
   return {
     credentialCode:   credential?.code ?? null,
     certType:         activeCycle?.certification_type ?? null,
+    cycleStartDate:    activeCycle?.start_date ?? null,
     cycleEndDate:      activeCycle?.end_date ?? null,
     daysUntilExpiry,
     unitLabel:         credential?.unit_label ?? null,

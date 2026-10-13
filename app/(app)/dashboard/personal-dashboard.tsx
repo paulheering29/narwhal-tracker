@@ -1,4 +1,4 @@
-import { ArrowUp, CalendarClock, Gauge } from 'lucide-react'
+import { ArrowUp, CalendarClock, Check, Circle, Gauge } from 'lucide-react'
 import { DashboardCard, type DashboardCardData } from './dashboard-cards'
 import { CalendarCard, type CalendarTraining } from './calendar-card'
 import { OutsideTrainings } from '@/components/outside-trainings'
@@ -8,6 +8,7 @@ import type { OutsideTraining } from '@/lib/outside-trainings'
 export type PersonalDashboardData = {
   credentialCode: string | null   // 'RBT' / 'BCBA'; null when the person holds no credential
   certType: string | null
+  cycleStartDate: string | null
   cycleEndDate: string | null
   daysUntilExpiry: number | null
   unitLabel: string | null   // 'PDU' / 'CEU'; null when the person holds no credential
@@ -37,12 +38,12 @@ function fmtUnits(n: number) {
   return n % 1 === 0 ? String(n) : n.toFixed(1)
 }
 
-function urgencyColor(days: number | null): { text: string; bg: string } {
-  if (days == null)      return { text: 'text-gray-400',   bg: 'bg-gray-100' }
-  if (days < 0)          return { text: 'text-red-600',    bg: 'bg-red-50' }
-  if (days <= 30)        return { text: 'text-rose-600',   bg: 'bg-rose-50' }
-  if (days <= 90)        return { text: 'text-amber-600',  bg: 'bg-amber-50' }
-  return                        { text: 'text-emerald-600', bg: 'bg-emerald-50' }
+function urgencyColor(days: number | null): { text: string; bg: string; bar: string } {
+  if (days == null)      return { bar: 'bg-gray-400', text: 'text-gray-400',   bg: 'bg-gray-100' }
+  if (days < 0)          return { bar: 'bg-red-600', text: 'text-red-600',    bg: 'bg-red-50' }
+  if (days <= 30)        return { bar: 'bg-rose-600', text: 'text-rose-600',   bg: 'bg-rose-50' }
+  if (days <= 90)        return { bar: 'bg-amber-500', text: 'text-amber-600',  bg: 'bg-amber-50' }
+  return                        { bar: 'bg-emerald-500', text: 'text-emerald-600', bg: 'bg-emerald-50' }
 }
 
 // A required minimum within the total (ethics, supervision): green once met.
@@ -63,6 +64,38 @@ function MinimumBar({ label, done, target }: { label: string; done: number; targ
   )
 }
 
+const fmtDate = (d: string) =>
+  new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(d + 'T00:00:00'))
+
+function CycleTimeline({ start, end, color }: { start: string; end: string; color: string }) {
+  const s = new Date(start + 'T00:00:00').getTime()
+  const e = new Date(end + 'T00:00:00').getTime()
+  const pct = Math.min(1, Math.max(0, (Date.now() - s) / Math.max(1, e - s)))
+  return (
+    <div>
+      <div className="relative h-2 w-full rounded-full bg-white/70">
+        <div className={`absolute inset-y-0 left-0 rounded-full ${color}`} style={{ width: `${pct * 100}%` }} />
+        <div className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow ${color}`} style={{ left: `${pct * 100}%` }} />
+      </div>
+      <div className="mt-2 flex justify-between text-xs text-gray-500">
+        <span>{fmtDate(start)}</span>
+        <span>{Math.round(pct * 100)}% through your cycle</span>
+        <span>{fmtDate(end)}</span>
+      </div>
+    </div>
+  )
+}
+
+function Requirement({ label, detail, met }: { label: string; detail: string; met: boolean }) {
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      {met ? <Check className="h-4 w-4 shrink-0 text-emerald-600" strokeWidth={3} /> : <Circle className="h-4 w-4 shrink-0 text-gray-300" />}
+      <span className={met ? 'text-gray-700' : 'text-gray-600'}>{label}</span>
+      <span className={`ml-auto tabular-nums ${met ? 'text-emerald-600 font-medium' : 'text-gray-500'}`}>{detail}</span>
+    </li>
+  )
+}
+
 export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
   const urgency = urgencyColor(data.daysUntilExpiry)
   const target  = Math.max(1, data.unitsTarget)
@@ -71,6 +104,16 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
   const pacingPct = Math.min(1, data.pacingTarget / target)
   const variance = Math.round((data.unitsDone - data.pacingTarget) * 2) / 2
   const units = `${data.unitLabel ?? 'Unit'}s`
+
+  const unitsLeft = Math.max(0, data.unitsTarget - data.unitsDone)
+  const ethicsMet = data.ethicsDone >= data.ethicsTarget
+  const supervisionMet = data.supervisionDone >= data.supervisionTarget
+  const allMet = data.unitsTarget > 0 && unitsLeft === 0 && ethicsMet && supervisionMet
+  const gaps = [
+    unitsLeft > 0 ? `${fmtUnits(unitsLeft)} ${units}` : '',
+    !ethicsMet ? `${fmtUnits(data.ethicsTarget - data.ethicsDone)} ethics` : '',
+    !supervisionMet ? `${fmtUnits(data.supervisionTarget - data.supervisionDone)} supervision` : '',
+  ].filter(Boolean)
 
   const incompleteAssignedCourses = data.assignedCourses.filter(c => c.status !== 'complete')
 
@@ -146,13 +189,31 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
               </p>
               <p className="mt-1 text-sm text-gray-600">
                 {data.daysUntilExpiry < 0
-                  ? `Your ${data.certType} certification expired ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(data.cycleEndDate + 'T00:00:00'))}`
+                  ? `Your ${data.certType} certification expired ${fmtDate(data.cycleEndDate!)}`
                   : `day${data.daysUntilExpiry === 1 ? '' : 's'} until your ${data.certType} certification expires`}
               </p>
-              {data.cycleEndDate && data.daysUntilExpiry >= 0 && (
-                <p className="mt-0.5 text-xs text-gray-400">
-                  Cycle ends {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(data.cycleEndDate + 'T00:00:00'))}
-                </p>
+              {data.cycleStartDate && data.cycleEndDate && data.daysUntilExpiry >= 0 && (
+                <div className="mt-6">
+                  <CycleTimeline start={data.cycleStartDate} end={data.cycleEndDate} color={urgency.bar} />
+                </div>
+              )}
+
+              {data.unitsTarget > 0 && data.daysUntilExpiry >= 0 && (
+                <div className="mt-6 pt-4 border-t border-black/5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">To renew</p>
+                  <ul className="space-y-2">
+                    <Requirement label={`${data.unitLabel}s`} detail={`${fmtUnits(data.unitsDone)} / ${data.unitsTarget}`} met={unitsLeft === 0} />
+                    {data.ethicsTarget > 0 && (
+                      <Requirement label="Ethics" detail={`${fmtUnits(data.ethicsDone)} / ${data.ethicsTarget}`} met={ethicsMet} />
+                    )}
+                    {data.supervisionTarget > 0 && (
+                      <Requirement label="Supervision" detail={`${fmtUnits(data.supervisionDone)} / ${data.supervisionTarget}`} met={supervisionMet} />
+                    )}
+                  </ul>
+                  <p className={`mt-3 text-sm font-medium ${allMet ? 'text-emerald-700' : 'text-gray-700'}`}>
+                    {allMet ? 'All requirements met — you’re ready to renew.' : `Still needed: ${gaps.join(' + ')}`}
+                  </p>
+                </div>
               )}
             </>
           )}

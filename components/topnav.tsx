@@ -34,6 +34,7 @@ interface TopNavProps {
   userTier:   'rbt' | 'staff'
   userRoles:  string[]
   userName:   string
+  hasCredential: boolean   // staff who also take courses get My Courses in the bar
   pendingReviews: number   // outside trainings waiting on this person to review
 }
 
@@ -109,7 +110,7 @@ function MenuLink({ href, label, icon: Icon, badge }: Item) {
   )
 }
 
-export function TopNav({ userTier, userRoles, userName, pendingReviews }: TopNavProps) {
+export function TopNav({ userTier, userRoles, userName, hasCredential, pendingReviews }: TopNavProps) {
   const pathname   = usePathname()
   const supabase   = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -138,7 +139,9 @@ export function TopNav({ userTier, userRoles, userName, pendingReviews }: TopNav
     ...(canReview ? [{ href: '/paths', label: 'Learning Paths', icon: PathIcon }] : []),
     ...(canReview ? [{ href: '/outside-trainings', label: 'Outside Training Reviews', icon: ClipboardCheck, badge: pendingReviews }] : []),
   ]
-  const myItems: Item[] = isStaff ? [
+  const myCourses: Item = { href: '/my-courses', label: 'My Courses', icon: GraduationCap }
+  const courseInBar = isStaff && hasCredential
+  const myItems: Item[] = isStaff && !courseInBar ? [
     { href: '/my-courses', label: 'My Courses', icon: GraduationCap },
   ] : []
   // The settings page only holds the trainer signature, so only trainers get it.
@@ -177,6 +180,11 @@ export function TopNav({ userTier, userRoles, userName, pendingReviews }: TopNav
                 <Link href="/staff" className={cn(linkBase, linkState(isActive('/staff')))}>
                   <Users className="h-4 w-4 shrink-0" /> Staff
                 </Link>
+                {courseInBar && (
+                  <Link href={myCourses.href} className={cn(linkBase, linkState(isActive(myCourses.href)))}>
+                    <GraduationCap className="h-4 w-4 shrink-0" /> My Courses
+                  </Link>
+                )}
                 <Dropdown
                   active={trainingActive}
                   trigger={<><TrainingIcon className="h-4 w-4 shrink-0" /> Training <Badge n={pendingReviews} /></>}
@@ -251,7 +259,7 @@ export function TopNav({ userTier, userRoles, userName, pendingReviews }: TopNav
           >
             <nav className="flex flex-col py-2">
               {(isStaff
-                ? [{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }, { href: '/staff', label: 'Staff', icon: Users }]
+                ? [{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }, { href: '/staff', label: 'Staff', icon: Users }, ...(courseInBar ? [myCourses] : [])]
                 : rbtNavItems
               ).map(i => <DrawerLink key={i.href} item={i} active={isActive(i.href)} />)}
 

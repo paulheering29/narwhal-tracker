@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getDisplayName } from '@/lib/display-name'
+import { getCredential } from '@/lib/credentials'
 import { canManageTrainings } from '@/lib/permissions'
 import { TopNav } from '@/components/topnav'
 import { IdleTimeout } from '@/components/idle-timeout'
@@ -25,6 +26,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const userTier  = (staff?.tier  ?? 'rbt')    as 'rbt' | 'staff'
   const userRoles = (staff?.roles ?? [])        as string[]
   const userName  = staff ? getDisplayName(staff) : (user.email ?? '')
+  // Managers who also hold a credential (e.g. a BCBA who trains) take courses too.
+  const hasCredential = userTier === 'staff' && (await getCredential(supabase, staff?.role)) !== null
 
   // Outside trainings waiting for someone else to review (nobody reviews their own).
   let pendingReviews = 0
@@ -49,7 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      <TopNav userTier={userTier} userRoles={userRoles} userName={userName} pendingReviews={pendingReviews} />
+      <TopNav userTier={userTier} userRoles={userRoles} userName={userName} hasCredential={hasCredential} pendingReviews={pendingReviews} />
       {trialDaysLeft !== null && isAccountOwner && <TrialBanner daysLeft={trialDaysLeft} />}
       <main className="flex-1 overflow-y-auto">
         {access === 'expired' ? <AccessGate isAccountOwner={isAccountOwner} /> : children}

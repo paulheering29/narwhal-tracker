@@ -21,7 +21,6 @@ import {
   X,
   PlayCircle,
   GraduationCap,
-  Gauge,
   Library as TrainingIcon,
   ClipboardCheck,
   Route as PathIcon,
@@ -35,7 +34,6 @@ interface TopNavProps {
   userTier:   'rbt' | 'staff'
   userRoles:  string[]
   userName:   string
-  showMyProgress: boolean
   pendingReviews: number   // outside trainings waiting on this person to review
 }
 
@@ -111,7 +109,7 @@ function MenuLink({ href, label, icon: Icon, badge }: Item) {
   )
 }
 
-export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingReviews }: TopNavProps) {
+export function TopNav({ userTier, userRoles, userName, pendingReviews }: TopNavProps) {
   const pathname   = usePathname()
   const supabase   = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -140,7 +138,6 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
   ]
   const myItems: Item[] = isStaff ? [
     { href: '/my-courses', label: 'My Courses', icon: GraduationCap },
-    ...(showMyProgress ? [{ href: '/my-progress', label: 'My Progress', icon: Gauge }] : []),
   ] : []
   // The settings page only holds the trainer signature, so only trainers get it.
   const accountItems: Item[] = [
@@ -210,7 +207,7 @@ export function TopNav({ userTier, userRoles, userName, showMyProgress, pendingR
             <ThemeToggle />
             <Dropdown
               align="right"
-              active={isActive('/settings') || isActive('/my-courses') || isActive('/my-progress') || isActive('/change-password')}
+              active={isActive('/settings') || isActive('/my-courses') || isActive('/change-password')}
               trigger={<><UserCircle className="h-4 w-4 shrink-0" /><span className="max-w-[10rem] truncate">{userName}</span></>}
             >
               <div className="px-3 py-2 border-b border-gray-100 mb-1">

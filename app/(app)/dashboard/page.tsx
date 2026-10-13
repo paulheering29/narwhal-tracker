@@ -17,6 +17,7 @@ import { getPaceSummaries } from './pace-data'
 import { PersonalDashboard } from './personal-dashboard'
 import { getPersonalDashboardData } from './personal-data'
 import { getCredential } from '@/lib/credentials'
+import { DashboardTabs } from './dashboard-tabs'
 
 async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient>>) {
   const today   = new Date().toISOString().split('T')[0]
@@ -140,7 +141,8 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
   }
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const { view } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -151,11 +153,18 @@ export default async function DashboardPage() {
     .eq('auth_id', user.id)
     .single()
 
-  if ((staff?.tier ?? 'rbt') === 'rbt' && staff?.id) {
-    const credential = await getCredential(supabase, staff.role)
-    const personal   = await getPersonalDashboardData(supabase, staff.id, credential, staff.is_supervisor ?? false)
+  const isLearner = (staff?.tier ?? 'rbt') === 'rbt'
+  // Staff who also hold a credential (a BCBA who trains, an RBT who runs the
+  // company's tracking) get both dashboards; everyone else gets just one.
+  const credential = staff?.id ? await getCredential(supabase, staff.role) : null
+  const hasBoth    = !isLearner && credential !== null
+  const showMine   = isLearner || (hasBoth && view === 'my')
+
+  if (showMine && staff?.id) {
+    const personal = await getPersonalDashboardData(supabase, staff.id, credential, staff.is_supervisor ?? false)
     return (
       <div className="p-4 md:p-8">
+        {hasBoth && <DashboardTabs active="my" />}
         <PersonalDashboard data={personal} />
       </div>
     )
@@ -276,6 +285,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-4 md:p-8">
+      {hasBoth && <DashboardTabs active="company" />}
       {(pendingReviews ?? 0) > 0 && (
         <Link
           href="/outside-trainings"

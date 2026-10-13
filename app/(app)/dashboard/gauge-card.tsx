@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react'
 import { Users } from 'lucide-react'
+import { InfoTip } from './info-tip'
 
 // Semicircle gauge: a colored arc filled to `pct` (0-1) of the half circle.
 // Plain SVG, same as the donut.
-export function GaugeCard({ title, pct, hasData, caption, legend }: {
+export function GaugeCard({ title, info, pct, hasData, caption, legend }: {
   title: ReactNode
+  info: string
   pct: number
   hasData: boolean
   caption: string
@@ -21,6 +23,7 @@ export function GaugeCard({ title, pct, hasData, caption, legend }: {
       <div className="relative flex items-center justify-center mb-4">
         <Users className="absolute left-0 h-5 w-5 text-blue-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{title}</h3>
+        <InfoTip text={info} />
       </div>
 
       <div className="relative mx-auto w-56">

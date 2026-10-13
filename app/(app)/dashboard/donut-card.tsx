@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react'
+import { InfoTip } from './info-tip'
 import { Users } from 'lucide-react'
 
 type Slice = { label: string; count: number; color: string }
 
 // Pure SVG donut: no chart dependency needed for two slices.
-export function DonutCard({ title, subtitle, centerLabel = 'total staff', controls, slices }: {
+export function DonutCard({ title, info, subtitle, centerLabel = 'total staff', controls, slices }: {
   title: string
+  info: string
   /** Small line under the title, e.g. which group the card covers */
   subtitle?: string
   centerLabel?: string
@@ -23,6 +25,7 @@ export function DonutCard({ title, subtitle, centerLabel = 'total staff', contro
       <div className="relative flex items-center justify-center mb-4">
         <Users className="absolute left-0 h-5 w-5 text-blue-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{title}</h3>
+        <InfoTip text={info} />
       </div>
       {subtitle && <p className="-mt-3 mb-3 text-center text-xs text-gray-400">{subtitle}</p>}
 

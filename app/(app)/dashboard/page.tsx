@@ -255,11 +255,12 @@ export default async function DashboardPage() {
     <ModalityCard subtitle={label} counts={modality[code]} />
   )
 
-  const paceGauge = (title: ReactNode, s: { onPace: number; behind: number }) => {
+  const paceGauge = (title: ReactNode, group: string, s: { onPace: number; behind: number }) => {
     const n = s.onPace + s.behind
     return (
       <GaugeCard
         title={title}
+        info={`Share of active ${group} with a current certification cycle whose confirmed units (including approved outside trainings) are at or ahead of the straight-line pace for today.`}
         pct={n ? s.onPace / n : 0}
         hasData={n > 0}
         caption="on or ahead of pace"
@@ -292,14 +293,15 @@ export default async function DashboardPage() {
         {/* Nested so each row of three stretches to one shared height */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[repeat(3,20rem)]">
           <LapsedCard items={lapsed} />
-          {paceGauge(<>RBT<span className="normal-case">s</span></>, pace.RBT)}
-          {paceGauge(<>BCBA<span className="normal-case">s</span></>, pace.BCBA)}
+          {paceGauge(<>RBT<span className="normal-case">s</span></>, 'RBTs', pace.RBT)}
+          {paceGauge(<>BCBA<span className="normal-case">s</span></>, 'BCBAs', pace.BCBA)}
           <CalendarCard
             trainings={(liveCourses ?? []).map(c => ({ id: c.id, name: c.name, date: c.date as string, startTime: c.start_time }))}
           />
           <UnconfirmedCard trainings={unconfirmedTrainings} staffCount={unconfirmedStaff.size} />
           <DonutCard
             title="Staff"
+            info="Active certified staff, split by RBT and BCBA. Staff without a certification (such as non-certified trainers) are not counted."
             slices={[
               { label: 'RBT',  count: rbtCount ?? 0,  color: '#3b82f6' },
               { label: 'BCBA', count: bcbaCount ?? 0, color: '#f59e0b' },

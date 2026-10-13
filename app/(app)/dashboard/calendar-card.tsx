@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { InfoTip } from './info-tip'
 
 export type CalendarTraining = { id: string; name: string; date: string; startTime: string | null }
 
@@ -44,6 +45,7 @@ export function CalendarCard({ trainings }: { trainings: CalendarTraining[] }) {
       <div className="relative flex items-center justify-center mb-4">
         <CalendarDays className="absolute left-0 h-5 w-5 text-emerald-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Calendar</h3>
+        <InfoTip text="Scheduled live trainings by month. A green dot marks a day with a training. Click the day to see the trainings, then click one to open it." />
       </div>
 
       <div className="flex items-center justify-between mb-2">

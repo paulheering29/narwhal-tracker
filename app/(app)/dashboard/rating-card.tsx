@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Star } from 'lucide-react'
+import { InfoTip } from './info-tip'
 import { RangeToggle, type Range } from './range-toggle'
 
 export type ReviewPoint = { rating: number; createdAt: string }
@@ -30,6 +31,7 @@ export function RatingCard({ reviews }: { reviews: ReviewPoint[] }) {
       <div className="relative flex items-center justify-center mb-4">
         <Star className="absolute left-0 h-5 w-5 text-amber-500" />
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Course Rating</h3>
+        <InfoTip text="Average star rating (1-5) learners gave recorded courses, across all courses. Use the toggle for the last 30 days or all time." />
       </div>
 
       <RangeToggle value={range} onChange={setRange} />

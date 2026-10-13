@@ -156,7 +156,7 @@ export function PersonalDashboard({ data }: { data: PersonalDashboardData }) {
       {/* Certification cards: your credential (with its progress) plus one per state license */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white overflow-hidden">
-        <div className={`p-6 ${urgency.bg}`}>
+        <div className={`p-6 min-h-[23.5rem] ${urgency.bg}`}>
           <div className="relative flex items-center justify-center mb-4">
             <CalendarClock className={`absolute left-0 h-5 w-5 ${urgency.text}`} />
             <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{data.certType ?? ''} Certification</h3>

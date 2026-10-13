@@ -422,7 +422,7 @@ function LicenseCard({
 
   return (
     <div className="rounded-xl border-2 border-gray-100 shadow-sm bg-white overflow-hidden">
-      <div className={`p-6 ${u.bg}`}>
+      <div className={`p-6 min-h-[23.5rem] ${u.bg}`}>
         <div className="relative flex items-center justify-center mb-4">
           <ShieldCheck className={`absolute left-0 h-5 w-5 ${u.text}`} />
           <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{j?.name ?? l.jurisdiction_code} License</h3>

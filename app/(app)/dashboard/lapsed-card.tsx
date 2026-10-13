@@ -72,17 +72,27 @@ export function LapsedCard({ items }: { items: LapsedItem[] }) {
         </div>
 
         <div className="relative flex flex-1 flex-col items-center justify-center text-center">
-          <div className="lapsed-pop" style={{ animation: 'lapsed-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both' }}>
-            <div className="lapsed-wobble" style={{ animation: 'lapsed-wobble 2.4s ease-in-out 0.9s infinite' }}>
-              <PartyPopper className="h-14 w-14 text-amber-500" />
+          <div className="flex items-center justify-center gap-3">
+            <div className="lapsed-pop" style={{ animation: 'lapsed-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both' }}>
+              <div className="lapsed-wobble" style={{ animation: 'lapsed-wobble 2.4s ease-in-out 0.9s infinite' }}>
+                <PartyPopper className="h-12 w-12 text-amber-500" />
+              </div>
+            </div>
+            <p
+              className="lapsed-pop text-9xl font-extrabold leading-none tabular-nums text-emerald-600"
+              style={{ animation: 'lapsed-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both' }}
+            >
+              0
+            </p>
+            {/* Mirrored so both poppers point in toward the number */}
+            <div className="lapsed-pop" style={{ animation: 'lapsed-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both' }}>
+              <div className="-scale-x-100">
+                <div className="lapsed-wobble" style={{ animation: 'lapsed-wobble 2.4s ease-in-out 1.1s infinite' }}>
+                  <PartyPopper className="h-12 w-12 text-amber-500" />
+                </div>
+              </div>
             </div>
           </div>
-          <p
-            className="lapsed-pop mt-3 text-6xl font-extrabold leading-none tabular-nums text-emerald-600"
-            style={{ animation: 'lapsed-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both' }}
-          >
-            0
-          </p>
         </div>
 
         <p

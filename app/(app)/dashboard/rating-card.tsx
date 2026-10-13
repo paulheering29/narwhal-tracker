@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Star } from 'lucide-react'
+import { RangeToggle, type Range } from './range-toggle'
 
 export type ReviewPoint = { rating: number; createdAt: string }
 
@@ -18,7 +19,7 @@ function PartialStar({ fill }: { fill: number }) {
 }
 
 export function RatingCard({ reviews }: { reviews: ReviewPoint[] }) {
-  const [range, setRange] = useState<'30' | 'all'>('30')
+  const [range, setRange] = useState<Range>('30')
 
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
   const scoped = range === 'all' ? reviews : reviews.filter(r => new Date(r.createdAt).getTime() >= cutoff)
@@ -31,17 +32,7 @@ export function RatingCard({ reviews }: { reviews: ReviewPoint[] }) {
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Course Rating</h3>
       </div>
 
-      <div className="mx-auto inline-flex rounded-full bg-gray-100 p-0.5 text-xs font-medium">
-        {([['30', 'Last 30 days'], ['all', 'All time']] as const).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setRange(key)}
-            className={`rounded-full px-3 py-1 transition-colors ${range === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <RangeToggle value={range} onChange={setRange} />
 
       <p className="mt-5 text-center text-6xl font-extrabold leading-none tabular-nums text-gray-900">
         {average === null ? '—' : average.toFixed(1)}

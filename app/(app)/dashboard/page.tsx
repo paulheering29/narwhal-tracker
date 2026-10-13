@@ -10,6 +10,7 @@ import { getLapsed } from './lapsed-data'
 import { RatingCard } from './rating-card'
 import { CalendarCard } from './calendar-card'
 import { GaugeCard } from './gauge-card'
+import { ModalityCard } from './modality-card'
 import { getModalityCounts } from './modality-data'
 import { getPaceSummaries } from './pace-data'
 import { PersonalDashboard } from './personal-dashboard'
@@ -251,16 +252,7 @@ export default async function DashboardPage() {
   const unconfirmedTrainings = Array.from(unconfirmedByCourse.values()).sort((a, b) => b.date.localeCompare(a.date))
 
   const modalityCard = (code: string, label: string) => (
-    <DonutCard
-      title="Training Modality"
-      subtitle={label}
-      centerLabel="trainings, last 30 days"
-      slices={[
-        { label: 'Internal Live',     count: modality[code].internalLive,     color: '#14b8a6' },
-        { label: 'Internal Recorded', count: modality[code].internalRecorded, color: '#8b5cf6' },
-        { label: 'External',          count: modality[code].external,         color: '#f59e0b' },
-      ]}
-    />
+    <ModalityCard subtitle={label} counts={modality[code]} />
   )
 
   const paceGauge = (title: ReactNode, s: { onPace: number; behind: number }) => {

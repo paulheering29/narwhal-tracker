@@ -1,13 +1,16 @@
+import type { ReactNode } from 'react'
 import { Users } from 'lucide-react'
 
 type Slice = { label: string; count: number; color: string }
 
 // Pure SVG donut: no chart dependency needed for two slices.
-export function DonutCard({ title, subtitle, centerLabel = 'total staff', slices }: {
+export function DonutCard({ title, subtitle, centerLabel = 'total staff', controls, slices }: {
   title: string
   /** Small line under the title, e.g. which group the card covers */
   subtitle?: string
   centerLabel?: string
+  /** Optional controls (e.g. a range toggle) shown under the title */
+  controls?: ReactNode
   slices: Slice[]
 }) {
   const total = slices.reduce((n, s) => n + s.count, 0)
@@ -22,6 +25,8 @@ export function DonutCard({ title, subtitle, centerLabel = 'total staff', slices
         <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{title}</h3>
       </div>
       {subtitle && <p className="-mt-3 mb-3 text-center text-xs text-gray-400">{subtitle}</p>}
+
+      {controls && <div className="mb-4 flex justify-center">{controls}</div>}
 
       <div className="relative mx-auto h-48 w-48">
         <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">

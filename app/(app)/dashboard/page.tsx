@@ -4,7 +4,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ExpiringSoonCard, type ExpiringItem } from './expiring-soon-card'
 import { DonutCard } from './donut-card'
+import { CalendarCard } from './calendar-card'
 import { GaugeCard } from './gauge-card'
+import { getModalityCounts } from './modality-data'
 import { getPaceSummaries } from './pace-data'
 import { PersonalDashboard } from './personal-dashboard'
 import { getPersonalDashboardData } from './personal-data'
@@ -160,12 +162,14 @@ export default async function DashboardPage() {
   const activeStaffCount = (role: string) =>
     supabase.from('staff').select('id', { count: 'exact', head: true }).eq('active', true).eq('role', role)
 
-  const [data, { count: pendingReviews }, { count: rbtCount }, { count: bcbaCount }, pace] = await Promise.all([
+  const [data, { count: pendingReviews }, { count: rbtCount }, { count: bcbaCount }, pace, modality, { data: liveCourses }] = await Promise.all([
     getDashboardData(supabase),
     supabase.from('external_trainings').select('id', { count: 'exact', head: true }).eq('review_status', 'pending'),
     activeStaffCount('RBT'),
     activeStaffCount('BCBA'),
     getPaceSummaries(supabase, ['BCBA', 'RBT']),
+    getModalityCounts(supabase, ['BCBA', 'RBT']),
+    supabase.from('courses').select('id, name, date, start_time').eq('course_type', 'live').not('date', 'is', null).order('date'),
   ])
 
   function formatDate(dateStr: string | null | undefined) {
@@ -220,6 +224,19 @@ export default async function DashboardPage() {
         }),
   ]
 
+  const modalityCard = (code: string, label: string) => (
+    <DonutCard
+      title="Training Modality"
+      subtitle={label}
+      centerLabel="trainings, last 30 days"
+      slices={[
+        { label: 'Internal Live',     count: modality[code].internalLive,     color: '#14b8a6' },
+        { label: 'Internal Recorded', count: modality[code].internalRecorded, color: '#8b5cf6' },
+        { label: 'External',          count: modality[code].external,         color: '#f59e0b' },
+      ]}
+    />
+  )
+
   const paceGauge = (title: ReactNode, s: { onPace: number; behind: number }) => {
     const n = s.onPace + s.behind
     return (
@@ -270,6 +287,11 @@ export default async function DashboardPage() {
           />
           {paceGauge(<>BCBA<span className="normal-case">s</span></>, pace.BCBA)}
           {paceGauge(<>RBT<span className="normal-case">s</span></>, pace.RBT)}
+          <CalendarCard
+            trainings={(liveCourses ?? []).map(c => ({ id: c.id, name: c.name, date: c.date as string, startTime: c.start_time }))}
+          />
+          {modalityCard('RBT', 'RBTs')}
+          {modalityCard('BCBA', 'BCBAs')}
         </div>
       </div>
     </div>

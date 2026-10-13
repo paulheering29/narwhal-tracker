@@ -1,73 +1,30 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { DashboardCards, type DashboardCardData, type DetailItem } from './dashboard-cards'
+import { ExpiringSoonCard, type ExpiringItem } from './expiring-soon-card'
+import { DonutCard } from './donut-card'
+import { getPaceSummaries } from './pace-data'
 import { PersonalDashboard } from './personal-dashboard'
 import { getPersonalDashboardData } from './personal-data'
 import { getCredential } from '@/lib/credentials'
 
 async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const today    = new Date().toISOString().split('T')[0]
-  const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const today   = new Date().toISOString().split('T')[0]
+  // Fetch the widest window the slider allows; the card narrows it client-side.
+  const in90Days = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  // Each query returns both the list (limited to 25) AND the exact
-  // total count in one roundtrip via `{ count: 'exact' }`.
-  const [
-    rbtList,
-    trainersList,
-    expiringCycles,
-    upcomingCourses,
-    allCourses,
-    recentRecords,
-    expiringLicenses,
-  ] = await Promise.all([
-    supabase
-      .from('staff')
-      .select('id, first_name, last_name', { count: 'exact' })
-      .eq('active', true)
-      .eq('role', 'RBT')
-      .order('last_name')
-      .limit(25),
-    supabase
-      .from('staff')
-      .select('id, first_name, last_name, role', { count: 'exact' })
-      .eq('active', true)
-      .neq('role', 'RBT')
-      .order('last_name')
-      .limit(25),
-    // Only fetch cycles whose end_date lands in the next 30 days. The
-    // trainings-completed card needs no full cycle table scan anymore.
+  const [expiringCycles, expiringLicenses] = await Promise.all([
     supabase
       .from('certification_cycles')
       .select('id, staff_id, end_date, start_date, certification_type, staff(id, first_name, last_name, is_supervisor)')
       .gte('end_date', today)
-      .lte('end_date', in30Days),
-    supabase
-      .from('courses')
-      .select('id, name, date', { count: 'exact' })
-      .gte('date', today)
-      .lte('date', in30Days)
-      .order('date')
-      .limit(25),
-    supabase
-      .from('courses')
-      .select('id, name, date', { count: 'exact' })
-      .not('name', 'is', null)
-      .order('date', { ascending: false })
-      .limit(25),
-    supabase
-      .from('training_records')
-      .select('id, completed_date, staff:staff_id(first_name, last_name), courses:course_id(id, name)', { count: 'exact' })
-      .eq('confirmed', true)
-      .order('completed_date', { ascending: false })
-      .limit(25),
-    // State licenses (BCBAs) running out in the next 30 days.
+      .lte('end_date', in90Days),
     supabase
       .from('staff_licenses')
       .select('id, staff_id, expiration_date, jurisdiction_code, staff:staff_id(first_name, last_name), license_jurisdictions(name)')
       .eq('status', 'active')
       .gte('expiration_date', today)
-      .lte('expiration_date', in30Days)
+      .lte('expiration_date', in90Days)
       .order('expiration_date'),
   ])
 
@@ -166,20 +123,10 @@ async function getDashboardData(supabase: Awaited<ReturnType<typeof createClient
   }
 
   return {
-    rbtList:         rbtList.data         ?? [],
-    rbtCount:        rbtList.count        ?? 0,
-    trainersList:    trainersList.data    ?? [],
-    trainersCount:   trainersList.count   ?? 0,
     expiringUnique,
     expiringLicenses: expiringLicenses.data ?? [],
     pacingByStaff,
     credByCode,
-    upcomingCourses: upcomingCourses.data  ?? [],
-    upcomingCount:   upcomingCourses.count ?? 0,
-    allCourses:      allCourses.data      ?? [],
-    allCoursesCount: allCourses.count     ?? 0,
-    recentRecords:   recentRecords.data   ?? [],
-    recordsCount:    recentRecords.count  ?? 0,
   }
 }
 
@@ -208,9 +155,15 @@ export default async function DashboardPage() {
     )
   }
 
-  const [data, { count: pendingReviews }] = await Promise.all([
+  const activeStaffCount = (role: string) =>
+    supabase.from('staff').select('id', { count: 'exact', head: true }).eq('active', true).eq('role', role)
+
+  const [data, { count: pendingReviews }, { count: rbtCount }, { count: bcbaCount }, pace] = await Promise.all([
     getDashboardData(supabase),
     supabase.from('external_trainings').select('id', { count: 'exact', head: true }).eq('review_status', 'pending'),
+    activeStaffCount('RBT'),
+    activeStaffCount('BCBA'),
+    getPaceSummaries(supabase, ['BCBA', 'RBT']),
   ])
 
   function formatDate(dateStr: string | null | undefined) {
@@ -219,16 +172,8 @@ export default async function DashboardPage() {
     return `${m}/${d}/${y}`
   }
 
-  const cards: DashboardCardData[] = [
-    {
-      title:          'Expiring Soon',
-      value:          data.expiringUnique.length + data.expiringLicenses.length,
-      description:    'Certifications and state licenses expiring in the next 30 days',
-      icon:           'alert',
-      color:          'rose',
-      alwaysExpanded: true,
-      items: [
-        ...data.expiringUnique.slice(0, 25).map((c): DetailItem => {
+  const items: ExpiringItem[] = [
+        ...data.expiringUnique.map((c): ExpiringItem => {
         const staff = Array.isArray(c.staff) ? c.staff[0] : c.staff
         const name  = staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown'
         const pacing = data.pacingByStaff.get(c.staff_id as string) ?? { done: 0, scheduled: 0, ethics: 0, supervision: 0 }
@@ -252,6 +197,7 @@ export default async function DashboardPage() {
         ].filter(Boolean)
         return {
           id:       c.id,
+          date:     c.end_date as string,
           label:    name,
           sublabel: `Expires ${formatDate(c.end_date)} · ${Number(pacing.done.toFixed(2))}/${TOTAL} ${label}s${gaps.length ? ` · needs ${gaps.join(' + ')}` : ''}`,
           href:     `/staff/${c.staff_id}`,
@@ -259,89 +205,27 @@ export default async function DashboardPage() {
           badge:    complete ? { label: 'All requirements met' } : undefined,
         }
         }),
-        ...data.expiringLicenses.slice(0, Math.max(0, 25 - data.expiringUnique.length)).map((l): DetailItem => {
+        ...data.expiringLicenses.map((l): ExpiringItem => {
         const staff = Array.isArray(l.staff) ? l.staff[0] : l.staff
         const state = Array.isArray(l.license_jurisdictions) ? l.license_jurisdictions[0] : l.license_jurisdictions
         return {
           id:       `license-${l.id}`,
+          date:     l.expiration_date as string,
           label:    staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown',
           sublabel: `${state?.name ?? l.jurisdiction_code} license expires ${formatDate(l.expiration_date)}`,
           href:     `/staff/${l.staff_id}`,
         }
         }),
-      ],
-    },
-    {
-      title:          'Upcoming Trainings',
-      value:          data.upcomingCount,
-      description:    'Trainings scheduled in the next 30 days',
-      icon:           'calendar',
-      color:          'emerald',
-      alwaysExpanded: true,
-      items: data.upcomingCourses.map(c => ({
-        id:       c.id,
-        label:    c.name,
-        sublabel: formatDate(c.date),
-        href:     `/trainings/${c.id}`,
-      })),
-    },
-    {
-      title:       'Trainings',
-      value:       data.allCoursesCount,
-      description: 'All trainings in the system',
-      icon:        'book',
-      color:       'violet',
-      items: data.allCourses.map(c => ({
-        id:       c.id,
-        label:    c.name,
-        sublabel: formatDate(c.date),
-        href:     `/trainings/${c.id}`,
-      })),
-    },
-    {
-      title:       'RBTs',
-      value:       data.rbtCount,
-      description: 'Active RBTs',
-      icon:        'users',
-      color:       'blue',
-      items: data.rbtList.map(s => ({
-        id:    s.id,
-        label: `${s.first_name} ${s.last_name}`,
-        href:  `/staff/${s.id}`,
-      })),
-    },
-    {
-      title:       'Trainers & Admin',
-      value:       data.trainersCount,
-      description: 'Active trainers and administrators',
-      icon:        'shield',
-      color:       'amber',
-      items: data.trainersList.map(s => ({
-        id:       s.id,
-        label:    `${s.first_name} ${s.last_name}`,
-        sublabel: s.role ?? undefined,
-        href:     `/staff/${s.id}`,
-      })),
-    },
-    {
-      title:       'Trainings Completed',
-      value:       data.recordsCount,
-      description: 'Confirmed training records to date',
-      icon:        'clipboard',
-      color:       'teal',
-      items: data.recentRecords.map(r => {
-        const staff  = Array.isArray(r.staff)   ? r.staff[0]   : r.staff
-        const course = Array.isArray(r.courses) ? r.courses[0] : r.courses
-        const staffName = staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown'
-        return {
-          id:       r.id,
-          label:    course?.name ?? 'Untitled training',
-          sublabel: `${staffName} · ${formatDate(r.completed_date)}`,
-          href:     course?.id ? `/trainings/${course.id}` : '#',
-        }
-      }),
-    },
   ]
+
+  const paceSlices = (p: { onPace: number; behind: number }) => [
+    { label: 'On or ahead of pace', count: p.onPace, color: '#10b981' },
+    { label: 'Behind pace',         count: p.behind, color: '#f43f5e' },
+  ]
+  const paceCenter = (p: { onPace: number; behind: number }) => {
+    const n = p.onPace + p.behind
+    return { value: n ? `${Math.round((p.onPace / n) * 100)}%` : '—', label: 'on or ahead of pace' }
+  }
 
   return (
     <div className="p-4 md:p-8">
@@ -362,7 +246,20 @@ export default async function DashboardPage() {
         </Link>
       )}
 
-      <DashboardCards cards={cards} />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[24rem_repeat(3,20rem)] lg:items-start">
+        <div className="lg:h-[calc(100vh-14rem)]">
+          <ExpiringSoonCard items={items} />
+        </div>
+        <DonutCard
+          title="Staff"
+          slices={[
+            { label: 'RBT',  count: rbtCount ?? 0,  color: '#3b82f6' },
+            { label: 'BCBA', count: bcbaCount ?? 0, color: '#8b5cf6' },
+          ]}
+        />
+        <DonutCard title="BCBAs" slices={paceSlices(pace.BCBA)} center={paceCenter(pace.BCBA)} />
+        <DonutCard title="RBTs" slices={paceSlices(pace.RBT)} center={paceCenter(pace.RBT)} />
+      </div>
     </div>
   )
 }

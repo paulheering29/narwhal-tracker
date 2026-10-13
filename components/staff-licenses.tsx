@@ -462,7 +462,13 @@ function LicenseCard({
             {progress.exempt || progress.metByBacb ? (
               <p className="text-sm text-emerald-700 font-medium">{progress.exempt ? 'No CE required this cycle' : 'Met while your BACB certification is active'}</p>
             ) : (
-              <CeProgressView progress={progress} />
+              <>
+                {/* Each license has its own CE window and hours, so its percentage differs from the BACB's */}
+                <p className="text-6xl font-extrabold tabular-nums text-blue-600">
+                  {Math.round(Math.min(1, progress.required > 0 ? progress.done / progress.required : 1) * 100)}%
+                </p>
+                <CeProgressView progress={progress} />
+              </>
             )}
           </>
         ) : (

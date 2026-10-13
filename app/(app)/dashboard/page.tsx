@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ExpiringSoonCard, type ExpiringItem } from './expiring-soon-card'
 import { DonutCard } from './donut-card'
+import { GaugeCard } from './gauge-card'
 import { getPaceSummaries } from './pace-data'
 import { PersonalDashboard } from './personal-dashboard'
 import { getPersonalDashboardData } from './personal-data'
@@ -218,13 +219,20 @@ export default async function DashboardPage() {
         }),
   ]
 
-  const paceSlices = (p: { onPace: number; behind: number }) => [
-    { label: 'On or ahead of pace', count: p.onPace, color: '#10b981' },
-    { label: 'Behind pace',         count: p.behind, color: '#f43f5e', hidden: true },
-  ]
-  const paceCenter = (p: { onPace: number; behind: number }) => {
-    const n = p.onPace + p.behind
-    return { value: n ? `${Math.round((p.onPace / n) * 100)}%` : '—', label: 'on or ahead of pace' }
+  const paceGauge = (title: string, s: { onPace: number; behind: number }) => {
+    const n = s.onPace + s.behind
+    return (
+      <GaugeCard
+        title={title}
+        pct={n ? s.onPace / n : 0}
+        hasData={n > 0}
+        caption="on or ahead of pace"
+        legend={[
+          { label: 'On or ahead of pace', count: s.onPace, color: '#10b981' },
+          { label: 'Behind pace',         count: s.behind, color: '#f43f5e' },
+        ]}
+      />
+    )
   }
 
   return (
@@ -257,8 +265,8 @@ export default async function DashboardPage() {
             { label: 'BCBA', count: bcbaCount ?? 0, color: '#f59e0b' },
           ]}
         />
-        <DonutCard title="BCBAs" slices={paceSlices(pace.BCBA)} center={paceCenter(pace.BCBA)} />
-        <DonutCard title="RBTs" slices={paceSlices(pace.RBT)} center={paceCenter(pace.RBT)} />
+        {paceGauge('BCBAs', pace.BCBA)}
+        {paceGauge('RBTs', pace.RBT)}
       </div>
     </div>
   )

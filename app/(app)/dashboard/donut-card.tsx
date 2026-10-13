@@ -1,15 +1,9 @@
 import { Users } from 'lucide-react'
 
-/** `hidden` slices keep their legend entry but draw nothing on the ring */
-type Slice = { label: string; count: number; color: string; hidden?: boolean }
+type Slice = { label: string; count: number; color: string }
 
 // Pure SVG donut: no chart dependency needed for two slices.
-export function DonutCard({ title, slices, center }: {
-  title: string
-  slices: Slice[]
-  /** Defaults to the total count with a "total staff" caption */
-  center?: { value: string; label: string }
-}) {
+export function DonutCard({ title, slices }: { title: string; slices: Slice[] }) {
   const total = slices.reduce((n, s) => n + s.count, 0)
   const R = 70
   const C = 2 * Math.PI * R
@@ -26,7 +20,7 @@ export function DonutCard({ title, slices, center }: {
         <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">
           {total > 0 && slices.map(s => {
             const len = (s.count / total) * C
-            const el = s.hidden ? null : (
+            const el = (
               <circle
                 key={s.label}
                 cx="90" cy="90" r={R}
@@ -42,8 +36,8 @@ export function DonutCard({ title, slices, center }: {
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-4xl font-extrabold tabular-nums text-gray-900">{center?.value ?? total}</span>
-          <span className="max-w-[5.5rem] text-center text-xs leading-tight text-gray-500">{center?.label ?? 'total staff'}</span>
+          <span className="text-4xl font-extrabold tabular-nums text-gray-900">{total}</span>
+          <span className="max-w-[5.5rem] text-center text-xs leading-tight text-gray-500">total staff</span>
         </div>
       </div>
 

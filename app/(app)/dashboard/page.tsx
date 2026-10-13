@@ -290,8 +290,8 @@ export default async function DashboardPage() {
           <CalendarCard
             trainings={(liveCourses ?? []).map(c => ({ id: c.id, name: c.name, date: c.date as string, startTime: c.start_time }))}
           />
-          {modalityCard('RBT', 'RBTs')}
           {modalityCard('BCBA', 'BCBAs')}
+          {modalityCard('RBT', 'RBTs')}
         </div>
       </div>
     </div>

@@ -20,7 +20,7 @@ export function GaugeCard({ title, pct, hasData, caption, legend }: {
     <div className="rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6 flex flex-col">
       <div className="relative flex items-center justify-center mb-4">
         <Users className="absolute left-0 h-5 w-5 text-blue-500" />
-        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">{title}</h3>
+        <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">{title}</h3>
       </div>
 
       <div className="relative mx-auto w-56">

@@ -43,7 +43,7 @@ export function CalendarCard({ trainings }: { trainings: CalendarTraining[] }) {
     <div className="rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6 flex flex-col">
       <div className="relative flex items-center justify-center mb-4">
         <CalendarDays className="absolute left-0 h-5 w-5 text-emerald-500" />
-        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Calendar</h3>
+        <h3 className="text-base font-bold uppercase tracking-wide text-gray-500">Calendar</h3>
       </div>
 
       <div className="flex items-center justify-between mb-2">

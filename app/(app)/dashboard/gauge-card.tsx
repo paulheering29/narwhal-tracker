@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Users } from 'lucide-react'
 
-// Semicircle gauge: a gray track with a colored arc filled to `pct` (0-1).
+// Semicircle gauge: a colored arc filled to `pct` (0-1) of the half circle.
 // Plain SVG, same as the donut.
 export function GaugeCard({ title, pct, hasData, caption, legend }: {
   title: ReactNode
@@ -25,8 +25,7 @@ export function GaugeCard({ title, pct, hasData, caption, legend }: {
 
       <div className="relative mx-auto w-56">
         <svg viewBox="0 0 200 110" className="w-full">
-          {/* In dark mode `white` resolves to the card surface, so the unfilled part disappears */}
-          <path d={arc} fill="none" className="stroke-gray-100 dark:stroke-white" strokeWidth="22" />
+          {/* No track on purpose: the unfilled part should look absent in both themes */}
           {filled > 0 && (
             <path
               d={arc}

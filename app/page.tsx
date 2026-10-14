@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import { MarketingNav } from '@/components/marketing-nav'
 import { PriceCalculator } from '@/components/price-calculator'
 import { TRIAL_DAYS, CONTACT_EMAIL, formatMoney, lockInLine, monthlyTotalCents } from '@/lib/pricing'
@@ -357,7 +358,11 @@ export default async function HomePage() {
       <footer className="border-t border-gray-200 px-4 sm:px-8 py-10">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <Image src="/training-loop-wordmark.png" alt="Training Loop" width={2195} height={340} className="h-5 w-auto" />
-          <p className="text-xs text-gray-500">© {new Date().getFullYear()} Training Loop</p>
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 text-xs text-gray-500">
+            <p>© {new Date().getFullYear()} Training Loop</p>
+            <Link href="/terms" className="hover:text-gray-900">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-gray-900">Privacy Policy</Link>
+          </div>
         </div>
       </footer>
 

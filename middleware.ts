@@ -7,6 +7,9 @@ import { IDLE_COOKIE, parseIdleCookie } from '@/lib/idle'
 // signs in on one origin and gets one session cookie.
 const MARKETING_HOSTS = ['trainingloop.tech', 'www.trainingloop.tech']
 
+// Public legal pages, linked only from the marketing footer. Served on both hosts, no sign-in.
+const LEGAL_PATHS = ['/terms', '/privacy']
+
 // Temporary gate on the marketing page while it isn't ready for the public.
 // Active only while MARKETING_PASSWORD is set; delete the variable to open the page.
 // Any username works; the browser's own sign-in prompt asks for it.
@@ -32,7 +35,7 @@ export async function middleware(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
 
   if (MARKETING_HOSTS.includes(host)) {
-    if (pathname === '/') return marketingGate(request) ?? NextResponse.next()
+    if (pathname === '/' || LEGAL_PATHS.includes(pathname)) return marketingGate(request) ?? NextResponse.next()
     // API routes stay put: a redirect would break POSTs like the Stripe webhook.
     // The host check prevents a redirect loop while the app URL is still www.
     if (appUrl && !pathname.startsWith('/api/') && new URL(appUrl).host !== host) {
@@ -77,7 +80,7 @@ export async function middleware(request: NextRequest) {
                      || pathname === '/signup' || pathname.startsWith('/signup/')
                      || pathname === '/forgot-password'
                      || pathname === '/reset-password'
-  const isHomePage    = pathname === '/'
+  const isHomePage    = pathname === '/' || LEGAL_PATHS.includes(pathname)
   const isStripeHook  = pathname === '/api/stripe/webhook'
   // Signup / password-reset endpoints and the emailed link are used before anyone has a session.
   const isSignupFlow  = pathname.startsWith('/api/signup') || pathname === '/auth/confirm'

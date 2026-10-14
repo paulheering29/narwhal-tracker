@@ -182,9 +182,9 @@ const sections: LegalSection[] = [
     heading: 'Governing law and disputes',
     body: (
       <p>
-        These terms are governed by the laws of the United States and the state in which Training Loop is based, without
-        regard to conflict-of-law rules. We encourage you to contact us first so we can try to resolve any problem
-        informally. Any dispute we can’t resolve that way will be handled in the courts located in that state.
+        These terms are governed by the laws of the Commonwealth of Massachusetts, without regard to conflict-of-law
+        rules. We encourage you to contact us first so we can try to resolve any problem
+        informally. Any dispute we can’t resolve that way will be handled in the state or federal courts located in Massachusetts.
       </p>
     ),
   },

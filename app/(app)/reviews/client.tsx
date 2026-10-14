@@ -15,8 +15,8 @@ export type Comment = {
 }
 
 const TABS = [
-  { key: 'by-course', label: 'By Course' },
-  { key: 'comments', label: 'Reviewer Comments' },
+  { key: 'by-course', label: 'Average Rating by Course' },
+  { key: 'comments', label: 'All Comments' },
   { key: 'summaries', label: 'AI Summaries' },
 ] as const
 

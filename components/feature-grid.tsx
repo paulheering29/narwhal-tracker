@@ -46,6 +46,66 @@ const Row = ({ children }: { children: ReactNode }) => (
   <div className="flex items-center gap-3 border-b border-gray-100 py-2 last:border-b-0">{children}</div>
 )
 
+// "How it works" strip at the bottom of each modal: step, arrow, step, arrow, step.
+function FlowStep({ icon, label, art }: { icon?: string; label: string; art?: ReactNode }) {
+  return (
+    <div className="flex w-36 flex-col items-center gap-3 text-center">
+      {art ?? (
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-blue-100" style={{ color: BLUE_TEXT }}>
+          <Icon name={icon ?? 'checklist'} className="h-9 w-9" />
+        </div>
+      )}
+      <p className="text-sm font-medium text-gray-700">{label}</p>
+    </div>
+  )
+}
+
+function FlowArrow({ icon }: { icon?: string }) {
+  return (
+    <div className="flex shrink-0 flex-col items-center gap-1 text-blue-300 max-sm:rotate-90">
+      {icon && <Icon name={icon} className="h-4 w-4 text-amber-400 max-sm:-rotate-90" />}
+      <Icon name="arrowRight" className="h-7 w-7" />
+    </div>
+  )
+}
+
+function Flow({ steps }: { steps: { icon: string; label: string }[] }) {
+  return (
+    <>
+      {steps.map((st, i) => (
+        <Fragment key={st.label}>
+          {i > 0 && <FlowArrow />}
+          <FlowStep icon={st.icon} label={st.label} />
+        </Fragment>
+      ))}
+    </>
+  )
+}
+
+// Hand-drawn certificate and filled-in form for the outside-trainings flow.
+function MiniCertificate() {
+  return (
+    <div className="flex h-24 w-20 flex-col items-center rounded-lg border-2 border-double border-gray-300 bg-white p-2 shadow-md">
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-50" style={{ color: BLUE_TEXT }}><Icon name="certificate" className="h-3.5 w-3.5" /></span>
+      <span className="mt-2 h-1.5 w-12 rounded bg-gray-300" />
+      <span className="mt-1.5 h-1 w-14 rounded bg-gray-200" />
+      <span className="mt-1 h-1 w-10 rounded bg-gray-200" />
+      <span className="mt-auto h-px w-10 bg-gray-300" />
+    </div>
+  )
+}
+
+function MiniForm() {
+  return (
+    <div className="relative flex h-24 w-28 flex-col justify-center gap-1.5 rounded-lg bg-white p-3 shadow-md ring-1 ring-blue-100">
+      {[10, 14, 8, 6].map((w, i) => (
+        <span key={i} className="h-3 rounded border border-gray-200 bg-blue-50/60 px-1"><span className="block h-1 rounded bg-gray-400" style={{ width: `${w * 6}%`, marginTop: 3 }} /></span>
+      ))}
+      <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow"><Icon name="circleCheck" className="h-4 w-4" /></span>
+    </div>
+  )
+}
+
 type Feature = {
   icon: string
   title: string
@@ -53,6 +113,7 @@ type Feature = {
   more: string
   points: { icon: string; text: string }[]
   preview: ReactNode
+  flow: ReactNode
 }
 
 const features: Feature[] = [
@@ -66,6 +127,7 @@ const features: Feature[] = [
       { icon: 'lock', text: 'Learners can’t skip ahead, so completion means they actually watched' },
       { icon: 'chartBar', text: 'See each person’s progress from the course page' },
     ],
+    flow: <Flow steps={[{ icon: 'listNumbers', label: 'Upload in sections' }, { icon: 'play', label: 'Learners watch' }, { icon: 'circleCheck', label: 'Progress is saved' }]} />,
     preview: (
       <Frame title="Course · Section progress">
         {[['1. Welcome', 100], ['2. Core concepts', 100], ['3. Case examples', 45], ['4. Wrap-up', 0]].map(([n, p]) => (
@@ -89,6 +151,7 @@ const features: Feature[] = [
       { icon: 'userCheck', text: 'Assign the whole path to a person in one click' },
       { icon: 'lock', text: 'Later courses stay locked until the earlier ones are done' },
     ],
+    flow: <Flow steps={[{ icon: 'listNumbers', label: 'Build the path' }, { icon: 'userCheck', label: 'Assign in one click' }, { icon: 'lock', label: 'Courses unlock in order' }]} />,
     preview: (
       <Frame title="Path · New RBT Onboarding">
         {[['Welcome to the team', 'Complete', 'green', 'circleCheck'], ['Ethics basics', 'In progress', 'blue', 'play'], ['Data collection', 'Locked', 'gray', 'lock']].map(([n, s, t, ic]) => (
@@ -111,6 +174,7 @@ const features: Feature[] = [
       { icon: 'fileCert', text: 'The certificate is issued automatically on a pass' },
       { icon: 'file', text: 'Every attempt is saved, so you have a record' },
     ],
+    flow: <Flow steps={[{ icon: 'play', label: 'Finish the course' }, { icon: 'pencil', label: 'Take the quiz' }, { icon: 'fileCert', label: 'Certificate issued' }]} />,
     preview: (
       <Frame title="Quiz · Attempts">
         {[['Attempt 1', '60%', 'Not passed', 'amber'], ['Attempt 2', '90%', 'Passed', 'green']].map(([a, sc, r, t]) => (
@@ -136,6 +200,7 @@ const features: Feature[] = [
       { icon: 'file', text: 'Use the BACB in-service form when you need it' },
       { icon: 'signature', text: 'Your logo and the trainer’s signature are added for you' },
     ],
+    flow: <Flow steps={[{ icon: 'palette', label: 'Pick a style' }, { icon: 'signature', label: 'Logo and signature added' }, { icon: 'file', label: 'Download or email' }]} />,
     preview: (
       <Frame title="Certificate preview">
         <div className="rounded-lg border-2 border-double border-gray-300 p-5 text-center">
@@ -159,6 +224,7 @@ const features: Feature[] = [
       { icon: 'scale', text: 'Ethics and supervision minimums sit next to the overall progress' },
       { icon: 'target', text: 'No surprises at recertification' },
     ],
+    flow: <Flow steps={[{ icon: 'certificate', label: 'CEUs are logged' }, { icon: 'scale', label: 'Sorted by type' }, { icon: 'chartBar', label: 'Gaps show up early' }]} />,
     preview: (
       <Frame title="BCBA · Current cycle">
         {[['Total CEUs', 28, 32, '#025CA8', 'chartBar'], ['Ethics', 4, 4, '#3FAD46', 'scale'], ['Supervision', 1, 3, '#d97706', 'userCheck']].map(([n, v, g, c, ic]) => (
@@ -183,6 +249,7 @@ const features: Feature[] = [
       { icon: 'circleCheck', text: 'You check it and save; AI never saves anything on its own' },
       { icon: 'eye', text: 'Optional review step so your team can approve entries' },
     ],
+    flow: <><FlowStep label="Upload the certificate" art={<MiniCertificate />} /><FlowArrow icon="sparkles" /><FlowStep label="The form fills itself in" art={<MiniForm />} /></>,
     preview: (
       <Frame title="Add outside training">
         <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-blue-700">
@@ -207,6 +274,7 @@ const features: Feature[] = [
       { icon: 'calendar', text: 'Renewal dates, state CE hours and required topics' },
       { icon: 'bell', text: 'Email reminders before anything expires' },
     ],
+    flow: <Flow steps={[{ icon: 'file', label: 'Add each license' }, { icon: 'calendar', label: 'Renewal dates tracked' }, { icon: 'bell', label: 'Reminder before it expires' }]} />,
     preview: (
       <Frame title="Licenses">
         {[['BACB certification', 'Renews Dec 31, 2026', 'green', 'Active', 'certificate'], ['State license · OH', 'Renews Jun 30, 2027', 'green', 'Active', 'calendar'], ['State license · PA', 'Renews Nov 15, 2026', 'amber', 'Due soon', 'bell']].map(([n, d, t, s, ic]) => (
@@ -232,6 +300,7 @@ const features: Feature[] = [
       { icon: 'checklist', text: 'A grid shows who has completed which topics' },
       { icon: 'message', text: 'Course ratings and written comments, summarized with AI' },
     ],
+    flow: <Flow steps={[{ icon: 'tag', label: 'Tag each training' }, { icon: 'checklist', label: 'See who’s covered' }, { icon: 'target', label: 'Reteach the gaps' }]} />,
     preview: (
       <Frame title="Topic coverage">
         <div className="grid grid-cols-[1fr_repeat(3,2.25rem)] items-center gap-y-2">
@@ -259,6 +328,7 @@ const features: Feature[] = [
       { icon: 'shield', text: 'Roles control who can run trainings, manage staff or change settings' },
       { icon: 'eye', text: 'Learners see their own records, not everyone’s' },
     ],
+    flow: <Flow steps={[{ icon: 'building', label: 'Your organization' }, { icon: 'shield', label: 'Roles decide access' }, { icon: 'eye', label: 'People see what’s theirs' }]} />,
     preview: (
       <Frame title="Roles">
         {[['Account Owner', 'Everything', 'shield'], ['Admin', 'Staff and settings', 'userCheck'], ['Trainer', 'Run trainings', 'presentation'], ['Learner', 'Own records', 'school']].map(([r, d, ic]) => (
@@ -331,6 +401,12 @@ export function FeatureGrid() {
                   <div>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">A look inside</p>
                     {open.preview}
+                  </div>
+                </div>
+                <div className="mt-10 rounded-2xl bg-gradient-to-br from-blue-50/70 to-emerald-50/50 px-6 py-8">
+                  <p className="mb-6 text-center text-xs font-semibold uppercase tracking-wide text-gray-400">How it works</p>
+                  <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-start sm:gap-6">
+                    {open.flow}
                   </div>
                 </div>
               </div>

@@ -164,6 +164,7 @@ export default function CourseDetailPage() {
 
   // ── Reviews ──────────────────────────────────────────────────────────────────
   const [reviews, setReviews] = useState<CourseReview[]>([])
+  const [starFilter, setStarFilter] = useState<number | null>(null)
 
   const loadReviews = useCallback(async () => {
     const { data } = await supabase
@@ -963,81 +964,6 @@ export default function CourseDetailPage() {
         </>
       )}
 
-      {/* ── Reviews ──────────────────────────────────────────────────────────── */}
-      <div className="mt-8 mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Reviews</h2>
-        <p className="text-sm text-gray-500">What staff think of this course</p>
-      </div>
-      {reviews.length === 0 ? (
-        <div className="rounded-lg border border-dashed bg-white p-8 text-center text-sm text-gray-400 shadow-sm">
-          No reviews yet.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="rounded-lg border bg-white shadow-sm p-5">
-          {(() => {
-            const total   = reviews.length
-            const average = reviews.reduce((sum, r) => sum + r.rating, 0) / total
-            const counts  = [5, 4, 3, 2, 1].map(star => reviews.filter(r => r.rating === star).length)
-            return (
-              <div className="flex flex-col sm:flex-row gap-6 pb-5 mb-5 border-b">
-                <div className="shrink-0 text-center sm:w-36">
-                  <p className="text-3xl font-bold text-gray-900">{average.toFixed(1)}</p>
-                  <div className="flex justify-center gap-0.5 my-1">
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <Star key={i} className={`h-4 w-4 ${i <= Math.round(average) ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500">{total} review{total !== 1 ? 's' : ''}</p>
-                </div>
-                <div className="flex-1 space-y-1.5">
-                  {[5, 4, 3, 2, 1].map((star, i) => (
-                    <div key={star} className="flex items-center gap-2 text-xs text-gray-500">
-                      <span className="w-8 shrink-0">{star} star</span>
-                      <div className="h-2 flex-1 rounded-full bg-gray-100 overflow-hidden">
-                        <div className="h-full bg-amber-400" style={{ width: `${total > 0 ? (counts[i] / total) * 100 : 0}%` }} />
-                      </div>
-                      <span className="w-6 shrink-0 text-right">{counts[i]}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
-          <div className="space-y-4">
-            {reviews.map(r => (
-              <div key={r.id} className="border-b last:border-b-0 pb-4 last:pb-0">
-                <div className="flex items-center justify-between gap-3 mb-1">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <Star key={i} className={`h-3.5 w-3.5 ${i <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
-                      ))}
-                    </div>
-                    <span className="text-sm font-medium text-gray-900">{getDisplayName(r.staff)}</span>
-                  </div>
-                  <span className="text-xs text-gray-400 shrink-0">
-                    {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
-                </div>
-                {r.comment && <p className="text-sm text-gray-600">{r.comment}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-lg border bg-white shadow-sm p-5 self-start">
-          <p className="text-sm font-semibold text-gray-900 mb-2">AI summary</p>
-          <p className="text-sm text-gray-700">
-            {aiSummary ?? (
-              <span className="text-gray-400">
-                {summarizing ? 'Generating…' : 'No written comments to summarize yet.'}
-              </span>
-            )}
-          </p>
-        </div>
-        </div>
-      )}
-
       {/* ── Assigned Staff ───────────────────────────────────────────────────── */}
       <div className="mt-8 mb-4">
         <h2 className="text-lg font-semibold text-gray-900">Assigned Staff</h2>
@@ -1130,6 +1056,95 @@ export default function CourseDetailPage() {
       </div>
 
       <CourseLicenseTopics courseId={courseId} />
+
+      {/* ── Reviews ──────────────────────────────────────────────────────────── */}
+      <div className="mt-8 mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Reviews</h2>
+        <p className="text-sm text-gray-500">What staff think of this course</p>
+      </div>
+      {reviews.length === 0 ? (
+        <div className="rounded-lg border border-dashed bg-white p-8 text-center text-sm text-gray-400 shadow-sm">
+          No reviews yet.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="rounded-lg border bg-white shadow-sm p-5">
+          {(() => {
+            const total   = reviews.length
+            const average = reviews.reduce((sum, r) => sum + r.rating, 0) / total
+            const counts  = [5, 4, 3, 2, 1].map(star => reviews.filter(r => r.rating === star).length)
+            return (
+              <div className="flex flex-col sm:flex-row gap-6 pb-5 mb-5 border-b">
+                <div className="shrink-0 text-center sm:w-36">
+                  <p className="text-3xl font-bold text-gray-900">{average.toFixed(1)}</p>
+                  <div className="flex justify-center gap-0.5 my-1">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <Star key={i} className={`h-4 w-4 ${i <= Math.round(average) ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500">{total} review{total !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="flex-1 space-y-1">
+                  {[5, 4, 3, 2, 1].map((star, i) => (
+                    <button
+                      key={star}
+                      type="button"
+                      disabled={counts[i] === 0}
+                      onClick={() => setStarFilter(starFilter === star ? null : star)}
+                      aria-pressed={starFilter === star}
+                      title={counts[i] === 0 ? undefined : starFilter === star ? 'Show all reviews' : `Show only ${star}-star reviews`}
+                      className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-xs text-gray-500 transition-colors enabled:hover:bg-gray-50 disabled:cursor-default ${starFilter === star ? 'bg-amber-50 ring-1 ring-amber-200' : ''}`}
+                    >
+                      <span className="w-8 shrink-0 text-left">{star} star</span>
+                      <div className="h-2 flex-1 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="h-full bg-amber-400" style={{ width: `${total > 0 ? (counts[i] / total) * 100 : 0}%` }} />
+                      </div>
+                      <span className="w-6 shrink-0 text-right">{counts[i]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+          {starFilter !== null && (
+            <div className="mb-4 flex items-center justify-between rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <span>Showing {reviews.filter(r => r.rating === starFilter).length} {starFilter}-star review{reviews.filter(r => r.rating === starFilter).length === 1 ? '' : 's'}</span>
+              <button type="button" onClick={() => setStarFilter(null)} className="font-medium underline hover:no-underline">Show all</button>
+            </div>
+          )}
+          <div className="space-y-4">
+            {reviews.filter(r => starFilter === null || r.rating === starFilter).map(r => (
+              <div key={r.id} className="border-b last:border-b-0 pb-4 last:pb-0">
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map(i => (
+                        <Star key={i} className={`h-3.5 w-3.5 ${i <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                      ))}
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">{getDisplayName(r.staff)}</span>
+                  </div>
+                  <span className="text-xs text-gray-400 shrink-0">
+                    {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
+                {r.comment && <p className="text-sm text-gray-600">{r.comment}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border bg-white shadow-sm p-5 self-start">
+          <p className="text-sm font-semibold text-gray-900 mb-2">AI summary</p>
+          <p className="text-sm text-gray-700">
+            {aiSummary ?? (
+              <span className="text-gray-400">
+                {summarizing ? 'Generating…' : 'No written comments to summarize yet.'}
+              </span>
+            )}
+          </p>
+        </div>
+        </div>
+      )}
 
       {/* ── Edit Course Sheet ─────────────────────────────────────────────────── */}
       <Sheet open={editOpen} onOpenChange={setEditOpen}>

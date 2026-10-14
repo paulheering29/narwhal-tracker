@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Star } from 'lucide-react'
 import { InfoTip } from './info-tip'
 import { RangeToggle, type Range } from './range-toggle'
@@ -47,6 +48,9 @@ export function RatingCard({ reviews, info }: { reviews: ReviewPoint[]; info: st
       <p className="mt-3 text-center text-xs text-gray-400">
         {scoped.length === 0 ? 'No reviews yet' : `${scoped.length} review${scoped.length === 1 ? '' : 's'}`}
       </p>
+      <Link href="/reviews" className="mt-4 text-center text-sm font-medium text-[#025CA8] hover:underline">
+        See more
+      </Link>
     </div>
   )
 }

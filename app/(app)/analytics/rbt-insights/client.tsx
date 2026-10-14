@@ -90,7 +90,7 @@ function InsightsPanel({ label, staff, today }: { label: string; staff: StaffMem
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-gray-900">{label} Insights</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Tenure stats across {staff.length} active {label}{staff.length !== 1 ? 's' : ''} with certification dates on record.
+          Time as {label} across {staff.length} active {label}{staff.length !== 1 ? 's' : ''} with certification dates on record.
         </p>
       </div>
 
@@ -127,7 +127,7 @@ function InsightsPanel({ label, staff, today }: { label: string; staff: StaffMem
             <div className="flex items-center justify-center h-9 w-9 rounded-full bg-amber-500 text-white shrink-0">
               <Award className="h-4 w-4" />
             </div>
-            <span className="text-xs font-semibold text-amber-600 uppercase tracking-widest">Longest Tenured {label}</span>
+            <span className="text-xs font-semibold text-amber-600 uppercase tracking-widest">Longest Time as {label}</span>
           </div>
           <p className="text-2xl font-bold text-gray-900 mb-1">{getDisplayName(longestTenured)}</p>
           <p className="text-sm text-amber-700 font-medium mb-3">
@@ -149,7 +149,7 @@ function InsightsPanel({ label, staff, today }: { label: string; staff: StaffMem
             <div className="flex items-center justify-center h-9 w-9 rounded-full bg-violet-100 shrink-0">
               <TrendingUp className="h-4 w-4 text-violet-600" />
             </div>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Total {label} Tenure</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Total Time as {label}</span>
           </div>
           <div>
             <p className="text-4xl font-extrabold text-gray-900">{totalYears}</p>
@@ -164,7 +164,7 @@ function InsightsPanel({ label, staff, today }: { label: string; staff: StaffMem
             <div className="flex items-center justify-center h-9 w-9 rounded-full bg-emerald-100 shrink-0">
               <Users className="h-4 w-4 text-emerald-600" />
             </div>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Average Tenure</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Average Time as {label}</span>
           </div>
           <div>
             <p className="text-4xl font-extrabold text-gray-900">{avgYears}</p>
@@ -191,7 +191,7 @@ function InsightsPanel({ label, staff, today }: { label: string; staff: StaffMem
 
       {/* Tenure bar chart */}
       <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-5">Tenure by {label}</h2>
+        <h2 className="text-base font-semibold text-gray-900 mb-5">Time as {label} by Person</h2>
         <div className="space-y-3">
           {sorted.slice().reverse().map(s => {
             const days = daysFromDate(s.original_certification_date, today)

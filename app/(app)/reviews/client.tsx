@@ -2,21 +2,30 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type CourseAverage = { id: string; name: string; average: number; count: number }
 
 export type Summary = { course_id: string; summary: string; generated_at: string }
 
+export type Comment = {
+  id: string; courseId: string; courseName: string; rating: number
+  comment: string; reviewer: string; createdAt: string
+}
+
 const TABS = [
   { key: 'by-course', label: 'By Course' },
+  { key: 'comments', label: 'Reviewer Comments' },
   { key: 'summaries', label: 'AI Summaries' },
 ] as const
 
-export function ReviewsClient({ courses, summaries: initial }: { courses: CourseAverage[]; summaries: Summary[] }) {
+export function ReviewsClient({ courses, comments, summaries: initial }: { courses: CourseAverage[]; comments: Comment[]; summaries: Summary[] }) {
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('by-course')
   const [summaries, setSummaries] = useState(initial)
   const [refreshing, setRefreshing] = useState(true)
+  const [courseFilter, setCourseFilter] = useState('')
+  const shownComments = courseFilter ? comments.filter(c => c.courseId === courseFilter) : comments
 
   // Regenerates any summary whose reviews changed; shows the stored ones meanwhile.
   useEffect(() => {
@@ -72,6 +81,49 @@ export function ReviewsClient({ courses, summaries: initial }: { courses: Course
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+      )}
+
+      {tab === 'comments' && (
+        <div className="rounded-xl border-2 border-gray-100 bg-white shadow-sm p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <h2 className="text-base font-bold uppercase tracking-wide text-gray-500">Reviewer comments</h2>
+            <select
+              value={courseFilter}
+              onChange={e => setCourseFilter(e.target.value)}
+              className="max-w-xs rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700"
+            >
+              <option value="">All courses</option>
+              {Array.from(new Map(comments.map(c => [c.courseId, c.courseName])).entries()).map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+          </div>
+          {shownComments.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-400">No written comments yet</p>
+          ) : (
+            <div className="space-y-4">
+              {shownComments.map(c => (
+                <div key={c.id} className="border-b border-gray-100 pb-4 last:border-b-0 last:pb-0">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map(i => (
+                          <Star key={i} className={cn('h-3.5 w-3.5', i <= c.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200')} />
+                        ))}
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{c.reviewer}</span>
+                      <Link href={`/courses/${c.courseId}`} className="text-xs text-gray-400 hover:text-[#025CA8]">{c.courseName}</Link>
+                    </div>
+                    <span className="shrink-0 text-xs text-gray-400">
+                      {new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">{c.comment}</p>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

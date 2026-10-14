@@ -15,9 +15,14 @@ const PROMPT =
 
 /**
  * Regenerate the summary for every course whose reviews changed since its
- * stored summary. Called by the Reviews page on load; returns the fresh rows.
+ * stored summary. Called by the Reviews page and a course page on load;
+ * returns the fresh rows.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  // Optional: limit to one course (the course page); omitted for the whole company.
+  const body = await request.json().catch(() => null)
+  const onlyCourse: string | null = typeof body?.courseId === 'string' ? body.courseId : null
+
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,10 +38,11 @@ export async function POST() {
   }
 
   // Read through the user's session so RLS keeps this to their own company.
-  const [{ data: reviews }, { data: stored }] = await Promise.all([
-    supabase.from('course_reviews').select('course_id, company_id, rating, comment, updated_at, courses:course_id(name)'),
-    supabase.from('review_summaries').select('course_id, review_count, latest_review_at'),
-  ])
+  const reviewsQuery = supabase.from('course_reviews').select('course_id, company_id, rating, comment, updated_at, courses:course_id(name)')
+  const storedQuery = supabase.from('review_summaries').select('course_id, review_count, latest_review_at')
+  const [{ data: reviews }, { data: stored }] = await Promise.all(
+    onlyCourse ? [reviewsQuery.eq('course_id', onlyCourse), storedQuery.eq('course_id', onlyCourse)] : [reviewsQuery, storedQuery],
+  )
 
   type Group = { companyId: string; name: string; rows: { rating: number; comment: string | null }[]; count: number; latest: string; hasComment: boolean }
   const groups = new Map<string, Group>()

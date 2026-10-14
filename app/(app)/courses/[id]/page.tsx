@@ -174,6 +174,21 @@ export default function CourseDetailPage() {
     setReviews((data ?? []) as unknown as CourseReview[])
   }, [courseId])
 
+  // AI summary: show the stored one, then ask the server to refresh it if reviews changed.
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
+  const [summarizing, setSummarizing] = useState(true)
+  useEffect(() => {
+    fetch('/api/reviews/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId }),
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { setAiSummary(d?.summaries?.[0]?.summary ?? null) })
+      .catch(() => {})
+      .finally(() => setSummarizing(false))
+  }, [courseId])
+
   const loadCourse = useCallback(async () => {
     const { data } = await supabase
       .from('courses')
@@ -958,6 +973,7 @@ export default function CourseDetailPage() {
           No reviews yet.
         </div>
       ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="rounded-lg border bg-white shadow-sm p-5">
           {(() => {
             const total   = reviews.length
@@ -1008,6 +1024,17 @@ export default function CourseDetailPage() {
               </div>
             ))}
           </div>
+        </div>
+        <div className="rounded-lg border bg-white shadow-sm p-5 self-start">
+          <p className="text-sm font-semibold text-gray-900 mb-2">AI summary</p>
+          <p className="text-sm text-gray-700">
+            {aiSummary ?? (
+              <span className="text-gray-400">
+                {summarizing ? 'Generating…' : 'No written comments to summarize yet.'}
+              </span>
+            )}
+          </p>
+        </div>
         </div>
       )}
 

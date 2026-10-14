@@ -29,12 +29,17 @@ function Bar({ pct, color = '#025CA8' }: { pct: number; color?: string }) {
   )
 }
 
-function Pill({ children, tone = 'gray' }: { children: ReactNode; tone?: 'gray' | 'green' | 'amber' | 'blue' }) {
+function Pill({ children, tone = 'gray', icon }: { children: ReactNode; tone?: 'gray' | 'green' | 'amber' | 'blue'; icon?: string }) {
   const tones = {
     gray: 'bg-gray-100 text-gray-600', green: 'bg-emerald-50 text-emerald-700',
     amber: 'bg-amber-50 text-amber-700', blue: 'bg-blue-50 text-blue-700',
   }
-  return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>{children}</span>
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${tones[tone]}`}>
+      {icon && <Icon name={icon} className="h-3 w-3" />}
+      {children}
+    </span>
+  )
 }
 
 const Row = ({ children }: { children: ReactNode }) => (
@@ -46,7 +51,7 @@ type Feature = {
   title: string
   body: string
   more: string
-  points: string[]
+  points: { icon: string; text: string }[]
   preview: ReactNode
 }
 
@@ -57,14 +62,15 @@ const features: Feature[] = [
     body: 'Upload a course in sections. Learners can pause and pick up where they left off, but can’t skip ahead or speed through.',
     more: 'Record your in-service once and let everyone take it on their own schedule. Each course is split into sections, and progress is saved as people go.',
     points: [
-      'Break a course into sections so it’s easy to resume',
-      'Learners can’t skip ahead, so completion means they actually watched',
-      'See each person’s progress from the course page',
+      { icon: 'listNumbers', text: 'Break a course into sections so it’s easy to resume' },
+      { icon: 'lock', text: 'Learners can’t skip ahead, so completion means they actually watched' },
+      { icon: 'chartBar', text: 'See each person’s progress from the course page' },
     ],
     preview: (
       <Frame title="Course · Section progress">
         {[['1. Welcome', 100], ['2. Core concepts', 100], ['3. Case examples', 45], ['4. Wrap-up', 0]].map(([n, p]) => (
           <Row key={n as string}>
+            <Icon name={p === 100 ? 'circleCheck' : p === 0 ? 'lock' : 'play'} className={`h-4 w-4 shrink-0 ${p === 100 ? 'text-emerald-500' : p === 0 ? 'text-gray-300' : 'text-blue-500'}`} />
             <span className="w-32 shrink-0">{n}</span>
             <Bar pct={p as number} />
             <span className="w-8 text-right tabular-nums text-gray-500">{p}%</span>
@@ -79,15 +85,15 @@ const features: Feature[] = [
     body: 'Bundle self-paced courses into an ordered path, like New RBT Onboarding, and assign the whole thing in one click. Each course unlocks as the one before it is finished.',
     more: 'Onboarding shouldn’t be a spreadsheet of links. Build a path once, then assign it to a new hire and the order takes care of itself.',
     points: [
-      'Put courses in the order people should take them',
-      'Assign the whole path to a person in one click',
-      'Later courses stay locked until the earlier ones are done',
+      { icon: 'listNumbers', text: 'Put courses in the order people should take them' },
+      { icon: 'userCheck', text: 'Assign the whole path to a person in one click' },
+      { icon: 'lock', text: 'Later courses stay locked until the earlier ones are done' },
     ],
     preview: (
       <Frame title="Path · New RBT Onboarding">
-        {[['Welcome to the team', 'Complete', 'green'], ['Ethics basics', 'In progress', 'blue'], ['Data collection', 'Locked', 'gray']].map(([n, s, t], i) => (
+        {[['Welcome to the team', 'Complete', 'green', 'circleCheck'], ['Ethics basics', 'In progress', 'blue', 'play'], ['Data collection', 'Locked', 'gray', 'lock']].map(([n, s, t, ic]) => (
           <Row key={n}>
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-bold text-gray-500">{i + 1}</span>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500"><Icon name={ic} className="h-3.5 w-3.5" /></span>
             <span className="flex-1">{n}</span>
             <Pill tone={t as 'green' | 'blue' | 'gray'}>{s}</Pill>
           </Row>
@@ -101,9 +107,9 @@ const features: Feature[] = [
     body: 'A short quiz at the end of each course. Pass it and the certificate is issued — every attempt is kept for your records.',
     more: 'Watching a video isn’t the same as learning from it. A quiz at the end confirms understanding, and passing is what triggers the certificate.',
     points: [
-      'Add a short quiz to any course',
-      'The certificate is issued automatically on a pass',
-      'Every attempt is saved, so you have a record',
+      { icon: 'pencil', text: 'Add a short quiz to any course' },
+      { icon: 'fileCert', text: 'The certificate is issued automatically on a pass' },
+      { icon: 'file', text: 'Every attempt is saved, so you have a record' },
     ],
     preview: (
       <Frame title="Quiz · Attempts">
@@ -114,7 +120,9 @@ const features: Feature[] = [
             <Pill tone={t as 'amber' | 'green'}>{r}</Pill>
           </Row>
         ))}
-        <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">Certificate issued</p>
+        <p className="mt-3 flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">
+          <Icon name="fileCert" className="h-4 w-4" /> Certificate issued
+        </p>
       </Frame>
     ),
   },
@@ -124,14 +132,14 @@ const features: Feature[] = [
     body: 'Choose from several certificate styles or the BACB in-service form, signed by the trainer and branded with your logo.',
     more: 'Certificates come out looking like they’re from your organization, with the trainer’s signature already on them.',
     points: [
-      'Pick the certificate style that fits',
-      'Use the BACB in-service form when you need it',
-      'Your logo and the trainer’s signature are added for you',
+      { icon: 'palette', text: 'Pick the certificate style that fits' },
+      { icon: 'file', text: 'Use the BACB in-service form when you need it' },
+      { icon: 'signature', text: 'Your logo and the trainer’s signature are added for you' },
     ],
     preview: (
       <Frame title="Certificate preview">
         <div className="rounded-lg border-2 border-double border-gray-300 p-5 text-center">
-          <div className="mx-auto mb-2 h-6 w-16 rounded bg-gray-100" />
+          <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-50" style={{ color: BLUE_TEXT }}><Icon name="certificate" className="h-4 w-4" /></div>
           <p className="text-[10px] uppercase tracking-widest text-gray-400">Certificate of Completion</p>
           <p className="my-2 text-base font-semibold text-gray-900">Alex Rivera</p>
           <p className="text-gray-500">Ethics basics · 1.0 hour</p>
@@ -147,14 +155,15 @@ const features: Feature[] = [
     body: 'BCBA CEUs are tracked by type, so ethics and supervision requirements show up alongside the total — not as a surprise at recertification.',
     more: 'A BCBA can hit their total CEUs and still be short on ethics or supervision. Each type is tracked on its own so the gap is visible long before the deadline.',
     points: [
-      'CEUs are tracked by type, not just as one total',
-      'Ethics and supervision minimums sit next to the overall progress',
-      'No surprises at recertification',
+      { icon: 'chartBar', text: 'CEUs are tracked by type, not just as one total' },
+      { icon: 'scale', text: 'Ethics and supervision minimums sit next to the overall progress' },
+      { icon: 'target', text: 'No surprises at recertification' },
     ],
     preview: (
       <Frame title="BCBA · Current cycle">
-        {[['Total CEUs', 28, 32, '#025CA8'], ['Ethics', 4, 4, '#3FAD46'], ['Supervision', 1, 3, '#d97706']].map(([n, v, g, c]) => (
+        {[['Total CEUs', 28, 32, '#025CA8', 'chartBar'], ['Ethics', 4, 4, '#3FAD46', 'scale'], ['Supervision', 1, 3, '#d97706', 'userCheck']].map(([n, v, g, c, ic]) => (
           <Row key={n as string}>
+            <Icon name={ic as string} className="h-4 w-4 shrink-0 text-gray-400" />
             <span className="w-24 shrink-0">{n}</span>
             <Bar pct={((v as number) / (g as number)) * 100} color={c as string} />
             <span className="w-10 text-right tabular-nums text-gray-500">{v}/{g}</span>
@@ -169,10 +178,10 @@ const features: Feature[] = [
     body: 'Upload a PDF or a photo of a certificate and AI reads the details into the form. You check it and save — no retyping, and an optional review step for your team.',
     more: 'When someone completes a training elsewhere, they upload the certificate and the form fills itself in. Nothing is saved until a person confirms it.',
     points: [
-      'Works with a PDF or a photo of the certificate',
-      'Title, date, provider and hours are read into the form',
-      'You check it and save; AI never saves anything on its own',
-      'Optional review step so your team can approve entries',
+      { icon: 'photo', text: 'Works with a PDF or a photo of the certificate' },
+      { icon: 'sparkles', text: 'Title, date, provider and hours are read into the form' },
+      { icon: 'circleCheck', text: 'You check it and save; AI never saves anything on its own' },
+      { icon: 'eye', text: 'Optional review step so your team can approve entries' },
     ],
     preview: (
       <Frame title="Add outside training">
@@ -194,14 +203,15 @@ const features: Feature[] = [
     body: 'Track BCBA state licenses next to the BACB certification: renewal dates, state CE hours, and required topics, with email reminders before anything expires.',
     more: 'Many BCBAs hold a state license on top of their certification, each with its own renewal date and CE rules. Keep them all in one place.',
     points: [
-      'One record per state license, next to the BACB certification',
-      'Renewal dates, state CE hours and required topics',
-      'Email reminders before anything expires',
+      { icon: 'file', text: 'One record per state license, next to the BACB certification' },
+      { icon: 'calendar', text: 'Renewal dates, state CE hours and required topics' },
+      { icon: 'bell', text: 'Email reminders before anything expires' },
     ],
     preview: (
       <Frame title="Licenses">
-        {[['BACB certification', 'Renews Dec 31, 2026', 'green', 'Active'], ['State license · OH', 'Renews Jun 30, 2027', 'green', 'Active'], ['State license · PA', 'Renews Nov 15, 2026', 'amber', 'Due soon']].map(([n, d, t, s]) => (
+        {[['BACB certification', 'Renews Dec 31, 2026', 'green', 'Active', 'certificate'], ['State license · OH', 'Renews Jun 30, 2027', 'green', 'Active', 'calendar'], ['State license · PA', 'Renews Nov 15, 2026', 'amber', 'Due soon', 'bell']].map(([n, d, t, s, ic]) => (
           <Row key={n}>
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500"><Icon name={ic} className="h-4 w-4" /></span>
             <div className="flex-1">
               <p className="font-medium text-gray-900">{n}</p>
               <p className="text-gray-500">{d}</p>
@@ -218,9 +228,9 @@ const features: Feature[] = [
     body: 'Tag trainings by topic to spot gaps, and see course ratings and quiz results to find what needs reteaching.',
     more: 'See which topics your team has covered and which they haven’t, then check what learners thought of each course to decide what to run again.',
     points: [
-      'Tag each training with a topic',
-      'A grid shows who has completed which topics',
-      'Course ratings and written comments, summarized with AI',
+      { icon: 'tag', text: 'Tag each training with a topic' },
+      { icon: 'checklist', text: 'A grid shows who has completed which topics' },
+      { icon: 'message', text: 'Course ratings and written comments, summarized with AI' },
     ],
     preview: (
       <Frame title="Topic coverage">
@@ -245,14 +255,15 @@ const features: Feature[] = [
     body: 'Every organization’s data is completely separate. Roles control who can run trainings, manage staff, or change settings.',
     more: 'Your staff, records and certificates are visible only to your organization. Within it, roles decide who can do what.',
     points: [
-      'Each organization’s data is kept completely separate',
-      'Roles control who can run trainings, manage staff or change settings',
-      'Learners see their own records, not everyone’s',
+      { icon: 'building', text: 'Each organization’s data is kept completely separate' },
+      { icon: 'shield', text: 'Roles control who can run trainings, manage staff or change settings' },
+      { icon: 'eye', text: 'Learners see their own records, not everyone’s' },
     ],
     preview: (
       <Frame title="Roles">
-        {[['Account Owner', 'Everything'], ['Admin', 'Staff and settings'], ['Trainer', 'Run trainings'], ['Learner', 'Own records']].map(([r, d]) => (
+        {[['Account Owner', 'Everything', 'shield'], ['Admin', 'Staff and settings', 'userCheck'], ['Trainer', 'Run trainings', 'presentation'], ['Learner', 'Own records', 'school']].map(([r, d, ic]) => (
           <Row key={r}>
+            <Icon name={ic} className="h-4 w-4 shrink-0 text-gray-400" />
             <span className="w-28 shrink-0 font-medium text-gray-900">{r}</span>
             <span className="text-gray-500">{d}</span>
           </Row>
@@ -297,20 +308,22 @@ export function FeatureGrid() {
             <>
               {/* key resets the scroll position when moving to the next feature */}
               <div key={open.title} className="flex-1 overflow-y-auto p-6 sm:p-10">
-                <DialogHeader className="mb-6 gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50" style={{ color: BLUE_TEXT }}>
-                    <Icon name={open.icon} className="h-5 w-5" />
+                <DialogHeader className="-mx-6 -mt-6 mb-8 flex-row items-center gap-5 bg-gradient-to-br from-blue-50 via-white to-emerald-50 px-6 py-8 sm:-mx-10 sm:-mt-10 sm:px-10">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white shadow-md ring-1 ring-blue-100" style={{ color: BLUE_TEXT }}>
+                    <Icon name={open.icon} className="h-8 w-8" />
                   </div>
-                  <DialogTitle className="text-2xl font-bold leading-tight">{open.title}</DialogTitle>
+                  <DialogTitle className="text-3xl font-bold leading-tight tracking-tight">{open.title}</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-8 lg:grid-cols-2">
                   <div className="space-y-6">
                     <p className="leading-relaxed text-gray-600">{open.more}</p>
-                    <ul className="space-y-2.5 text-sm text-gray-700">
+                    <ul className="space-y-3 text-sm text-gray-700">
                       {open.points.map(p => (
-                        <li key={p} className="flex gap-3">
-                          <Icon name="checklist" className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
-                          {p}
+                        <li key={p.text} className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50" style={{ color: BLUE_TEXT }}>
+                            <Icon name={p.icon} className="h-[18px] w-[18px]" />
+                          </span>
+                          {p.text}
                         </li>
                       ))}
                     </ul>

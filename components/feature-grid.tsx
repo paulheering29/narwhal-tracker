@@ -2,7 +2,7 @@
 
 import { Fragment, useState, type ReactNode } from 'react'
 import { Icon } from '@/components/marketing-icon'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 const BLUE_TEXT = 'var(--brand-text)'
 
@@ -291,37 +291,41 @@ export function FeatureGrid() {
         ))}
       </div>
 
-      <Sheet open={open !== null} onOpenChange={o => { if (!o) setIndex(null) }}>
-        <SheetContent className="sm:max-w-xl">
+      <Dialog open={open !== null} onOpenChange={o => { if (!o) setIndex(null) }}>
+        <DialogContent className="flex h-[90vh] w-[95vw] max-w-none flex-col gap-0 overflow-hidden bg-white p-0 sm:max-w-none md:h-[75vh] md:w-[75vw]">
           {open && (
             <>
-              <SheetHeader>
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50" style={{ color: BLUE_TEXT }}>
-                  <Icon name={open.icon} className="h-5 w-5" />
-                </div>
-                <SheetTitle className="text-xl font-bold">{open.title}</SheetTitle>
-              </SheetHeader>
               {/* key resets the scroll position when moving to the next feature */}
-              <div key={open.title} className="flex-1 space-y-6 overflow-y-auto px-6 pb-8">
-                <p className="leading-relaxed text-gray-600">{open.more}</p>
-                <ul className="space-y-2.5 text-sm text-gray-700">
-                  {open.points.map(p => (
-                    <li key={p} className="flex gap-3">
-                      <Icon name="checklist" className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
-                      {p}
-                    </li>
-                  ))}
-                </ul>
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">A look inside</p>
-                  {open.preview}
+              <div key={open.title} className="flex-1 overflow-y-auto p-6 sm:p-10">
+                <DialogHeader className="mb-6 gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50" style={{ color: BLUE_TEXT }}>
+                    <Icon name={open.icon} className="h-5 w-5" />
+                  </div>
+                  <DialogTitle className="text-2xl font-bold leading-tight">{open.title}</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-8 lg:grid-cols-2">
+                  <div className="space-y-6">
+                    <p className="leading-relaxed text-gray-600">{open.more}</p>
+                    <ul className="space-y-2.5 text-sm text-gray-700">
+                      {open.points.map(p => (
+                        <li key={p} className="flex gap-3">
+                          <Icon name="checklist" className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">A look inside</p>
+                    {open.preview}
+                  </div>
                 </div>
               </div>
               {next && (
                 <button
                   type="button"
                   onClick={() => setIndex(((index ?? 0) + 1) % features.length)}
-                  className="flex items-center justify-between gap-4 border-t border-gray-100 px-6 py-4 text-left transition-colors hover:bg-gray-50"
+                  className="flex items-center justify-between gap-4 border-t border-gray-100 px-6 py-4 text-left transition-colors hover:bg-gray-50 sm:px-10"
                 >
                   <span>
                     <span className="block text-xs text-gray-400">Next</span>
@@ -332,8 +336,8 @@ export function FeatureGrid() {
               )}
             </>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

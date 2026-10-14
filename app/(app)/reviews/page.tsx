@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { canManageTrainings } from '@/lib/permissions'
-import { ReviewsClient, type CourseAverage } from './client'
+import { ReviewsClient, type CourseAverage, type Summary } from './client'
 
 export default async function ReviewsPage() {
   const supabase = await createClient()
@@ -17,6 +17,7 @@ export default async function ReviewsPage() {
   // Same gate as the company dashboard this page hangs off.
   if ((staff?.tier ?? 'rbt') === 'rbt' || !canManageTrainings((staff?.roles ?? []) as string[])) redirect('/dashboard')
 
+  const { data: summaryRows } = await supabase.from('review_summaries').select('course_id, summary, generated_at')
   const { data } = await supabase.from('course_reviews').select('rating, courses:course_id(id, name)')
 
   const byCourse = new Map<string, { name: string; sum: number; count: number }>()
@@ -33,5 +34,5 @@ export default async function ReviewsPage() {
     .map(([id, c]) => ({ id, name: c.name, average: c.sum / c.count, count: c.count }))
     .sort((a, b) => b.average - a.average || b.count - a.count)
 
-  return <ReviewsClient courses={courses} />
+  return <ReviewsClient courses={courses} summaries={(summaryRows ?? []) as Summary[]} />
 }

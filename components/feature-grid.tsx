@@ -263,7 +263,9 @@ const features: Feature[] = [
 ]
 
 export function FeatureGrid() {
-  const [open, setOpen] = useState<Feature | null>(null)
+  const [index, setIndex] = useState<number | null>(null)
+  const open = index === null ? null : features[index]
+  const next = index === null ? null : features[(index + 1) % features.length]
 
   return (
     <>
@@ -276,7 +278,7 @@ export function FeatureGrid() {
               </div>
               <button
                 type="button"
-                onClick={() => setOpen(f)}
+                onClick={() => setIndex(features.indexOf(f))}
                 aria-label={`Learn more about ${f.title}`}
                 className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
               >
@@ -289,7 +291,7 @@ export function FeatureGrid() {
         ))}
       </div>
 
-      <Sheet open={open !== null} onOpenChange={o => { if (!o) setOpen(null) }}>
+      <Sheet open={open !== null} onOpenChange={o => { if (!o) setIndex(null) }}>
         <SheetContent className="sm:max-w-xl">
           {open && (
             <>
@@ -299,7 +301,8 @@ export function FeatureGrid() {
                 </div>
                 <SheetTitle className="text-xl font-bold">{open.title}</SheetTitle>
               </SheetHeader>
-              <div className="flex-1 space-y-6 overflow-y-auto px-6 pb-8">
+              {/* key resets the scroll position when moving to the next feature */}
+              <div key={open.title} className="flex-1 space-y-6 overflow-y-auto px-6 pb-8">
                 <p className="leading-relaxed text-gray-600">{open.more}</p>
                 <ul className="space-y-2.5 text-sm text-gray-700">
                   {open.points.map(p => (
@@ -314,6 +317,19 @@ export function FeatureGrid() {
                   {open.preview}
                 </div>
               </div>
+              {next && (
+                <button
+                  type="button"
+                  onClick={() => setIndex(((index ?? 0) + 1) % features.length)}
+                  className="flex items-center justify-between gap-4 border-t border-gray-100 px-6 py-4 text-left transition-colors hover:bg-gray-50"
+                >
+                  <span>
+                    <span className="block text-xs text-gray-400">Next</span>
+                    <span className="text-sm font-semibold text-gray-900">{next.title}</span>
+                  </span>
+                  <Icon name="arrowRight" className="h-5 w-5 shrink-0" />
+                </button>
+              )}
             </>
           )}
         </SheetContent>

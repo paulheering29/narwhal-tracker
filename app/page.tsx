@@ -12,6 +12,9 @@ const BLUE  = '#025CA8'
 const BLUE_TEXT = 'var(--brand-text)'
 const GREEN = '#3FAD46'
 
+// Master switch for dollar amounts on the pricing section. false keeps the cards but hides the numbers; flip to true to show them again.
+const SHOW_PRICES = false
+
 // The app lives on its own host (see middleware.ts), so sign-in links are absolute.
 const LOGIN_URL  = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/login`
 const SIGNUP_URL = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/signup`
@@ -268,20 +271,26 @@ export default async function HomePage() {
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="rounded-2xl border-2 bg-white p-8" style={{ borderColor: BLUE_TEXT }}>
               <h3 className="font-semibold text-lg mb-1">Training Loop</h3>
-              {introductory && (
+              {SHOW_PRICES && introductory && (
                 <p className="inline-block rounded-full bg-[#025CA8]/10 px-3 py-0.5 text-xs font-semibold mb-3" style={{ color: BLUE_TEXT }}>
                   Introductory pricing
                 </p>
               )}
-              <p className="mb-1">
-                <span className="text-4xl font-extrabold" style={{ color: BLUE_TEXT }}>{formatMoney(rates.baseCents)}</span>
-                <span className="text-gray-500"> / month</span>
-              </p>
-              <p className="text-gray-600 mb-1">+ {formatMoney(rates.userCents)} per person</p>
-              <p className={`text-sm text-gray-500 ${introductory ? 'mb-1' : 'mb-6'}`}>
+              {SHOW_PRICES ? (
+                <>
+                  <p className="mb-1">
+                    <span className="text-4xl font-extrabold" style={{ color: BLUE_TEXT }}>{formatMoney(rates.baseCents)}</span>
+                    <span className="text-gray-500"> / month</span>
+                  </p>
+                  <p className="text-gray-600 mb-1">+ {formatMoney(rates.userCents)} per person</p>
+                </>
+              ) : (
+                <p className="text-gray-600 mb-3">A simple monthly plan based on the people you track</p>
+              )}
+              <p className={`text-sm text-gray-500 ${SHOW_PRICES && introductory ? 'mb-1' : 'mb-6'}`}>
                 Everyone you add counts: RBTs, BCBAs, and also training coordinators, admins, and anyone else with a login.
               </p>
-              {endsOn && (
+              {SHOW_PRICES && endsOn && (
                 <p className="text-sm font-medium mb-6" style={{ color: BLUE_TEXT }}>
                   {lockInLine(endsOn, next)}
                 </p>
@@ -297,17 +306,19 @@ export default async function HomePage() {
                   <li key={t} className="flex gap-2"><Icon name="checklist" className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />{t}</li>
                 ))}
               </ul>
-              <p className="text-xs text-gray-500">
+              {SHOW_PRICES && <p className="text-xs text-gray-500">
                 For example, 20 people is {formatMoney(monthlyTotalCents(20, 0, rates))} a month; 100 people is {formatMoney(monthlyTotalCents(100, 0, rates))}.
-              </p>
+              </p>}
             </div>
 
             <div className="rounded-2xl border border-gray-200 bg-white p-8">
               <h3 className="font-semibold text-lg mb-1">Nightly license checks</h3>
-              <p className="mb-1">
-                <span className="text-4xl font-extrabold" style={{ color: BLUE_TEXT }}>{formatMoney(rates.stateCents)}</span>
-                <span className="text-gray-500"> / state / month</span>
-              </p>
+              {SHOW_PRICES && (
+                <p className="mb-1">
+                  <span className="text-4xl font-extrabold" style={{ color: BLUE_TEXT }}>{formatMoney(rates.stateCents)}</span>
+                  <span className="text-gray-500"> / state / month</span>
+                </p>
+              )}
               <p className="text-gray-600 mb-6">An optional add-on, one state at a time</p>
               <p className="text-sm text-gray-600 leading-relaxed">
                 Every night we compare your Licensed Behavior Analysts’ licenses in that state against the state’s own published list, and flag
@@ -319,7 +330,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <PriceCalculator color={BLUE_TEXT} rates={rates} />
+          {SHOW_PRICES && <PriceCalculator color={BLUE_TEXT} rates={rates} />}
 
           <p className="mt-8 text-center text-gray-600">
             Fewer than 10 RBTs + BCBAs, or a non-profit?{' '}

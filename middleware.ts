@@ -15,7 +15,7 @@ const LEGAL_PATHS = ['/terms', '/privacy']
 // Any username works; the browser's own sign-in prompt asks for it.
 // Master switch: false keeps the page open even if MARKETING_PASSWORD is still set on Vercel.
 // Flip to true to turn the gate back on.
-const MARKETING_GATE_ENABLED = false
+const MARKETING_GATE_ENABLED = true
 
 function marketingGate(request: NextRequest): NextResponse | null {
   if (!MARKETING_GATE_ENABLED) return null

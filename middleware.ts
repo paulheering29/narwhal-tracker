@@ -13,7 +13,12 @@ const LEGAL_PATHS = ['/terms', '/privacy']
 // Temporary gate on the marketing page while it isn't ready for the public.
 // Active only while MARKETING_PASSWORD is set; delete the variable to open the page.
 // Any username works; the browser's own sign-in prompt asks for it.
+// Master switch: false keeps the page open even if MARKETING_PASSWORD is still set on Vercel.
+// Flip to true to turn the gate back on.
+const MARKETING_GATE_ENABLED = false
+
 function marketingGate(request: NextRequest): NextResponse | null {
+  if (!MARKETING_GATE_ENABLED) return null
   const password = process.env.MARKETING_PASSWORD
   if (!password) return null
   const header = request.headers.get('authorization') ?? ''
